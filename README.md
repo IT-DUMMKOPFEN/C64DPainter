@@ -46,12 +46,14 @@ This needs Go, Python 3 with Pillow (`pip install pillow`, for the macOS icon), 
 
 ### Making a release
 
-Push a tag that starts with `v`; GitHub then builds everything and publishes a release with all four files:
+Either on GitHub: **Actions → Build → Run workflow**, enter a tag such as `v0.8b` and start it. Or push a tag that starts with `v`:
 
 ```
 git tag v0.8b
 git push origin v0.8b
 ```
+
+GitHub then builds everything and publishes a release with all four files.
 
 ### Single platforms
 
