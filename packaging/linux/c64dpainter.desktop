@@ -1,0 +1,11 @@
+[Desktop Entry]
+Type=Application
+Name=C64 DPainter
+GenericName=C64 Multicolor Paint Program
+Comment=Paint pictures in the Commodore 64 multicolor bitmap mode
+Exec=c64dpainter %f
+Icon=c64dpainter
+Terminal=false
+Categories=Graphics;2DGraphics;RasterGraphics;
+MimeType=image/png;image/bmp;
+Keywords=C64;Commodore;Koala;pixel;paint;

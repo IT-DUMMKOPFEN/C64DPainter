@@ -1,0 +1,222 @@
+# One-off translation of user-visible strings to English.
+import sys
+
+T = {}
+T['internal/app/app.go'] = {
+    '"Punkte"': '"Dots"', '"Freihand"': '"Freehand"', '"Linie"': '"Line"', '"Kurve"': '"Curve"',
+    '"Füllen"': '"Fill"', '"Sprühdose"': '"Airbrush"', '"Rechteck"': '"Rectangle"',
+    '"Rechteck gefüllt"': '"Filled rectangle"', '"Kreis"': '"Circle"', '"Kreis gefüllt"': '"Filled circle"',
+    '"Ellipse gefüllt"': '"Filled ellipse"', '"Auswahl"': '"Select"', '"Pipette"': '"Color picker"',
+    '"Verschieben"': '"Pan"',
+    '"Klicken oder ziehen: einzelne Pinselabdrücke"': '"Click or drag: single brush dabs"',
+    '"Ziehen: durchgehend malen  ·  rechte Taste = Farbe 2"': '"Drag: paint continuously  ·  right button = color 2"',
+    '"Ziehen: Linie  ·  Umschalt = 45°-Raster"': '"Drag: line  ·  Shift = snap to 45°"',
+    '"Ziehen: Grundlinie, dann Maus bewegen und klicken zum Biegen"': '"Drag: base line, then move the mouse and click to bend"',
+    '"Klicken: Fläche gleicher Farbe füllen (mit Muster)"': '"Click: fill an area of the same color (with pattern)"',
+    '"Gedrückt halten: sprühen  ·  Radius/Dichte im Pinsel-Bereich"': '"Hold: spray  ·  radius/density in the Brush panel"',
+    '"Ziehen: Rechteck  ·  Umschalt = Quadrat"': '"Drag: rectangle  ·  Shift = square"',
+    '"Ziehen: gefülltes Rechteck  ·  Umschalt = Quadrat"': '"Drag: filled rectangle  ·  Shift = square"',
+    '"Ziehen vom Mittelpunkt: Kreis"': '"Drag from the center: circle"',
+    '"Ziehen vom Mittelpunkt: gefüllter Kreis"': '"Drag from the center: filled circle"',
+    '"Ziehen vom Mittelpunkt: Ellipse"': '"Drag from the center: ellipse"',
+    '"Ziehen vom Mittelpunkt: gefüllte Ellipse"': '"Drag from the center: filled ellipse"',
+    '"Ziehen: Auswahl  ·  in Auswahl ziehen = verschieben (Strg = kopieren)"': '"Drag: select  ·  drag inside = move (Ctrl = copy)"',
+    '"Klicken: Farbe aufnehmen (links = Farbe 1, rechts = Farbe 2)"': '"Click: pick a color (left = color 1, right = color 2)"',
+    '"Ziehen: Ansicht verschieben"': '"Drag: move the view"',
+    '"Willkommen! F1 öffnet die Hilfe."': '"Welcome! Press F1 for help."',
+    '"Unbenannt"': '"Untitled"', '" [Seite 2]"': '" [page 2]"',
+    '"Nichts rückgängig zu machen"': '"Nothing to undo"', '"Rückgängig"': '"Undo"',
+    '"Nichts zu wiederholen"': '"Nothing to redo"', '"Wiederholt"': '"Redo"',
+    '"X %3d  Y %3d   Zelle %2d,%2d   %%%02b  %s"': '"X %3d  Y %3d   Cell %2d,%2d   %%%02b  %s"',
+    '"Konflikt: blockieren"': '"Conflict: block"', '"Konflikt: ersetzen"': '"Conflict: replace"',
+    '"Konflikt: ähnlichste Farbe"': '"Conflict: nearest color"',
+    '"Seite %d (J wechselt zurück)"': '"Page %d (J switches back)"',
+    '"Bild nach Seite %d kopiert"': '"Picture copied to page %d"',
+    '"Bild gelöscht (Hintergrundfarbe bleibt)"': '"Picture cleared (background color kept)"',
+    '"Hintergrundfarbe ($D021): "': '"Background color ($D021): "',
+    '"Rahmenfarbe ($D020): "': '"Border color ($D020): "',
+    '"Farbe 2: "': '"Color 2: "', '"Farbe 1: "': '"Color 1: "',
+}
+T['internal/app/tools.go'] = {'"Farbe 2: "': '"Color 2: "', '"Farbe 1: "': '"Color 1: "'}
+T['internal/app/fileops.go'] = {
+    '"Alle unterstützten Bilder"': '"All supported images"',
+    '"PNG-Bild (*.png)"': '"PNG image (*.png)"', '"Windows-Bitmap (*.bmp)"': '"Windows bitmap (*.bmp)"',
+    '"Alle Dateien"': '"All files"', '"Bilder (*.png, *.bmp, *.jpg, *.gif)"': '"Images (*.png, *.bmp, *.jpg, *.gif)"',
+    '"Bild kann nicht gelesen werden: %v"': '"Cannot read image: %v"',
+    '"Das Bild wurde geändert.\\n\\nÄnderungen vorher speichern?"': '"The picture has been changed.\\n\\nSave changes first?"',
+    '"Neues Bild"': '"New picture"', '"Bild öffnen"': '"Open picture"',
+    '"Datei kann nicht gelesen werden:\\n"': '"Cannot read file:\\n"',
+    '"Geladen: "': '"Loaded: "', '"Vorlage laden (PNG/BMP)"': '"Load template (PNG/BMP)"',
+    '"Vorlage geladen: "': '"Template loaded: "', '" (T blendet ein/aus)"': '" (T shows/hides it)"',
+    '"bild.kla"': '"picture.kla"', '"Speichern unter"': '"Save as"',
+    '"PNG-Bild 320×200 (*.png)"': '"PNG image 320×200 (*.png)"', '"C64-Programm (*.prg)"': '"C64 program (*.prg)"',
+    '"Speichern fehlgeschlagen:\\n"': '"Saving failed:\\n"', '"Gespeichert: %s (%d Byte)"': '"Saved: %s (%d bytes)"',
+    '"bild"': '"picture"', '"Als Koala exportieren"': '"Export as Koala"',
+    '"Als C64-Programm exportieren"': '"Export as C64 program"', '"PNG 320×200 exportieren"': '"Export PNG 320×200"',
+    '"PNG 160×200 exportieren"': '"Export PNG 160×200"', '"_rahmen.png"': '"_border.png"',
+    '"PNG mit Rahmen exportieren"': '"Export PNG with border"',
+}
+T['internal/app/selection.go'] = {
+    '"Auswahl übernommen"': '"Selection applied"', '"Horizontal gespiegelt"': '"Flipped horizontally"',
+    '"Vertikal gespiegelt"': '"Flipped vertically"', '"90° gedreht"': '"Rotated 90°"', '"−90° gedreht"': '"Rotated −90°"',
+    '"Halbe Größe"': '"Half size"', '"Doppelte Größe"': '"Double size"',
+    '"Transformation zurückgesetzt"': '"Transformation reset"', '"Auswahl: "': '"Selection: "', '"Pinsel: "': '"Brush: "',
+    '"Keine Auswahl und kein eigener Pinsel aktiv"': '"No selection and no custom brush active"',
+    '"Kopiert (Strg+V fügt ein)"': '"Copied (Ctrl+V pastes)"', '"Ausgeschnitten"': '"Cut"',
+    '"Zwischenablage ist leer"': '"Clipboard is empty"',
+    '"Eingefügt – ziehen zum Platzieren, Eingabe übernimmt"': '"Pasted – drag to place, Enter applies"',
+    '"Erst einen Bereich auswählen"': '"Select an area first"',
+    '"Auswahl ist jetzt der Pinsel (B = Standardpinsel)"': '"The selection is now the brush (Shift+B = standard brush)"',
+    '"Standardpinsel"': '"Standard brush"',
+}
+T['internal/app/brush.go'] = {
+    '"Voll"': '"Solid"', '"Schachbrett 1/2"': '"Checkerboard 1/2"', '"Waagerechte Linien"': '"Horizontal lines"',
+    '"Senkrechte Linien"': '"Vertical lines"', '"Breite Streifen"': '"Wide stripes"', '"Breite Säulen"': '"Wide columns"',
+    '"Diagonale /"': '"Diagonal /"', '"Diagonale \\\\"': '"Diagonal \\\\"', '"Kreuzschraffur"': '"Cross-hatch"',
+    '"Ziegel"': '"Bricks"', '"Gitter"': '"Grid"', '"Schach 2×2"': '"Checker 2×2"', '"Schach 4×4"': '"Checker 4×4"',
+    '"Rauten"': '"Diamonds"', '"Feine Punkte"': '"Fine dots"', '"Zickzack"': '"Zigzag"', '"Noppen"': '"Studs"',
+    '"Kreuze"': '"Crosses"', '"Breite Diagonale"': '"Wide diagonal"', '"Flechtwerk"': '"Weave"',
+    '"Grobe Punkte"': '"Coarse dots"', '"Fliesen"': '"Tiles"',
+}
+T['internal/app/menus.go'] = {
+    '"Datei"': '"File"', '"Neu"': '"New"', '"Strg+N"': '"Ctrl+N"', '"Öffnen … (KLA, PNG, BMP)"': '"Open … (KLA, PNG, BMP)"',
+    '"Strg+O"': '"Ctrl+O"', '"Speichern"': '"Save"', '"Strg+S"': '"Ctrl+S"', '"Speichern unter …"': '"Save as …"',
+    '"Strg+Umsch+S"': '"Ctrl+Shift+S"', '"Exportieren"': '"Export"', '"Koala Painter (.kla) …"': '"Koala Painter (.kla) …"',
+    '"C64-Programm (.prg) …"': '"C64 program (.prg) …"', '"Strg+E"': '"Ctrl+E"',
+    '"PNG 160×200 (Originalpunkte) …"': '"PNG 160×200 (native pixels) …"', '"PNG 384×272 mit Rahmen …"': '"PNG 384×272 with border …"',
+    '"Vorlage laden …"': '"Load template …"', '"Beenden"': '"Exit"', '"Strg+Q"': '"Ctrl+Q"',
+    '"Bearbeiten"': '"Edit"', '"Rückgängig"': '"Undo"', '"Strg+Z  U"': '"Ctrl+Z  U"', '"Wiederholen"': '"Redo"',
+    '"Strg+Y"': '"Ctrl+Y"', '"Ausschneiden"': '"Cut"', '"Strg+X"': '"Ctrl+X"', '"Kopieren"': '"Copy"', '"Strg+C"': '"Ctrl+C"',
+    '"Einfügen"': '"Paste"', '"Strg+V"': '"Ctrl+V"', '"Auswahl löschen"': '"Delete selection"', '"Entf"': '"Del"',
+    '"Alles auswählen"': '"Select all"', '"Strg+A"': '"Ctrl+A"', '"Bild löschen"': '"Clear picture"', '"Umsch+K"': '"Shift+K"',
+    '"Seite wechseln (Zweitbild)"': '"Swap page (spare page)"', '"Bild auf andere Seite kopieren"': '"Copy picture to other page"',
+    '"Unbenutzte Zellfarben aufräumen"': '"Clean up unused cell colors"',
+    '"Unbenutzte Bitpaar-Farben auf Schwarz gesetzt (Bild unverändert)"': '"Unused bit-pair colors set to black (picture unchanged)"',
+    '"Auswahl"': '"Selection"', '"Horizontal spiegeln"': '"Flip horizontally"', '"Vertikal spiegeln"': '"Flip vertically"',
+    '"90° drehen (im Uhrzeigersinn)"': '"Rotate 90° clockwise"', '"90° drehen (gegen Uhrzeigersinn)"': '"Rotate 90° counter-clockwise"',
+    '"Umsch+Z"': '"Shift+Z"', '"Halbe Größe"': '"Half size"', '"Doppelte Größe"': '"Double size"', '"Umsch+H"': '"Shift+H"',
+    '"Drehen, skalieren, neigen …"': '"Rotate, scale, shear …"', '"Transformation zurücksetzen"': '"Reset transformation"',
+    '"Übernehmen"': '"Apply"', '"Eingabe"': '"Enter"', '"Abbrechen"': '"Cancel"',
+    '"Auswahl als Pinsel verwenden"': '"Use selection as brush"', '"Standardpinsel"': '"Standard brush"', '"Umsch+B"': '"Shift+B"',
+    '"Hintergrundfarbe durchsichtig"': '"Background color transparent"', '"Ansicht"': '"View"', '"Vergrößern"': '"Zoom in"',
+    '"Verkleinern"': '"Zoom out"', '"Einpassen"': '"Fit to window"', '"Strg+0"': '"Ctrl+0"',
+    '"Originalgröße (100 %)"': '"Actual size (100 %)"', '"Strg+1"': '"Ctrl+1"', '"Gitter"': '"Grid"',
+    '"Gitter einstellen …"': '"Grid settings …"', '"Umsch+G"': '"Shift+G"', '"Bildpunktraster (ab Zoom 4×)"': '"Pixel grid (from zoom 4×)"',
+    '"Zelle unter der Maus markieren"': '"Highlight cell under the mouse"', '"Rahmen ($D020) anzeigen"': '"Show border ($D020)"',
+    '"Seitenleiste"': '"Side panel"', '"Vorlage anzeigen"': '"Show template"', '"Optionen"': '"Options"',
+    '"Palette wählen …"': '"Choose palette …"', '"Farbkonflikt (Zelle voll)"': '"Color conflict (cell full)"',
+    '"Blockieren (streng)"': '"Block (strict)"', '"Seltenste Zellfarbe ersetzen"': '"Replace rarest cell color"',
+    '"Ähnlichste Zellfarbe nehmen"': '"Use nearest cell color"',
+    '"Pinsel rund am Bildschirm (2:1 ausgleichen)"': '"Round brushes on screen (correct 2:1)"', '"Farbschema"': '"Theme"',
+    '"Hell"': '"Light"', '"Dunkel"': '"Dark"', '"Oberflächengröße"': '"Interface size"',
+    '"Automatisch (nach Windows-Skalierung)"': '"Automatic (Windows scaling)"', '"Hilfe"': '"Help"',
+    '"Hilfe-Übersicht"': '"Help contents"', '"Erste Schritte"': '"Getting started"', '"Multicolor-Regeln"': '"Multicolor rules"',
+    '"Werkzeuge"': '"Tools"', '"Tastenkürzel"': '"Keyboard shortcuts"', '"Dateiformate"': '"File formats"',
+    '"Über C64 DPainter"': '"About C64 DPainter"', '"Hilfe (F1)"': '"Help (F1)"', '"Hell / Dunkel umschalten"': '"Toggle light / dark"',
+    '"Seite 2"': '"Page 2"',
+}
+T['internal/app/panels.go'] = {
+    '"Punkte (S)"': '"Dots (S)"', '"Freihand (D)"': '"Freehand (D)"', '"Linie (V)"': '"Line (V)"', '"Kurve (Q)"': '"Curve (Q)"',
+    '"Füllen (F)"': '"Fill (F)"', '"Sprühdose (A)"': '"Airbrush (A)"', '"Rechteck (R) / gefüllt (Umsch+R)"': '"Rectangle (R) / filled (Shift+R)"',
+    '"Kreis (C) / gefüllt (Umsch+C)"': '"Circle (C) / filled (Shift+C)"', '"Ellipse (E) / gefüllt (Umsch+E)"': '"Ellipse (E) / filled (Shift+E)"',
+    '"Auswahl (B)"': '"Select (B)"', '"Pipette (,) – auch Alt+Klick"': '"Color picker (,) – also Alt+click"',
+    '"Ansicht verschieben (Leertaste halten)"': '"Pan view (hold Space)"', '"Gitter ein/aus (G) · rechts: einstellen"': '"Grid on/off (G) · right-click: settings"',
+    '"Vorlage ein/aus (T) · rechts: laden"': '"Template on/off (T) · right-click: load"', '"Vergrößern (>) · Mausrad"': '"Zoom in (>) · mouse wheel"',
+    '"Verkleinern (<) · rechts: einpassen"': '"Zoom out (<) · right-click: fit"', '"Rückgängig (U, Strg+Z)"': '"Undo (U, Ctrl+Z)"',
+    '"Wiederholen (Umsch+U, Strg+Y)"': '"Redo (Shift+U, Ctrl+Y)"', '"Pinsel %s %d (+/− ändert Größe)"': '"Brush %s %d (+/− changes size)"',
+    '0: "rund", 1: "eckig"': '0: "round", 1: "square"',
+    '"Farbe 1: %s · Farbe 2: %s"': '"Color 1: %s · Color 2: %s"',
+    '"%d %s – links: Farbe 1, rechts: Farbe 2, Strg+Klick: Hintergrund"': '"%d %s – left: color 1, right: color 2, Ctrl+click: background"',
+    '"Pinsel"': '"Brush"', '"Rund"': '"Round"', '"Eckig"': '"Square"', '"Eigener"': '"Custom"',
+    '"Eigener Pinsel: Auswahl → „Als Pinsel verwenden“"': '"Custom brush: selection → \\"Use as brush\\""',
+    '"Größe"': '"Size"', '"Eigener Pinsel: %d × %d Bildpunkte"': '"Custom brush: %d × %d pixels"',
+    '"Originalfarben des Pinsels"': '"Brush keeps its own colors"', '"Rund am Bildschirm (2:1)"': '"Round on screen (2:1)"',
+    '"Multicolor-Punkte sind doppelt so breit wie hoch"': '"Multicolor pixels are twice as wide as high"',
+    '"Sprühradius"': '"Spray radius"', '"Dichte"': '"Density"', '"Muster"': '"Patterns"', '"Muster: "': '"Pattern: "',
+    '"Lücken mit Farbe 2 füllen"': '"Fill gaps with color 2"', '"Aus: Musterlücken bleiben unverändert"': '"Off: pattern gaps stay unchanged"',
+    '"Farben"': '"Colors"', '"Farbe %d: %d %s"': '"Color %d: %d %s"', '"Hintergrund ($D021, Bitpaar %00)"': '"Background ($D021, bit pair %00)"',
+    '"Rahmen ($D020)"': '"Border ($D020)"', '"Wenn eine Zelle voll ist (4 Farben):"': '"When a cell is full (4 colors):"',
+    '"Blockieren (streng)"': '"Block (strict)"', '"Seltenste Farbe ersetzen"': '"Replace rarest color"',
+    '"Ähnlichste Farbe nehmen"': '"Use nearest color"', '"Der Punkt wird nicht gesetzt, die Zelle blinkt rot"': '"The pixel is not set, the cell flashes red"',
+    '"Die am wenigsten benutzte Zellfarbe wird umgefärbt"': '"The least used cell color is recolored"',
+    '"Es wird die ähnlichste der vorhandenen Zellfarben gemalt"': '"The most similar existing cell color is painted"',
+    '"Ebenen"': '"Layers"', '"Ein-/ausblenden"': '"Show / hide"', '"(keine)"': '"(none)"', '"Vorlage"': '"Template"',
+    '"Bild (C64 Multicolor)"': '"Picture (C64 multicolor)"', '"160×200, Seite "': '"160×200, page "',
+    '"Vorlage laden …"': '"Load template …"', '"Entfernen"': '"Remove"', '"Deckkraft"': '"Opacity"',
+    '"Über Bild"': '"Above picture"', '"Unter Bild"': '"Below picture"',
+    '"Vorlage scheint nur durch Hintergrund-Punkte (%00)"': '"Template shows only through background pixels (%00)"',
+    '"Strecken"': '"Stretch"', '"Einpassen"': '"Fit"', '"Füllen"': '"Fill"',
+    '"Vorlage in C64-Bild umwandeln …"': '"Convert template to C64 picture …"',
+    '"Zelle unter der Maus"': '"Cell under the mouse"', '"Maus über das Bild bewegen"': '"Move the mouse over the picture"',
+    '"Spalte %d, Zeile %d  (4×8 Punkte)"': '"Column %d, row %d  (4×8 pixels)"',
+    '"Volle Zellen (4 Farben): %d von 1000"': '"Full cells (4 colors): %d of 1000"', '"Übersicht"': '"Navigator"',
+    '"Klicken oder ziehen: Ausschnitt wählen"': '"Click or drag: choose the visible area"', '"Auswahl"': '"Selection"',
+    '"Horizontal spiegeln (X)"': '"Flip horizontally (X)"', '"Vertikal spiegeln (Y)"': '"Flip vertically (Y)"',
+    '"90° drehen (Z)"': '"Rotate 90° (Z)"', '"−90° drehen (Umsch+Z)"': '"Rotate −90° (Shift+Z)"', '"Halbe Größe (H)"': '"Half size (H)"',
+    '"Doppelte Größe (Umsch+H)"': '"Double size (Shift+H)"', '"Drehen"': '"Rotate"', '"Breite"': '"Width"', '"Höhe"': '"Height"',
+    '"Neigen ↔"': '"Shear ↔"', '"Neigen ↕"': '"Shear ↕"', '"Zurücksetzen"': '"Reset"', '"Übernehmen"': '"Apply"',
+    '"Als Pinsel"': '"Use as brush"', '"Abbrechen"': '"Cancel"', '"Hintergrundfarbe durchsichtig"': '"Background color transparent"',
+    '"Gilt beim Anheben und für „Als Pinsel“"': '"Applies when lifting and for \\"Use as brush\\""', '"frei"': '"free"',
+}
+T['internal/app/dialogs.go'] = {
+    '"Gitter einstellen"': '"Grid settings"',
+    '"Maße in Bildschirmpunkten (320×200). Ein Multicolor-Punkt"': '"Sizes in screen pixels (320×200). A multicolor pixel is"',
+    '"ist 2 Bildschirmpunkte breit. 8×8 = genau eine Farbzelle."': '"2 screen pixels wide. 8×8 = exactly one color cell."',
+    '"Gitter anzeigen (G)"': '"Show grid (G)"', '"Breite"': '"Width"', '"Höhe"': '"Height"',
+    '"Versatz waagerecht"': '"Horizontal offset"', '"Versatz senkrecht"': '"Vertical offset"', '"Deckkraft"': '"Opacity"',
+    '"Farbe (A = automatisch, invertiert)"': '"Color (A = automatic, inverted)"', '"Vorgaben:"': '"Presets:"',
+    '"8×8 Zelle"': '"8×8 cell"', '"2×1 Punkt"': '"2×1 pixel"', '"Schließen"': '"Close"',
+    '"Palette wählen (%d Paletten)"': '"Choose palette (%d palettes)"',
+    '"Interpretationen der 16 C64-Farben (Quelle: c64gfx.com/palettes)."': '"Interpretations of the 16 C64 colors (source: c64gfx.com/palettes)."',
+    '"Die Palette ändert nur die Darstellung und den PNG-Export – KLA/PRG bleiben gleich."': '"The palette only changes the display and PNG export – KLA/PRG stay the same."',
+    '"Aktuell: "': '"Current: "', '"Abbrechen"': '"Cancel"',
+    '"Auswahl drehen, skalieren, neigen"': '"Rotate, scale and shear selection"',
+    '"Änderungen sind sofort im Bild zu sehen. Die Regeln"': '"Changes are shown in the picture right away. The color"',
+    '"der Farbzellen gelten auch für das Ergebnis."': '"cell rules also apply to the result."',
+}
+T['internal/app/help.go'] = {
+    '"Hilfe – "': '"Help – "', '"← Zurück"': '"← Back"',
+    '"Bild ↑/↓ blättert · Rücktaste = zurück · Esc schließt"': '"Page Up/Down scrolls · Backspace = back · Esc closes"',
+    '"Schließen"': '"Close"', '"Hintergrund $D021"': '"Background $D021"', '"für das ganze Bild gleich"': '"the same for the whole picture"',
+    '"Bildschirmspeicher Bits 4–7"': '"Screen RAM bits 4–7"', '"je Zelle frei wählbar"': '"free choice per cell"',
+    '"Bildschirmspeicher Bits 0–3"': '"Screen RAM bits 0–3"', '"Farbspeicher $D800"': '"Color RAM $D800"',
+    '" – hier: "': '" – here: "',
+    '"Eine Zelle = 4 × 8 Multicolor-Punkte = 8 × 8 Bildschirmpunkte."': '"One cell = 4 × 8 multicolor pixels = 8 × 8 screen pixels."',
+    '"40 × 25 Zellen ergeben das Bild mit 160 × 200 Punkten."': '"40 × 25 cells make up the 160 × 200 pixel picture."',
+    '"oder"': '"or"',
+}
+T['internal/c64/palette.go'] = {
+    '"Schwarz", "Weiß", "Rot", "Türkis", "Violett", "Grün", "Blau", "Gelb"': '"Black", "White", "Red", "Cyan", "Purple", "Green", "Blue", "Yellow"',
+    '"Orange", "Braun", "Hellrot", "Dunkelgrau", "Grau", "Hellgrün", "Hellblau", "Hellgrau"': '"Orange", "Brown", "Light red", "Dark grey", "Grey", "Light green", "Light blue", "Light grey"',
+    '"Quelle unvollständig: "': '"Incomplete source: "', '" aus Pepto ergänzt"': '" taken from Pepto"',
+}
+T['internal/c64/formats.go'] = {
+    '"keine Koala-Datei: %d Byte (erwartet 10003)"': '"not a Koala file: %d bytes (expected 10003)"',
+    '"Sprungweite zu groß"': '"branch out of range"',
+}
+T['internal/c64/bmp.go'] = {
+    '"keine BMP-Datei"': '"not a BMP file"', '"BMP-Kopf zu kurz"': '"BMP header too short"',
+    '"ungültige BMP-Größe"': '"invalid BMP size"', '"BMP ohne Bilddaten"': '"BMP without image data"',
+    '"BMP-Kompression wird nicht unterstützt"': '"BMP compression is not supported"',
+    '"BMP-Farbtiefe wird nicht unterstützt"': '"BMP color depth is not supported"',
+}
+T['cmd/c64dpainter/main_windows.go'] = {
+    '"fehler.log"': '"error.log"',
+    '"Ein interner Fehler ist aufgetreten:\\n\\n"': '"An internal error occurred:\\n\\n"',
+    '"\\n\\nDas Programm läuft weiter. Bitte das Bild sicherheitshalber speichern.\\nDetails: %APPDATA%\\\\C64DPainter\\\\fehler.log"':
+        '"\\n\\nThe program keeps running. Please save your picture to be safe.\\nDetails: %APPDATA%\\\\C64DPainter\\\\error.log"',
+    '"Fenster konnte nicht erstellt werden."': '"Could not create the window."',
+}
+
+root = sys.argv[1]
+missing = 0
+for f, d in T.items():
+    p = root + '/' + f
+    s = open(p, encoding='utf-8').read()
+    for k in sorted(d, key=len, reverse=True):
+        if k not in s:
+            print('NOT FOUND', f, k)
+            missing += 1
+        s = s.replace(k, d[k])
+    open(p, 'w', encoding='utf-8').write(s)
+print('done, missing', missing)

@@ -1,0 +1,12 @@
+C64 DPainter for macOS (Apple silicon and Intel, macOS 11 or newer)
+
+1. Drag "C64 DPainter.app" into your Applications folder.
+2. The app is not notarized by Apple, so macOS blocks it the first time.
+   Open Terminal and run this once:
+
+       xattr -cr "/Applications/C64 DPainter.app"
+
+   Then start the app normally.
+
+   Alternative without Terminal: try to open the app, then go to
+   System Settings > Privacy & Security, scroll down and click "Open Anyway".

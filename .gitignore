@@ -1,0 +1,20 @@
+# build output
+/dist/
+/build/
+/out/
+*.exe
+!/res/*.ico
+*.test
+*.out
+C64DPainter_arm64
+C64DPainter_amd64
+/c64dpainter
+/c64dpainter-arm64
+
+# editors and OS files
+.DS_Store
+Thumbs.db
+.idea/
+.vscode/
+*.swp
+/research/
