@@ -109,7 +109,10 @@ func (a *App) toolInput(px, py int, over bool) {
 		d.straight = false
 		d.lineBase = nil
 		switch a.tool {
-		case ToolDraw, ToolDots, ToolSpray:
+		case ToolDraw, ToolDots, ToolSpray, ToolDither:
+			if a.tool == ToolDither {
+				d.ditherSrc = a.ditherResult()
+			}
 			a.pushUndo(a.pic.Clone())
 			d.base = nil
 			if a.tool == ToolSpray {
@@ -133,7 +136,7 @@ func (a *App) toolInput(px, py int, over bool) {
 		return
 	}
 	if in.Down[d.btn] {
-		if a.tool == ToolDraw || a.tool == ToolDots {
+		if a.tool == ToolDraw || a.tool == ToolDots || a.tool == ToolDither {
 			if a.straightLine(px, py) {
 				return
 			}
@@ -141,7 +144,7 @@ func (a *App) toolInput(px, py int, over bool) {
 		if px != d.lx || py != d.ly {
 			d.moved = true
 			switch a.tool {
-			case ToolDraw:
+			case ToolDraw, ToolDither:
 				a.lineDabs(a.pic, d.lx, d.ly, px, py, d.btn)
 			case ToolDots:
 				a.dab(a.pic, px, py, d.btn)
@@ -162,6 +165,8 @@ func (a *App) toolInput(px, py int, over bool) {
 	// losgelassen
 	switch a.tool {
 	case ToolDraw, ToolDots, ToolSpray:
+	case ToolDither:
+		d.ditherSrc = nil
 	case ToolCurve:
 		if d.sx == px && d.sy == py {
 			*a.pic = *d.base

@@ -12,7 +12,7 @@ import (
 )
 
 const AppName = "C64 DPainter"
-const AppVersion = "0.8 beta"
+const AppVersion = "0.9 beta"
 
 // AppAuthor and AppLicense appear on the About page.
 const AppAuthor = "IT-Dummköpfen"
@@ -60,13 +60,14 @@ const (
 	ToolPicker
 	ToolHand
 	ToolCellSwap
+	ToolDither
 	toolCount
 )
 
 var toolNames = [toolCount]string{
 	"Dots", "Freehand", "Line", "Curve", "Fill", "Airbrush",
 	"Rectangle", "Filled rectangle", "Circle", "Filled circle",
-	"Ellipse", "Filled ellipse", "Select", "Color picker", "Pan", "Cell color swap",
+	"Ellipse", "Filled ellipse", "Select", "Color picker", "Pan", "Cell color swap", "Dither brush",
 }
 
 var toolHints = [toolCount]string{
@@ -86,6 +87,7 @@ var toolHints = [toolCount]string{
 	"Click: pick a color (left = color 1, right = color 2)",
 	"Drag: move the view",
 	"Paint over cells to swap their colors  ·  right button = other way  ·  any tool or Esc stops",
+	"Paint over color borders to dither them  ·  style and softness in the side panel  ·  Ctrl = straight line",
 }
 
 // App ist der Programmzustand.
@@ -167,6 +169,10 @@ type App struct {
 	needAnim                                bool
 	quitting                                bool
 	lastImport                              c64.ConvertOptions
+
+	// Dither brush: result for the current picture (cached) and its key
+	ditherRes *c64.Picture
+	ditherKey string
 }
 
 type dragState struct {
@@ -180,6 +186,8 @@ type dragState struct {
 	straight bool
 	lineBase *c64.Picture
 	lsx, lsy int
+	// dither brush: dithered picture taken at the start of the stroke
+	ditherSrc *c64.Picture
 }
 
 type curveState struct {
@@ -520,6 +528,10 @@ func (a *App) stamp() *Stamp {
 
 // dab setzt einen Pinselabdruck.
 func (a *App) dab(p *c64.Picture, x, y, btn int) {
+	if a.tool == ToolDither {
+		a.ditherDab(p, x, y)
+		return
+	}
 	st := a.stamp()
 	for i, o := range st.Offs {
 		px, py := x+o.X, y+o.Y
@@ -814,6 +826,10 @@ func (a *App) charShortcut(c rune) {
 		a.setTool(ToolDots)
 	case 'd':
 		a.setTool(ToolDraw)
+	case 'D':
+		a.setTool(ToolDither)
+	case 'A':
+		a.later(a.openAutoDither)
 	case 'v':
 		a.setTool(ToolLine)
 	case 'q':

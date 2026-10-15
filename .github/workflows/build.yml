@@ -4,8 +4,8 @@ name: Build
 # - Every push and pull request: run the tests and build all programs.
 #   The programs can be downloaded under "Artifacts" on the run's page.
 # - A release with all files is created in two ways:
-#   * push a tag like v0.8b, or
-#   * Actions tab -> Build -> "Run workflow" and enter a tag like v0.8b.
+#   * push a tag like v0.9b, or
+#   * Actions tab -> Build -> "Run workflow" and enter a tag like v0.9b.
 # - "Run workflow" with an empty tag just builds the programs.
 
 on:
@@ -16,7 +16,7 @@ on:
   workflow_dispatch:
     inputs:
       release_tag:
-        description: "Create a release with this tag (e.g. v0.8b). Leave empty to only build."
+        description: "Create a release with this tag (e.g. v0.9b). Leave empty to only build."
         required: false
         default: ""
 

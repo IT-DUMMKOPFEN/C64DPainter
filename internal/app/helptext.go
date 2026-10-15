@@ -45,8 +45,9 @@ File, edit, selection and view commands, options (palette, color conflicts, them
 ## Side panel (left)
 
 - **Selection** (only with the select tool): rotate, scale, shear.
+- **Dither brush** (only with the dither brush): style, softness, strength, edges, color ramps.
 - **Brush**: shape (round, square, diamond, custom), size 1–16, preview, airbrush settings.
-- **Patterns**: fill patterns for all tools.
+- **Patterns**: fill patterns for all tools (hidden for the dither brush).
 - **Colors**: background ($D021), border ($D020) and the behavior for color conflicts.
 - **Layers**: template layer and picture layer.
 - **Cell under the mouse**: the four colors of the cell and which bit pairs are free.
@@ -180,6 +181,10 @@ Fills the connected area of the same color (connected horizontally and verticall
 
 Sprays brush dabs into a round area while the mouse button is held. Set radius and density on the left in the brush panel while the airbrush is active.
 
+## [dither] Dither brush (Shift+D)
+
+Paint over the borders between flat color areas: they are blended with the chosen dither style (Artist, Scanlines, Hatching, Checker, Columns, Stipple or Organic). The style and its settings are on the left in the side panel; the pixels that would change are shown under the brush. Right-click the button for **Auto dither** of the whole picture. See "Dithering".
+
 ## [rect|rectf] Rectangle (R / Shift+R)
 
 Drag from corner to corner. Outlines use the brush, filled shapes use the pattern. ` + "`Shift`" + ` = square (on screen).
@@ -206,6 +211,7 @@ Moves the view. Faster: hold ` + "`Space`" + ` or drag with the middle mouse but
 
 -> brushes | Brushes
 -> patterns | Patterns
+-> dither | Dithering
 -> select | Selection & transform
 `},
 	{id: "brushes", title: "Brushes", body: `
@@ -285,6 +291,62 @@ Two functions in the **Edit** menu exchange colors without breaking the multicol
 - The brush size from the brush panel decides how many cells you reach at once.
 - The side panel shows both colors, with **Change colors …** and **Stop**.
 - The brush ends as soon as you choose **any other tool** in the toolbox (or with its key), or press ` + "`Esc`" + `.
+`},
+	{id: "dither", title: "Dithering", body: `
+# Auto dither and Dither brush
+
+Paint your picture with **flat colors** first – then let the program blend the borders between the colors, the way C64 artists do it by hand. Flat areas stay as they are; only the places where differently colored areas meet are mixed.
+
+- **Edit → Auto dither …** (` + "`Shift+A`" + `) dithers the whole picture or the selection, with a live preview.
+- The **Dither brush** (` + "`Shift+D`" + `, toolbox) does the same only where you paint. While you hover over the picture, the pixels the brush would change are shown under it.
+
+## Where the styles come from
+
+The dither styles were reconstructed from **16 hand-pixelled C64 multicolor pictures**. Every picture was turned back into its 160 × 200 multicolor pixels; then all 8 × 8 areas that mix exactly two colors (6381 of them) were collected and their patterns counted. For every group of pictures the fill order (dither matrix) was fitted to the patterns that occur most often.
+
+What the analysis showed:
+
+- Artists mix colors of **similar brightness**: 54 % of all mixed pairs are only one brightness step apart, 29 % two steps, almost never more. So C64 dithers run along **color ramps** like black → blue → purple → light red → yellow → white.
+- Most dithers live on **every second row** ("interlaced") – the wide multicolor pixels look finer that way.
+- Single pictures prefer clear families of patterns: scanlines, horizontal strokes, checkerboards, vertical columns or scattered dots.
+
+## The styles
+
+= Artist | the most common technique of all pictures: a checkerboard on every second row first, then full rows, then the rows in between
+= Scanlines | alternate rows with spread dots – fine, calm gradients (portraits, shiny objects)
+= Hatching | horizontal dashes that grow into strokes – a drawn, sketchy look
+= Checker | the classic checkerboard mix – soft and even (skin, clouds)
+= Columns | vertical lines that widen into stripes – graphic, poster-like
+= Stipple | scattered single pixels (blue noise) – grainy and natural (skies, textures)
+= Organic | irregular texture from error diffusion along the color ramps – lively, hand-made
+
+## Settings
+
+- **Softness** – how wide the blend zone is where two colors meet (in pixel rows).
+- **Strength** – how strongly the neighboring colors are mixed.
+- **Keep edges** – protects outlines and hard edges between very different brightness. Turn it up if black outlines get eaten, down for soft transitions everywhere.
+- **Color ramps** – how strictly the program sticks to the color pairs artists mix. Higher = cleaner, more "C64"; lower = closer to the exact mixed color.
+
+## Cell colors
+
+Each 4 × 8 cell can only show four colors, so the program has to decide which colors a cell may use:
+
+= Keep | every cell keeps exactly its colors. Where a cell lacks the other color (e.g. a border exactly on a cell border), nothing can be blended.
+= Add | the existing colors always stay; in-between colors are only added in free slots. Never a color conflict. Recommended.
+= Re-choose | (Auto dither only) the three colors of every cell are chosen anew – the smoothest blend, but small details may change color.
+
+> The background color ($D021) is never changed.
+
+## Tips
+
+- Paint big shapes with clean flat colors and outlines, then use **Auto dither** once, and refine single spots with the **Dither brush**.
+- The **Changes** view of the dialog shows exactly which pixels change.
+- Painting over the same place again with the Dither brush blends further – like a smudge tool.
+- **Use settings for the brush** in the dialog hands style and settings over to the Dither brush.
+- Use ` + "`Ctrl`" + ` with the Dither brush for a straight stroke.
+
+-> import | Import & convert (dithering of photos)
+-> tips | Tips for C64 graphics
 `},
 	{id: "select", title: "Selection & transform", body: `
 # Selection and transform
@@ -532,6 +594,7 @@ As in Deluxe Paint, letter keys work directly, without Ctrl.
 = Q | Curve
 = F | Fill
 = A | Airbrush
+= Shift+D | Dither brush
 = R / Shift+R | Rectangle / filled
 = C / Shift+C | Circle / filled
 = E / Shift+E | Ellipse / filled
@@ -576,6 +639,7 @@ As in Deluxe Paint, letter keys work directly, without Ctrl.
 = U or Ctrl+Z | undo
 = Shift+U or Ctrl+Y | redo
 = J | swap page (spare page)
+= Shift+A | Auto dither
 = Shift+K | clear picture
 = Ctrl+N | new
 = Ctrl+O | open
@@ -629,6 +693,7 @@ When sprites are combined with the picture, bit pairs ` + "`%00`" + ` and ` + "`
 - **Think in cells.** Turn on the 8×8 grid. Plan color changes on cell borders.
 - **Few colors, many dither patterns.** The density patterns (1/16 … 15/16) create soft transitions without adding new colors to the cell.
 - **Use luminance pairs.** The C64 has color pairs of similar brightness: blue/brown, red/dark grey, purple/orange, grey/light blue, green/light red, cyan/light grey and yellow/light green. They are great for smooth dithered transitions.
+- **Flat first, dither later.** Paint shapes in clean flat colors, then blend the borders with **Edit → Auto dither** or the **Dither brush** – in the styles of real C64 artists.
 - **Trace a template.** Load a photo as a template, set 40–60 % opacity and trace the outlines. Or let the converter do it and touch up the result.
 - **Convert with care.** In the converter, raise the contrast a little and try Bayer 4×4 or Floyd–Steinberg at 40–70 % strength.
 - **Use the spare page.** With ` + "`J`" + ` you have a second picture for experiments or as a parts bin for brushes.
@@ -638,7 +703,7 @@ When sprites are combined with the picture, bit pairs ` + "`%00`" + ` and ` + "`
 	{id: "about", title: "About C64 DPainter", body: `
 # About C64 DPainter
 
-**Version 0.8 beta** – a paint program for C64 multicolor bitmaps for Windows, macOS and Linux.
+**Version 0.9 beta** – a paint program for C64 multicolor bitmaps for Windows, macOS and Linux.
 
 Created by **IT-Dummköpfen**. Free for private use.
 

@@ -348,13 +348,24 @@ func (a *App) drawBrushPreview() {
 	z := a.zoom
 	st := a.stamp()
 	col := a.pal.Colors[a.fg]
+	var dsrc *c64.Picture
+	if a.tool == ToolDither {
+		dsrc = a.ditherSource()
+	}
 	for i, o := range st.Offs {
 		px, py := a.mpx+o.X, a.mpy+o.Y
 		if px < 0 || py < 0 || px >= c64.W || py >= c64.H {
 			continue
 		}
 		c := col
-		if st.Cols != nil && a.customOwnColor {
+		if dsrc != nil {
+			// dither brush: show what would change
+			n := dsrc.ColorAt(px, py)
+			if n == a.pic.ColorAt(px, py) {
+				continue
+			}
+			c = a.pal.Colors[n]
+		} else if st.Cols != nil && a.customOwnColor {
 			c = a.pal.Colors[st.Cols[i]]
 		} else if !patBit(a.pattern, px, py) {
 			continue

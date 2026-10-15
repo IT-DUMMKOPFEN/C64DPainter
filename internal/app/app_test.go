@@ -79,8 +79,8 @@ func TestToolboxAndPalette(t *testing.T) {
 	if a.tool != ToolLine {
 		t.Fatalf("Linie nicht gewählt: %d", a.tool)
 	}
-	// geteilter Knopf Rechteck (Index 6): unten rechts = gefüllt
-	x, y = toolRect(a, 6)
+	// geteilter Knopf Rechteck (Index 7, nach dem Dither-Pinsel): unten rechts = gefüllt
+	x, y = toolRect(a, 7)
 	tclick(a, x+10, y+9, 0)
 	if a.tool != ToolRectF {
 		t.Fatalf("gefülltes Rechteck erwartet, %d", a.tool)
@@ -612,3 +612,111 @@ func TestDiamondBrush(t *testing.T) {
 
 // presetsH is the height of the brush preset rows at the top of the toolbox.
 func presetsH() int { return ((len(brushPresets)+3)/4)*15 + 4 }
+
+// twoBands paints the upper half blue and the lower half light blue.
+func twoBands(a *App) {
+	for y := 0; y < 200; y++ {
+		c := uint8(6)
+		if y >= 100 {
+			c = 14
+		}
+		for x := 0; x < 160; x++ {
+			a.pic.Plot(x, y, c, 0, a.pal)
+		}
+	}
+}
+
+func countDiff(p, q *c64.Picture, x0, y0, x1, y1 int) int {
+	n := 0
+	for y := y0; y <= y1; y++ {
+		for x := x0; x <= x1; x++ {
+			if p.ColorAt(x, y) != q.ColorAt(x, y) {
+				n++
+			}
+		}
+	}
+	return n
+}
+
+func TestAutoDitherDialog(t *testing.T) {
+	a, _ := setup(t)
+	twoBands(a)
+	orig := a.pic.Clone()
+	a.Char('A')
+	step(a)
+	step(a)
+	d, ok := a.modal.(*autoDitherDialog)
+	if !ok {
+		t.Fatal("Auto dither dialog not open")
+	}
+	if d.changed == 0 {
+		t.Fatal("preview shows no dithering")
+	}
+	a.KeyDown(KeyEnter, Mods{})
+	step(a)
+	if a.modal != nil {
+		t.Fatal("dialog still open after Enter")
+	}
+	if countDiff(orig, a.pic, 0, 90, 159, 109) == 0 {
+		t.Fatal("border between the bands not dithered")
+	}
+	if countDiff(orig, a.pic, 0, 0, 159, 70) != 0 || countDiff(orig, a.pic, 0, 130, 159, 199) != 0 {
+		t.Fatal("flat areas must stay unchanged")
+	}
+	a.undo()
+	if countDiff(orig, a.pic, 0, 0, 159, 199) != 0 {
+		t.Fatal("undo after auto dither")
+	}
+	// only inside a selection
+	a.selectAll()
+	a.sel.x0, a.sel.y0, a.sel.x1, a.sel.y1 = 0, 80, 39, 119
+	a.openAutoDither()
+	step(a)
+	d = a.modal.(*autoDitherDialog)
+	if d.area != 1 {
+		t.Fatal("selection should be the default area")
+	}
+	d.apply(a)
+	if countDiff(orig, a.pic, 0, 80, 39, 119) == 0 {
+		t.Fatal("selection not dithered")
+	}
+	if countDiff(orig, a.pic, 40, 0, 159, 199) != 0 {
+		t.Fatal("pixels outside the selection changed")
+	}
+}
+
+func TestDitherBrush(t *testing.T) {
+	a, _ := setup(t)
+	twoBands(a)
+	// a border exactly on a cell border: each cell has only one color, so
+	// blending needs the new colors added in free slots
+	for y := 96; y < 100; y++ {
+		for x := 0; x < 160; x++ {
+			a.pic.Plot(x, y, 14, 0, a.pal)
+		}
+	}
+	orig := a.pic.Clone()
+	a.Char('D')
+	step(a)
+	if a.tool != ToolDither {
+		t.Fatalf("Shift+D should select the dither brush: %d", a.tool)
+	}
+	a.brushShape, a.brushSize = BrushSquare, 12
+	x0, y0 := pc(a, 10, 96)
+	x1, y1 := pc(a, 40, 96)
+	tdrag(a, x0, y0, x1, y1, 0)
+	if countDiff(orig, a.pic, 0, 88, 50, 95) == 0 || countDiff(orig, a.pic, 0, 96, 50, 103) == 0 {
+		t.Fatal("dither brush must blend across the cell border")
+	}
+	if countDiff(orig, a.pic, 60, 0, 159, 199) != 0 {
+		t.Fatal("dither brush changed pixels outside the stroke")
+	}
+	// default (Add): never a color conflict
+	if len(a.flash) != 0 {
+		t.Fatalf("dither brush caused %d color conflicts", len(a.flash))
+	}
+	a.undo()
+	if countDiff(orig, a.pic, 0, 0, 159, 199) != 0 {
+		t.Fatal("one undo step for the whole stroke")
+	}
+}

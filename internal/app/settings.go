@@ -5,6 +5,8 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
+
+	"c64dpainter/internal/c64"
 )
 
 // Settings werden in %APPDATA%\C64DPainter\settings.json gespeichert.
@@ -27,6 +29,9 @@ type Settings struct {
 	LastDir     string `json:"lastDir"`
 	HelpSeen    bool   `json:"helpSeen"`
 	CellHint    bool   `json:"cellHint"`
+
+	DitherBrush c64.AutoDitherOptions `json:"ditherBrush"`
+	DitherAuto  c64.AutoDitherOptions `json:"autoDither"`
 }
 
 func defaultSettings() Settings {
@@ -42,6 +47,20 @@ func defaultSettings() Settings {
 		AspectBrush: true,
 		ShowPanel:   true,
 		CellHint:    true,
+		DitherBrush: defaultDitherBrush(),
+		DitherAuto:  c64.DefaultAutoDither(),
+	}
+}
+
+// defaultDitherBrush: the same as Auto dither (new colors only in free cell
+// slots, so the brush never runs into color conflicts).
+func defaultDitherBrush() c64.AutoDitherOptions {
+	return c64.DefaultAutoDither()
+}
+
+func validDither(o *c64.AutoDitherOptions, def c64.AutoDitherOptions) {
+	if o.Softness < 1 || o.Softness > 16 || o.Style < 0 || o.Style >= c64.StyleCount || o.Colors < 0 || o.Colors > c64.CellRechoose {
+		*o = def
 	}
 }
 
@@ -72,6 +91,8 @@ func loadSettings() Settings {
 	if s.Conflict < 0 || s.Conflict > 2 {
 		s.Conflict = 0
 	}
+	validDither(&s.DitherBrush, defaultDitherBrush())
+	validDither(&s.DitherAuto, c64.DefaultAutoDither())
 	return s
 }
 

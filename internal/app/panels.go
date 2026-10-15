@@ -29,6 +29,7 @@ func (a *App) toolButtons() []toolBtn {
 		{id: "t_curve", icon: "curve", tool: ToolCurve, alt2: -1, tip: "Curve (Q)"},
 		{id: "t_fill", icon: "fill", tool: ToolFill, alt2: -1, tip: "Fill (F)"},
 		{id: "t_spray", icon: "spray", tool: ToolSpray, alt2: -1, tip: "Airbrush (A)"},
+		{id: "t_dith", icon: "dither", tool: ToolDither, alt2: -1, tip: "Dither brush (Shift+D) · right-click: Auto dither", right: func() { a.setTool(ToolDither); a.later(a.openAutoDither) }},
 		{id: "t_rect", icon: "rect", alt: "rectf", tool: ToolRect, alt2: ToolRectF, tip: "Rectangle (R) / filled (Shift+R)"},
 		{id: "t_circ", icon: "circle", alt: "circlef", tool: ToolCircle, alt2: ToolCircleF, tip: "Circle (C) / filled (Shift+C)"},
 		{id: "t_ell", icon: "ellipse", alt: "ellipsef", tool: ToolEllipse, alt2: ToolEllipseF, tip: "Ellipse (E) / filled (Shift+E)"},
@@ -275,8 +276,13 @@ func (a *App) drawPanel() {
 	if a.tool == ToolCellSwap {
 		y = a.panelCellSwap(x, y, w)
 	}
+	if a.tool == ToolDither {
+		y = a.panelDither(x, y, w)
+	}
 	y = a.panelBrush(x, y, w)
-	y = a.panelPattern(x, y, w)
+	if a.tool != ToolDither {
+		y = a.panelPattern(x, y, w)
+	}
 	y = a.panelColors(x, y, w)
 	y = a.panelLayers(x, y, w)
 	y = a.panelCell(x, y, w)

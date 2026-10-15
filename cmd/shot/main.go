@@ -242,5 +242,27 @@ func main() {
 	a.Resize(1000, 640)
 	frame(a)
 	shot(a, "18_small_window")
+	// Auto dither and the dither brush (optional 4th argument: a KLA file)
+	if len(os.Args) > 4 {
+		a.Resize(1360, 860)
+		frame(a)
+		h.open = os.Args[4]
+		key(a, 'O', app.Mods{Ctrl: true})
+		frame(a)
+		char(a, 'A')
+		frame(a)
+		shot(a, "19_autodither")
+		a.Debug("ditherview", 2)
+		a.Debug("ditherstyle", 3)
+		shot(a, "19b_autodither_split")
+		key(a, app.KeyEsc, app.Mods{})
+		char(a, 'D')
+		for i := 0; i < 15; i++ {
+			char(a, '+')
+		}
+		a.MouseMove(p(60, 100))
+		frame(a)
+		shot(a, "20_dither_brush")
+	}
 	fmt.Println("fertig")
 }

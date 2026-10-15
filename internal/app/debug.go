@@ -58,6 +58,14 @@ func (a *App) Debug(what string, v int) {
 		if d, ok := a.modal.(*importDialog); ok {
 			d.view = v
 		}
+	case "ditherview":
+		if d, ok := a.modal.(*autoDitherDialog); ok {
+			d.view = v
+		}
+	case "ditherstyle":
+		if d, ok := a.modal.(*autoDitherDialog); ok {
+			d.opts.Style = c64.DitherStyle(v)
+		}
 	case "importok":
 		if d, ok := a.modal.(*importDialog); ok {
 			*a.pic = *d.preview
