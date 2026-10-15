@@ -26,7 +26,7 @@ var styleMatrix = map[DitherStyle][]int{
 	// ghost girl, old woman, dragon: classic checkerboard (Bayer order)
 	StyleChecker: {0, 8, 2, 10, 12, 4, 14, 6, 3, 11, 1, 9, 15, 7, 13, 5},
 	// birthday biker, abstract faces, Gameland: vertical lines that widen into stripes
-	StyleColumns: {0, 6, 8, 14, 2, 4, 10, 12, 1, 7, 9, 15, 3, 5, 11, 13},
+	StyleStripes: {0, 6, 8, 14, 2, 4, 10, 12, 1, 7, 9, 15, 3, 5, 11, 13},
 	// DJ cat, city, nebula, diner: scattered single pixels (8×8 blue noise, 2:1 pixels)
 	StyleStipple: {55, 42, 4, 26, 33, 16, 29, 44, 6, 24, 62, 41, 9, 43, 2, 21, 30, 50, 20, 15, 60, 23, 63, 48, 57, 10, 35, 54, 5, 51, 34, 8, 17, 40, 3, 25, 38, 11, 18, 37, 47, 28, 52, 46, 31, 45, 53, 27, 1, 59, 19, 12, 0, 22, 7, 61, 32, 13, 36, 56, 49, 58, 39, 14},
 }

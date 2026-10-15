@@ -55,10 +55,15 @@ func (a *App) ditherSliders(id string, x, y, w int, o *c64.AutoDitherOptions) in
 		u.Tip(id+sid, r, tip)
 		y += 26
 	}
-	sl("so", "Softness", &o.Softness, 1, 16, "", "Width of the blend zone where two colors meet (in pixel rows)")
-	sl("sr", "Strength", &o.Strength, 0, 100, " %", "How strongly neighboring colors are mixed")
-	sl("ed", "Keep edges", &o.Edges, 0, 100, " %", "Protects outlines and hard edges between very different brightness")
-	sl("ra", "Color ramps", &o.Ramps, 0, 100, " %", "Prefer the color pairs that C64 artists mix (similar brightness)")
+	sl("wi", "Width", &o.Width, 2, 16, "", "How far the transition reaches into each area (pixel rows)")
+	sl("st", "Steps", &o.Steps, 1, 3, "", "Dither stages per side: 1 = 50 %, 2 = 25 % + 50 %, 3 = 12 % + 25 % + 50 %")
+	sl("ed", "Keep edges", &o.Edges, 0, 100, " %", "Higher = only colors of similar brightness are blended, other borders stay hard")
+	sl("de", "Details", &o.Detail, 0, 8, " px", "Lines and areas thinner than this (outlines, eyes, highlights) are never dithered")
+	sl("ra", "Artist pairs", &o.Ramps, 0, 100, " %", "Only blend color pairs that C64 artists mix (measured in 16 pictures). Higher = stricter, more borders stay hard. 0 = any pair.")
+	r := gfx.Rect{X: x, Y: y, W: w, H: 20}
+	o.Between = u.Checkbox(id+"bt", r, "In-between colors for strong contrasts", o.Between)
+	u.Tip(id+"bt", r, "Joins colors that are too far apart with a color from the artists' ramps (e.g. black → blue → purple). Good for gradients, but also adds color bands around objects.")
+	y += 26
 	return y
 }
 
@@ -316,7 +321,7 @@ func (d *autoDitherDialog) Draw(a *App, r gfx.Rect) {
 	iy := pr.Bottom() + 14
 	m.Text(font.UI, r.X, iy, fmt.Sprintf("Changed pixels: %d  ·  cells with new colors: %d  ·  background stays %s",
 		d.changed, d.cells, c64.ColorNames[d.src.BG]), th.Text)
-	for i, ln := range wrapText(font.UI, "Where differently colored areas meet, the colors are blended and drawn again with the chosen dither style. Flat areas stay as they are. The styles were reconstructed from hand-pixelled C64 pictures; the result always follows the multicolor rules.", pr.W) {
+	for i, ln := range wrapText(font.UI, "Where two areas of similar colors meet, a stepped transition (25 % · 50 %) is drawn with two colors in the chosen style. Flat areas, outlines, small details and object silhouettes stay sharp. The styles were reconstructed from hand-pixelled C64 pictures; the result always follows the multicolor rules.", pr.W) {
 		m.Text(font.UI, r.X, iy+22+i*(font.UI.Height+3), ln, th.TextDim)
 	}
 

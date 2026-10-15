@@ -59,7 +59,7 @@ func defaultDitherBrush() c64.AutoDitherOptions {
 }
 
 func validDither(o *c64.AutoDitherOptions, def c64.AutoDitherOptions) {
-	if o.Softness < 1 || o.Softness > 16 || o.Style < 0 || o.Style >= c64.StyleCount || o.Colors < 0 || o.Colors > c64.CellRechoose {
+	if !o.Valid() {
 		*o = def
 	}
 }

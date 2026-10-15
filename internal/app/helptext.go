@@ -45,7 +45,7 @@ File, edit, selection and view commands, options (palette, color conflicts, them
 ## Side panel (left)
 
 - **Selection** (only with the select tool): rotate, scale, shear.
-- **Dither brush** (only with the dither brush): style, softness, strength, edges, color ramps.
+- **Dither brush** (only with the dither brush): style, width, steps, edges, details, artist pairs.
 - **Brush**: shape (round, square, diamond, custom), size 1–16, preview, airbrush settings.
 - **Patterns**: fill patterns for all tools (hidden for the dither brush).
 - **Colors**: background ($D021), border ($D020) and the behavior for color conflicts.
@@ -183,7 +183,7 @@ Sprays brush dabs into a round area while the mouse button is held. Set radius a
 
 ## [dither] Dither brush (Shift+D)
 
-Paint over the borders between flat color areas: they are blended with the chosen dither style (Artist, Scanlines, Hatching, Checker, Columns, Stipple or Organic). The style and its settings are on the left in the side panel; the pixels that would change are shown under the brush. Right-click the button for **Auto dither** of the whole picture. See "Dithering".
+Paint over the borders between flat color areas: they are blended with the chosen dither style (Artist, Scanlines, Hatching, Checker, Stripes, Stipple or Organic) in clean steps – outlines and object silhouettes stay sharp. The style and its settings are on the left in the side panel; the pixels that would change are shown under the brush. Right-click the button for **Auto dither** of the whole picture. See "Dithering".
 
 ## [rect|rectf] Rectangle (R / Shift+R)
 
@@ -310,22 +310,34 @@ What the analysis showed:
 - Most dithers live on **every second row** ("interlaced") – the wide multicolor pixels look finer that way.
 - Single pictures prefer clear families of patterns: scanlines, horizontal strokes, checkerboards, vertical columns or scattered dots.
 
+## How it works
+
+The program follows the rules pixel artists use for clean dithering:
+
+- **Two colors per transition.** Where two areas meet, only these two colors are mixed – never three.
+- **Few, clean steps.** The transition is built from bands of one pattern each: solid · 25 % · 50 % | 50 % · 25 % · solid. The pattern runs on across the border without a seam.
+- **Only colors of similar brightness** that C64 artists actually mix are blended. Other borders – the silhouettes of objects – stay sharp.
+- **Outlines and small details stay crisp.** Thin lines and small areas are never dithered, and nothing is dithered into them.
+- **Narrow areas keep a solid core** – the transition never eats a whole area.
+
 ## The styles
 
-= Artist | the most common technique of all pictures: a checkerboard on every second row first, then full rows, then the rows in between
+= Artist | the most common technique of all pictures: 25 % = checker dots on every second row, 50 % = every second row
 = Scanlines | alternate rows with spread dots – fine, calm gradients (portraits, shiny objects)
 = Hatching | horizontal dashes that grow into strokes – a drawn, sketchy look
-= Checker | the classic checkerboard mix – soft and even (skin, clouds)
-= Columns | vertical lines that widen into stripes – graphic, poster-like
+= Checker | the classic: 25 % = spread dots, 50 % = checkerboard – soft and even (skin, clouds)
+= Stripes | lines that widen into stripes, always parallel to the border – graphic, poster-like
 = Stipple | scattered single pixels (blue noise) – grainy and natural (skies, textures)
-= Organic | irregular texture from error diffusion along the color ramps – lively, hand-made
+= Organic | irregular texture from error diffusion between the two colors – lively, hand-made
 
 ## Settings
 
-- **Softness** – how wide the blend zone is where two colors meet (in pixel rows).
-- **Strength** – how strongly the neighboring colors are mixed.
-- **Keep edges** – protects outlines and hard edges between very different brightness. Turn it up if black outlines get eaten, down for soft transitions everywhere.
-- **Color ramps** – how strictly the program sticks to the color pairs artists mix. Higher = cleaner, more "C64"; lower = closer to the exact mixed color.
+- **Width** – how far the transition reaches into each area, in pixel rows (a multicolor pixel counts as two rows wide).
+- **Steps** – dither stages per side: 1 = only 50 %, 2 = 25 % and 50 % (recommended), 3 = 12 %, 25 % and 50 %. More steps need more width.
+- **Keep edges** – higher = only colors of very similar brightness are blended; all other borders stay hard.
+- **Details** – lines and areas thinner than this (outlines, eyes, highlights) are never dithered.
+- **Artist pairs** – only color pairs that C64 artists mix are blended (measured in the 16 pictures). Higher = stricter. 0 = every pair of similar brightness.
+- **In-between colors for strong contrasts** – joins two colors that are too far apart with a color from the artists' ramps (for example black → dark grey → grey). Good for big gradients like skies, but it also puts color bands around objects, so it is off by default.
 
 ## Cell colors
 

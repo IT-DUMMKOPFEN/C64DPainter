@@ -613,12 +613,12 @@ func TestDiamondBrush(t *testing.T) {
 // presetsH is the height of the brush preset rows at the top of the toolbox.
 func presetsH() int { return ((len(brushPresets)+3)/4)*15 + 4 }
 
-// twoBands paints the upper half blue and the lower half light blue.
+// twoBands paints the upper half blue and the lower half purple (a pair C64 artists dither).
 func twoBands(a *App) {
 	for y := 0; y < 200; y++ {
 		c := uint8(6)
 		if y >= 100 {
-			c = 14
+			c = 4
 		}
 		for x := 0; x < 160; x++ {
 			a.pic.Plot(x, y, c, 0, a.pal)
@@ -692,7 +692,7 @@ func TestDitherBrush(t *testing.T) {
 	// blending needs the new colors added in free slots
 	for y := 96; y < 100; y++ {
 		for x := 0; x < 160; x++ {
-			a.pic.Plot(x, y, 14, 0, a.pal)
+			a.pic.Plot(x, y, 4, 0, a.pal)
 		}
 	}
 	orig := a.pic.Clone()

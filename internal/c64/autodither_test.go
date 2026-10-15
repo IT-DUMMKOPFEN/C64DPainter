@@ -4,6 +4,7 @@ import (
 	"image"
 	"image/color"
 	"image/png"
+	"math"
 	"os"
 	"path/filepath"
 	"testing"
@@ -158,4 +159,97 @@ func writePNG(t *testing.T, p *Picture, pal *Palette, name string) {
 	}
 	defer f.Close()
 	png.Encode(f, img)
+}
+
+// twoAreas: upper half color a, lower half color b, border between rows 99/100.
+func twoAreas(a, b uint8) *Picture {
+	p := NewPicture(0, 0)
+	for y := 0; y < H; y++ {
+		c := a
+		if y >= 100 {
+			c = b
+		}
+		for x := 0; x < W; x++ {
+			p.Plot(x, y, c, ConflictReplace, nil)
+		}
+	}
+	return p
+}
+
+func share(p *Picture, y int, c uint8) float64 {
+	n := 0
+	for x := 0; x < W; x++ {
+		if p.ColorAt(x, y) == c {
+			n++
+		}
+	}
+	return float64(n) / W
+}
+
+func TestAutoDitherStages(t *testing.T) {
+	pal := &Palettes[FindPalette("PEPTOette_a")]
+	src := twoAreas(6, 4) // blue / purple: a pair artists mix
+	o := DefaultAutoDither()
+	o.Style, o.Width, o.Steps = StyleChecker, 8, 2
+	res := AutoDither(src, pal, o, nil)
+	// two clean stages per side: 50 % next to the border, then 25 %, then solid
+	for _, c := range []struct {
+		y    int
+		want float64
+	}{{96, 0.5}, {99, 0.5}, {94, 0.25}, {92, 0.25}, {90, 0}, {100, 0.5}, {103, 0.5}, {105, 0.25}, {109, 0}} {
+		other := uint8(4)
+		if c.y >= 100 {
+			other = 6
+		}
+		// share of the other color in two neighboring rows (patterns span two rows)
+		s := (share(res, c.y, other) + share(res, c.y^1, other)) / 2
+		if c.y == 99 || c.y == 100 {
+			s = share(res, c.y, other)
+		}
+		if math.Abs(s-c.want) > 0.13 {
+			t.Errorf("row %d: share of the other color %.2f, want %.2f", c.y, s, c.want)
+		}
+	}
+	// the pattern runs on across the border: checkerboard rows 99/100 differ everywhere
+	for x := 0; x < W; x++ {
+		if res.ColorAt(x, 99) == res.ColorAt(x, 100) {
+			t.Fatalf("checkerboard broken at the border (x=%d)", x)
+		}
+	}
+}
+
+func TestAutoDitherKeepsOutlinesAndHardEdges(t *testing.T) {
+	pal := &Palettes[FindPalette("PEPTOette_a")]
+	src := twoAreas(6, 4)
+	for x := 0; x < W; x++ { // a black outline between the areas
+		src.Plot(x, 99, 0, ConflictReplace, nil)
+		src.Plot(x, 100, 0, ConflictReplace, nil)
+	}
+	res := AutoDither(src, pal, DefaultAutoDither(), nil)
+	for x := 0; x < W; x++ {
+		for y := 94; y <= 105; y++ {
+			if res.ColorAt(x, y) != src.ColorAt(x, y) {
+				t.Fatalf("outline area changed at %d,%d", x, y)
+			}
+		}
+	}
+	// black next to grey: too far apart, stays a hard edge ...
+	bw := twoAreas(0, 12)
+	res = AutoDither(bw, pal, DefaultAutoDither(), nil)
+	for y := 0; y < H; y++ {
+		if res.ColorAt(10, y) != bw.ColorAt(10, y) {
+			t.Fatalf("black/grey edge was dithered at row %d", y)
+		}
+	}
+	// ... unless in-between colors are allowed (dark grey)
+	o := DefaultAutoDither()
+	o.Between = true
+	res = AutoDither(bw, pal, o, nil)
+	used := map[uint8]bool{}
+	for y := 80; y < 120; y++ {
+		used[res.ColorAt(10, y)] = true
+	}
+	if len(used) < 3 {
+		t.Fatalf("in-between color expected, colors used: %v", used)
+	}
 }

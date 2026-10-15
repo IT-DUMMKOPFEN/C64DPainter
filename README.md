@@ -24,7 +24,7 @@ Version 0.9 beta · Created by IT-Dummköpfen · Free for private use.
 - Tools: dots, freehand, line, curve, fill, airbrush, rectangle, circle and ellipse (each outlined or filled), select and color picker.
 - Round, square or diamond brushes from 1 to 16 pixels, plus custom brushes made from a selection.
 - 42 patterns (density steps, dots, lines, diagonals, grids and textures).
-- **Auto dither** (Edit menu) and a **Dither brush**: blend the borders between flat color areas in seven styles (Artist, Scanlines, Hatching, Checker, Columns, Stipple, Organic) that were reconstructed from hand-pixelled C64 pictures, with live preview, softness, strength, edge protection and color ramps.
+- **Auto dither** (Edit menu) and a **Dither brush**: blend the borders between flat color areas in clean steps (two colors per transition, 25 %/50 % bands, outlines and silhouettes stay sharp) in seven styles reconstructed from hand-pixelled C64 pictures: Artist, Scanlines, Hatching, Checker, Stripes, Stipple, Organic.
 - Swap colors in the whole picture or with a cell brush (the background color is never touched).
 - Selections can be moved, copied, flipped, rotated by 90° or freely, scaled and sheared in both directions.
 - Zoom from 1× to 32×, configurable grid (8×8 by default), pixel grid and C64 border.
