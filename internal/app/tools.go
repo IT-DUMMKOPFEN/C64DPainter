@@ -120,6 +120,10 @@ func (a *App) toolInput(px, py int, over bool) {
 			} else {
 				a.dab(a.pic, px, py, btn)
 			}
+		case ToolSmear:
+			a.pushUndo(a.pic.Clone())
+			d.base = nil
+			a.smearStart(px, py)
 		case ToolFill:
 			snap := a.pic.Clone()
 			if a.floodFill(px, py, btn) {
@@ -148,6 +152,12 @@ func (a *App) toolInput(px, py int, over bool) {
 				a.lineDabs(a.pic, d.lx, d.ly, px, py, d.btn)
 			case ToolDots:
 				a.dab(a.pic, px, py, d.btn)
+			case ToolSmear:
+				forLine(d.lx, d.ly, px, py, func(x, y int) {
+					if x != d.lx || y != d.ly {
+						a.smearStep(x, y)
+					}
+				})
 			case ToolSpray:
 			default:
 				a.shapePreview(px, py)
@@ -167,6 +177,8 @@ func (a *App) toolInput(px, py int, over bool) {
 	case ToolDraw, ToolDots, ToolSpray:
 	case ToolDither:
 		d.ditherSrc = nil
+	case ToolSmear:
+		a.smearBuf = nil
 	case ToolCurve:
 		if d.sx == px && d.sy == py {
 			*a.pic = *d.base

@@ -12,7 +12,7 @@ import (
 )
 
 const AppName = "C64 DPainter"
-const AppVersion = "0.9 beta"
+const AppVersion = "0.95 beta"
 
 // AppAuthor and AppLicense appear on the About page.
 const AppAuthor = "IT-Dummköpfen"
@@ -61,13 +61,14 @@ const (
 	ToolHand
 	ToolCellSwap
 	ToolDither
+	ToolSmear
 	toolCount
 )
 
 var toolNames = [toolCount]string{
 	"Dots", "Freehand", "Line", "Curve", "Fill", "Airbrush",
 	"Rectangle", "Filled rectangle", "Circle", "Filled circle",
-	"Ellipse", "Filled ellipse", "Select", "Color picker", "Pan", "Cell color swap", "Dither brush",
+	"Ellipse", "Filled ellipse", "Select", "Color picker", "Pan", "Cell color swap", "Dither brush (experimental)", "Smear",
 }
 
 var toolHints = [toolCount]string{
@@ -88,6 +89,7 @@ var toolHints = [toolCount]string{
 	"Drag: move the view",
 	"Paint over cells to swap their colors  ·  right button = other way  ·  any tool or Esc stops",
 	"Paint over color borders to dither them  ·  style and softness in the side panel  ·  Ctrl = straight line",
+	"Drag: smear the colors along the stroke  ·  strength in the side panel",
 }
 
 // App ist der Programmzustand.
@@ -173,6 +175,7 @@ type App struct {
 	// Dither brush: result for the current picture (cached) and its key
 	ditherRes *c64.Picture
 	ditherKey string
+	smearBuf  []int8 // colors carried by the smear brush
 }
 
 type dragState struct {
@@ -828,6 +831,8 @@ func (a *App) charShortcut(c rune) {
 		a.setTool(ToolDraw)
 	case 'D':
 		a.setTool(ToolDither)
+	case 'S':
+		a.setTool(ToolSmear)
 	case 'A':
 		a.later(a.openAutoDither)
 	case 'v':

@@ -30,25 +30,27 @@ type Settings struct {
 	HelpSeen    bool   `json:"helpSeen"`
 	CellHint    bool   `json:"cellHint"`
 
-	DitherBrush c64.AutoDitherOptions `json:"ditherBrush"`
-	DitherAuto  c64.AutoDitherOptions `json:"autoDither"`
+	DitherBrush   c64.AutoDitherOptions `json:"ditherBrush"`
+	SmearStrength int                   `json:"smearStrength"`
+	DitherAuto    c64.AutoDitherOptions `json:"autoDither"`
 }
 
 func defaultSettings() Settings {
 	return Settings{
-		Theme:       "light",
-		Palette:     "PIXCEN_Colodore",
-		GridOn:      true,
-		GridW:       8,
-		GridH:       8,
-		GridAlpha:   35,
-		ShowBorder:  true,
-		Conflict:    0,
-		AspectBrush: true,
-		ShowPanel:   true,
-		CellHint:    true,
-		DitherBrush: defaultDitherBrush(),
-		DitherAuto:  c64.DefaultAutoDither(),
+		Theme:         "light",
+		Palette:       "PIXCEN_Colodore",
+		GridOn:        true,
+		GridW:         8,
+		GridH:         8,
+		GridAlpha:     35,
+		ShowBorder:    true,
+		Conflict:      0,
+		AspectBrush:   true,
+		ShowPanel:     true,
+		CellHint:      true,
+		DitherBrush:   defaultDitherBrush(),
+		SmearStrength: 60,
+		DitherAuto:    c64.DefaultAutoDither(),
 	}
 }
 

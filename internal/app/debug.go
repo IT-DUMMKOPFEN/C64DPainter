@@ -73,5 +73,28 @@ func (a *App) Debug(what string, v int) {
 		}
 	case "clear":
 		a.clearPicture()
+	case "open":
+		// v unused: opens the file the host returns
+		a.later(a.cmdOpen)
+		a.RunDeferred()
+	case "swapdlg": // v = from<<4 | to
+		a.openSwapDialog(false)
+		if d, ok := a.modal.(*swapDialog); ok {
+			d.from, d.to = uint8(v>>4), uint8(v&15)
+		}
+	case "transformdlg":
+		a.openTransformDialog()
+	case "palettedlg":
+		a.openPaletteDialog()
+	case "about":
+		a.openAbout()
+	case "helpdither":
+		a.openHelp("dither")
+	case "dithersettings": // brush: v = style
+		a.set.DitherBrush.Style = c64.DitherStyle(v)
+	case "smearstrength":
+		a.set.SmearStrength = v
+	case "panelscroll":
+		a.panelScroll = v
 	}
 }

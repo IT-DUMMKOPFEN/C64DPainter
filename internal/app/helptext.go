@@ -45,7 +45,7 @@ File, edit, selection and view commands, options (palette, color conflicts, them
 ## Side panel (left)
 
 - **Selection** (only with the select tool): rotate, scale, shear.
-- **Dither brush** (only with the dither brush): style, width, steps, edges, details, artist pairs.
+- **Dither brush** / **Smear** (only with these tools): their style and strength settings.
 - **Brush**: shape (round, square, diamond, custom), size 1–16, preview, airbrush settings.
 - **Patterns**: fill patterns for all tools (hidden for the dither brush).
 - **Colors**: background ($D021), border ($D020) and the behavior for color conflicts.
@@ -181,9 +181,13 @@ Fills the connected area of the same color (connected horizontally and verticall
 
 Sprays brush dabs into a round area while the mouse button is held. Set radius and density on the left in the brush panel while the airbrush is active.
 
-## [dither] Dither brush (Shift+D)
+## [dither] Dither brush (Shift+D) – experimental
 
-Paint over the borders between flat color areas: they are blended with the chosen dither style (Artist, Scanlines, Hatching, Checker, Stripes, Stipple or Organic) in clean steps – outlines and object silhouettes stay sharp. The style and its settings are on the left in the side panel; the pixels that would change are shown under the brush. Right-click the button for **Auto dither** of the whole picture. See "Dithering".
+Paint over the borders between flat color areas: they are blended with the chosen dither style (Artist, Scanlines, Checker or Stripes) in clean steps – outlines and object silhouettes stay sharp. With the style **Color** the brush darkens the colors you paint over instead. The style and its settings are on the left in the side panel; the pixels that would change are shown under the brush. Right-click the button for **Auto dither** of the whole picture. See "Dithering".
+
+## [smear] Smear (Shift+S)
+
+Smears the colors along the stroke, like the smudge tool of other paint programs: the brush picks up the colors under it and drags them along. **Strength** (side panel) sets how far: high values pull long streaks, low values blend softly. The brush shape and size come from the Brush panel. In full cells the nearest cell color is used, so the multicolor rules always hold.
 
 ## [rect|rectf] Rectangle (R / Shift+R)
 
@@ -295,6 +299,8 @@ Two functions in the **Edit** menu exchange colors without breaking the multicol
 	{id: "dither", title: "Dithering", body: `
 # Auto dither and Dither brush
 
+> Both functions are **experimental**. Check the result in the preview (or undo with ` + "`U`" + `) – they do not replace careful pixelling by hand.
+
 Paint your picture with **flat colors** first – then let the program blend the borders between the colors, the way C64 artists do it by hand. Flat areas stay as they are; only the places where differently colored areas meet are mixed.
 
 - **Edit → Auto dither …** (` + "`Shift+A`" + `) dithers the whole picture or the selection, with a live preview.
@@ -324,11 +330,16 @@ The program follows the rules pixel artists use for clean dithering:
 
 = Artist | the most common technique of all pictures: 25 % = checker dots on every second row, 50 % = every second row
 = Scanlines | alternate rows with spread dots – fine, calm gradients (portraits, shiny objects)
-= Hatching | horizontal dashes that grow into strokes – a drawn, sketchy look
 = Checker | the classic: 25 % = spread dots, 50 % = checkerboard – soft and even (skin, clouds)
 = Stripes | lines that widen into stripes, always parallel to the border – graphic, poster-like
-= Stipple | scattered single pixels (blue noise) – grainy and natural (skies, textures)
-= Organic | irregular texture from error diffusion between the two colors – lively, hand-made
+= Color | shading by darkening (see below)
+
+## Color – shading by darkening
+
+Instead of mixing two neighboring areas, **Color** darkens a color by dithering it with a **darker color**. It first looks for a darker color that is already in the 4 × 8 cell (or the background color); if there is none, it takes a darker color from the artists' color ramps that fits into a free slot of the cell (cell colors "Add").
+
+- **Auto dither** darkens every area in clean steps towards its darker neighbors – like a soft shadow along edges and outlines.
+- The **Dither brush** darkens everything you paint over. **Darkness** sets the share of the darker color (25 / 50 / 75 %); paint again to darken further.
 
 ## Settings
 
@@ -337,7 +348,7 @@ The program follows the rules pixel artists use for clean dithering:
 - **Keep edges** – higher = only colors of very similar brightness are blended; all other borders stay hard.
 - **Details** – lines and areas thinner than this (outlines, eyes, highlights) are never dithered.
 - **Artist pairs** – only color pairs that C64 artists mix are blended (measured in the 16 pictures). Higher = stricter. 0 = every pair of similar brightness.
-- **In-between colors for strong contrasts** – joins two colors that are too far apart with a color from the artists' ramps (for example black → dark grey → grey). Good for big gradients like skies, but it also puts color bands around objects, so it is off by default.
+- **In-between colors** – for strong contrasts: joins two colors that are too far apart with a color from the artists' ramps (for example black → dark grey → grey). Good for big gradients like skies, but it also puts color bands around objects, so it is off by default.
 
 ## Cell colors
 
@@ -606,7 +617,8 @@ As in Deluxe Paint, letter keys work directly, without Ctrl.
 = Q | Curve
 = F | Fill
 = A | Airbrush
-= Shift+D | Dither brush
+= Shift+D | Dither brush (experimental)
+= Shift+S | Smear
 = R / Shift+R | Rectangle / filled
 = C / Shift+C | Circle / filled
 = E / Shift+E | Ellipse / filled
@@ -651,7 +663,7 @@ As in Deluxe Paint, letter keys work directly, without Ctrl.
 = U or Ctrl+Z | undo
 = Shift+U or Ctrl+Y | redo
 = J | swap page (spare page)
-= Shift+A | Auto dither
+= Shift+A | Auto dither (experimental)
 = Shift+K | clear picture
 = Ctrl+N | new
 = Ctrl+O | open
@@ -705,7 +717,8 @@ When sprites are combined with the picture, bit pairs ` + "`%00`" + ` and ` + "`
 - **Think in cells.** Turn on the 8×8 grid. Plan color changes on cell borders.
 - **Few colors, many dither patterns.** The density patterns (1/16 … 15/16) create soft transitions without adding new colors to the cell.
 - **Use luminance pairs.** The C64 has color pairs of similar brightness: blue/brown, red/dark grey, purple/orange, grey/light blue, green/light red, cyan/light grey and yellow/light green. They are great for smooth dithered transitions.
-- **Flat first, dither later.** Paint shapes in clean flat colors, then blend the borders with **Edit → Auto dither** or the **Dither brush** – in the styles of real C64 artists.
+- **Flat first, dither later.** Paint shapes in clean flat colors, then blend the borders with **Edit → Auto dither** or the **Dither brush** (both experimental), and shade with the style **Color**.
+- **Smear for soft forms.** The **Smear** brush pulls colors into each other – handy for clouds, hair and fabric folds.
 - **Trace a template.** Load a photo as a template, set 40–60 % opacity and trace the outlines. Or let the converter do it and touch up the result.
 - **Convert with care.** In the converter, raise the contrast a little and try Bayer 4×4 or Floyd–Steinberg at 40–70 % strength.
 - **Use the spare page.** With ` + "`J`" + ` you have a second picture for experiments or as a parts bin for brushes.
@@ -715,7 +728,7 @@ When sprites are combined with the picture, bit pairs ` + "`%00`" + ` and ` + "`
 	{id: "about", title: "About C64 DPainter", body: `
 # About C64 DPainter
 
-**Version 0.9 beta** – a paint program for C64 multicolor bitmaps for Windows, macOS and Linux.
+**Version 0.95 beta** – a paint program for C64 multicolor bitmaps for Windows, macOS and Linux.
 
 Created by **IT-Dummköpfen**. Free for private use.
 

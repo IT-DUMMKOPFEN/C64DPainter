@@ -358,6 +358,9 @@ func (a *App) drawBrushPreview() {
 			continue
 		}
 		c := col
+		if a.tool == ToolSmear {
+			continue // only the outline
+		}
 		if dsrc != nil {
 			// dither brush: show what would change
 			n := dsrc.ColorAt(px, py)

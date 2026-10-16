@@ -79,8 +79,8 @@ func TestToolboxAndPalette(t *testing.T) {
 	if a.tool != ToolLine {
 		t.Fatalf("Linie nicht gewählt: %d", a.tool)
 	}
-	// geteilter Knopf Rechteck (Index 7, nach dem Dither-Pinsel): unten rechts = gefüllt
-	x, y = toolRect(a, 7)
+	// geteilter Knopf Rechteck (Index 8, nach Dither- und Smear-Pinsel): unten rechts = gefüllt
+	x, y = toolRect(a, 8)
 	tclick(a, x+10, y+9, 0)
 	if a.tool != ToolRectF {
 		t.Fatalf("gefülltes Rechteck erwartet, %d", a.tool)
@@ -718,5 +718,46 @@ func TestDitherBrush(t *testing.T) {
 	a.undo()
 	if countDiff(orig, a.pic, 0, 0, 159, 199) != 0 {
 		t.Fatal("one undo step for the whole stroke")
+	}
+}
+
+func TestSmearBrush(t *testing.T) {
+	a, _ := setup(t)
+	for y := 0; y < 200; y++ {
+		for x := 0; x < 160; x++ {
+			c := uint8(2)
+			if x >= 80 {
+				c = 7
+			}
+			a.pic.Plot(x, y, c, 0, a.pal)
+		}
+	}
+	orig := a.pic.Clone()
+	a.Char('S')
+	step(a)
+	if a.tool != ToolSmear {
+		t.Fatalf("Shift+S should select the smear brush: %d", a.tool)
+	}
+	a.brushShape, a.brushSize = BrushSquare, 8
+	x0, y0 := pc(a, 70, 100)
+	x1, y1 := pc(a, 110, 100)
+	tdrag(a, x0, y0, x1, y1, 0)
+	red := 0
+	for y := 90; y < 110; y++ {
+		for x := 82; x < 120; x++ {
+			if a.pic.ColorAt(x, y) == 2 {
+				red++
+			}
+		}
+	}
+	if red < 20 {
+		t.Fatalf("smear should drag red into the yellow area, got %d pixels", red)
+	}
+	if countDiff(orig, a.pic, 0, 0, 159, 80) != 0 {
+		t.Fatal("smear changed pixels far away from the stroke")
+	}
+	a.undo()
+	if countDiff(orig, a.pic, 0, 0, 159, 199) != 0 {
+		t.Fatal("one undo step for the smear stroke")
 	}
 }

@@ -4,7 +4,7 @@
 
 A paint program for Windows, macOS and Linux for pictures in the **multicolor bitmap mode of the Commodore 64**. Its look and controls follow Deluxe Paint and PyDPainter.
 
-Version 0.9 beta · Created by IT-Dummköpfen · Free for private use.
+Version 0.95 beta · Created by IT-Dummköpfen · Free for private use.
 
 ## Download
 
@@ -21,10 +21,11 @@ Version 0.9 beta · Created by IT-Dummköpfen · Free for private use.
 ## Features
 
 - Strict multicolor rules (160×200 pixels, 4×8 cells, bit pairs %00/%01/%10/%11). When a cell is full, the program can block the pixel, replace the rarest cell color or use the nearest cell color.
-- Tools: dots, freehand, line, curve, fill, airbrush, rectangle, circle and ellipse (each outlined or filled), select and color picker.
+- Tools: dots, freehand, line, curve, fill, airbrush, dither, smear, rectangle, circle and ellipse (each outlined or filled), select and color picker.
 - Round, square or diamond brushes from 1 to 16 pixels, plus custom brushes made from a selection.
 - 42 patterns (density steps, dots, lines, diagonals, grids and textures).
-- **Auto dither** (Edit menu) and a **Dither brush**: blend the borders between flat color areas in clean steps (two colors per transition, 25 %/50 % bands, outlines and silhouettes stay sharp) in seven styles reconstructed from hand-pixelled C64 pictures: Artist, Scanlines, Hatching, Checker, Stripes, Stipple, Organic.
+- **Auto dither** (Edit menu) and a **Dither brush**, both experimental: blend the borders between flat color areas in clean steps (two colors per transition, 25 %/50 % bands, outlines and silhouettes stay sharp) in the styles Artist, Scanlines, Checker and Stripes, reconstructed from hand-pixelled C64 pictures – or shade with **Color**, which darkens with the colors of the cell.
+- **Smear** brush: drags colors along the stroke like a smudge tool.
 - Swap colors in the whole picture or with a cell brush (the background color is never touched).
 - Selections can be moved, copied, flipped, rotated by 90° or freely, scaled and sheared in both directions.
 - Zoom from 1× to 32×, configurable grid (8×8 by default), pixel grid and C64 border.
@@ -47,11 +48,11 @@ This needs Go, Python 3 with Pillow (`pip install pillow`, for the macOS icon), 
 
 ### Making a release
 
-Either on GitHub: **Actions → Build → Run workflow**, enter a tag such as `v0.9b` and start it. Or push a tag that starts with `v`:
+Either on GitHub: **Actions → Build → Run workflow**, enter a tag such as `v0.95b` and start it. Or push a tag that starts with `v`:
 
 ```
-git tag v0.9b
-git push origin v0.9b
+git tag v0.95b
+git push origin v0.95b
 ```
 
 GitHub then builds everything and publishes a release with all four files.
@@ -71,7 +72,7 @@ macOS (universal app for Apple silicon and Intel, can be built on any OS):
 ```
 CGO_ENABLED=0 GOOS=darwin GOARCH=arm64 go build -trimpath -ldflags "-s -w" -o build/C64DPainter_arm64 ./cmd/c64dpainter
 CGO_ENABLED=0 GOOS=darwin GOARCH=amd64 go build -trimpath -ldflags "-s -w" -o build/C64DPainter_amd64 ./cmd/c64dpainter
-python3 tools/macbundle.py build/C64DPainter_arm64 build/C64DPainter_amd64 res/c64dpainter.png build 0.9
+python3 tools/macbundle.py build/C64DPainter_arm64 build/C64DPainter_amd64 res/c64dpainter.png build 0.95
 ```
 
 Linux (static binary, X11 or Wayland via XWayland, no libraries needed):
@@ -94,6 +95,8 @@ go test ./internal/...
 ```
 
 `go run ./cmd/shot <folder> <image.png> <image320x200.png>` drives the user interface with a script and saves screenshots.
+
+`go run ./cmd/screens <folder> <picture.kla> <image320x200.png>` loads a KLA picture and saves screenshots of the main functions (for web pages such as itch.io).
 
 ## Layout
 

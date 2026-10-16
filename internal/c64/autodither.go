@@ -12,28 +12,24 @@ type DitherStyle int
 const (
 	StyleArtist    DitherStyle = iota // checker on alternate rows (most common)
 	StyleScanlines                    // alternate scanlines
-	StyleHatching                     // horizontal dashes / strokes
 	StyleChecker                      // classic checkerboard
 	StyleStripes                      // lines that widen into stripes, parallel to the border
-	StyleStipple                      // scattered single pixels
-	StyleOrganic                      // irregular, error diffusion
+	StyleColor                        // shade by dithering with a darker color of the cell
 	StyleCount
 )
 
 // StyleNames are the display names of the dither styles.
 var StyleNames = [StyleCount]string{
-	"Artist", "Scanlines", "Hatching", "Checker", "Stripes", "Stipple", "Organic",
+	"Artist", "Scanlines", "Checker", "Stripes", "Color",
 }
 
 // StyleInfo describes each style in one sentence.
 var StyleInfo = [StyleCount]string{
 	"The most common technique in all analyzed pictures: 25 % = checker dots on every second row, 50 % = every second row.",
 	"Alternate scanlines with spread dots – fine, calm gradients like in portraits and shiny objects.",
-	"Horizontal dashes that grow into strokes – a drawn, sketchy look.",
 	"The classic checkerboard: 25 % = spread dots, 50 % = checkerboard. Soft and even, good for skin and clouds.",
 	"Lines that widen into stripes, always parallel to the border (vertical at vertical borders) – graphic, poster-like.",
-	"Scattered single pixels (blue noise) – a grainy, natural look for skies and textures.",
-	"Irregular texture from error diffusion between the two colors – lively and hand-made.",
+	"Shades by darkening: each color is dithered with a darker color that is already in the 4×8 cell (or fits into a free slot). Auto dither darkens areas towards darker neighbors; the brush darkens what you paint over.",
 }
 
 // CellColorMode decides which colors a cell may use after dithering.
@@ -66,6 +62,9 @@ type AutoDitherOptions struct {
 	// from the artists' color ramps (good for gradients, bad for silhouettes).
 	Between bool
 	Colors  CellColorMode
+	// Fill (Color style only): darken every pixel, not only near borders.
+	// Used by the dither brush; Steps then means 25 / 50 / 75 % darker color.
+	Fill bool `json:"-"`
 }
 
 // DefaultAutoDither returns sensible starting values.
@@ -360,6 +359,9 @@ func (p *ditherPlan) threshold(x, y int, turn bool) float64 {
 
 // desired computes the dithered color of every pixel, without cell limits.
 func (p *ditherPlan) desired(mask []bool) []uint8 {
+	if p.o.Style == StyleColor {
+		return p.darken(mask)
+	}
 	out := append([]uint8(nil), p.idx...)
 	type mix struct {
 		lo, hi uint8
@@ -415,55 +417,15 @@ func (p *ditherPlan) desired(mask []bool) []uint8 {
 		mixes[i] = mix{lo, hi, fHi, turn}
 		has[i] = true
 	}
-	if p.o.Style != StyleOrganic {
-		for i := range out {
-			if !has[i] {
-				continue
-			}
-			m := mixes[i]
-			if p.threshold(i%W, i/W, m.turn) < m.fHi {
-				out[i] = m.hi
-			} else {
-				out[i] = m.lo
-			}
+	for i := range out {
+		if !has[i] {
+			continue
 		}
-		return out
-	}
-	// Organic: serpentine error diffusion of the share between the two colors
-	errv := make([]float64, W*H)
-	for y := 0; y < H; y++ {
-		rev := y&1 == 1
-		for k := 0; k < W; k++ {
-			x := k
-			if rev {
-				x = W - 1 - k
-			}
-			i := y*W + x
-			if !has[i] {
-				continue
-			}
-			m := mixes[i]
-			v := m.fHi + errv[i]
+		m := mixes[i]
+		if p.threshold(i%W, i/W, m.turn) < m.fHi {
+			out[i] = m.hi
+		} else {
 			out[i] = m.lo
-			e := v
-			if v >= 0.5 {
-				out[i] = m.hi
-				e = v - 1
-			}
-			for _, tp := range [3][3]float64{{1, 0, 0.5}, {-1, 1, 0.25}, {0, 1, 0.25}} {
-				dx := int(tp[0])
-				if rev {
-					dx = -dx
-				}
-				xx, yy := x+dx, y+int(tp[1])
-				if xx < 0 || xx >= W || yy >= H {
-					continue
-				}
-				j := yy*W + xx
-				if has[j] && mixes[j].lo == m.lo && mixes[j].hi == m.hi {
-					errv[j] += e * tp[2]
-				}
-			}
 		}
 	}
 	return out
@@ -628,4 +590,93 @@ func absInt(v int) int {
 		return -v
 	}
 	return v
+}
+
+// fillLevels: share of the darker color for the brush (Steps 1..3).
+var fillLevels = [4]float64{0, 0.25, 0.5, 0.75}
+
+// darkerShade picks the color used to darken c in a cell: a darker color of
+// similar brightness that artists mix with c; colors that are already in the
+// cell (or the background) come first, otherwise one for a free slot.
+func (p *ditherPlan) darkerShade(c uint8, cell int, cellCols []uint8) int {
+	best, bs := -1, -1.0
+	for k := uint8(0); k < 16; k++ {
+		if lumaLevel[k] >= lumaLevel[c] || lumaStep(c, k) > p.maxStep {
+			continue
+		}
+		in := k == p.src.BG
+		for _, cc := range cellCols {
+			if cc == k {
+				in = true
+			}
+		}
+		if p.o.Colors == CellKeep && !in {
+			continue
+		}
+		aff := ditherAffinity[c][k]
+		if aff < math.Max(p.minAff, 0.15) && !(in && aff > 0) {
+			continue
+		}
+		s := aff - 0.1*float64(lumaStep(c, k))
+		if in {
+			s += 1
+		}
+		if s > bs {
+			best, bs = int(k), s
+		}
+	}
+	return best
+}
+
+// darken implements the Color style: colors are shaded with a darker color,
+// in clean steps towards darker neighbors (or everywhere with Fill).
+func (p *ditherPlan) darken(mask []bool) []uint8 {
+	out := append([]uint8(nil), p.idx...)
+	levels := stageLevels[p.o.Steps]
+	shade := make([][16]int, Cells) // cached darker color per cell and color (+1, 0 = unknown)
+	for i, c := range p.idx {
+		if mask != nil && !mask[i] {
+			continue
+		}
+		if p.protected[i] {
+			continue
+		}
+		f := fillLevels[p.o.Steps]
+		if !p.o.Fill {
+			q := p.near[i]
+			if q < 0 || lumaLevel[p.idx[q]] >= lumaLevel[c] {
+				continue // only towards darker neighbors
+			}
+			reff := math.Min(float64(p.o.Width), p.local[i]-1)
+			if reff < 1 {
+				continue
+			}
+			stage := int((p.nearD[i] - 1) * float64(len(levels)) / reff)
+			if stage >= len(levels) {
+				continue
+			}
+			f = levels[stage]
+		}
+		x, y := i%W, i/W
+		cell := CellOf(x, y)
+		sc := &shade[cell][c]
+		if *sc == 0 {
+			cols, used := p.src.CellColors(cell)
+			var cc []uint8
+			for s := 1; s <= 3; s++ {
+				if used[s] {
+					cc = append(cc, cols[s])
+				}
+			}
+			*sc = p.darkerShade(c, cell, cc) + 2 // -1 → 1 (none)
+		}
+		d := *sc - 2
+		if d < 0 {
+			continue
+		}
+		if p.threshold(x, y, false) < f {
+			out[i] = uint8(d)
+		}
+	}
+	return out
 }

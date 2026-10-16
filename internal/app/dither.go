@@ -47,7 +47,7 @@ func (a *App) ditherStyleButtons(id string, x, y, w int, style *c64.DitherStyle)
 }
 
 // ditherSliders draws the common settings.
-func (a *App) ditherSliders(id string, x, y, w int, o *c64.AutoDitherOptions) int {
+func (a *App) ditherSliders(id string, x, y, w int, o *c64.AutoDitherOptions, brush bool) int {
 	u := &a.ui
 	sl := func(sid, label string, v *int, lo, hi int, unit, tip string) {
 		r := gfx.Rect{X: x, Y: y, W: w, H: 22}
@@ -55,13 +55,18 @@ func (a *App) ditherSliders(id string, x, y, w int, o *c64.AutoDitherOptions) in
 		u.Tip(id+sid, r, tip)
 		y += 26
 	}
-	sl("wi", "Width", &o.Width, 2, 16, "", "How far the transition reaches into each area (pixel rows)")
-	sl("st", "Steps", &o.Steps, 1, 3, "", "Dither stages per side: 1 = 50 %, 2 = 25 % + 50 %, 3 = 12 % + 25 % + 50 %")
+	if brush && o.Style == c64.StyleColor {
+		// the brush darkens everything it touches: Steps = how much
+		sl("st", "Darkness", &o.Steps, 1, 3, "", "Share of the darker color: 1 = 25 %, 2 = 50 %, 3 = 75 %. Paint again to darken further.")
+	} else {
+		sl("wi", "Width", &o.Width, 2, 16, "", "How far the transition reaches into each area (pixel rows)")
+		sl("st", "Steps", &o.Steps, 1, 3, "", "Dither stages per side: 1 = 50 %, 2 = 25 % + 50 %, 3 = 12 % + 25 % + 50 %")
+	}
 	sl("ed", "Keep edges", &o.Edges, 0, 100, " %", "Higher = only colors of similar brightness are blended, other borders stay hard")
 	sl("de", "Details", &o.Detail, 0, 8, " px", "Lines and areas thinner than this (outlines, eyes, highlights) are never dithered")
 	sl("ra", "Artist pairs", &o.Ramps, 0, 100, " %", "Only blend color pairs that C64 artists mix (measured in 16 pictures). Higher = stricter, more borders stay hard. 0 = any pair.")
 	r := gfx.Rect{X: x, Y: y, W: w, H: 20}
-	o.Between = u.Checkbox(id+"bt", r, "In-between colors for strong contrasts", o.Between)
+	o.Between = u.Checkbox(id+"bt", r, "In-between colors", o.Between)
 	u.Tip(id+"bt", r, "Joins colors that are too far apart with a color from the artists' ramps (e.g. black → blue → purple). Good for gradients, but also adds color bands around objects.")
 	y += 26
 	return y
@@ -105,6 +110,7 @@ func (a *App) ditherResult() *c64.Picture {
 	if o.Colors == c64.CellRechoose {
 		o.Colors = c64.CellAdd // re-choosing cell colors would cause conflicts
 	}
+	o.Fill = o.Style == c64.StyleColor // the brush darkens what it touches
 	key := fmt.Sprintf("%x/%v/%d", picHash(a.pic), o, a.palIdx)
 	if a.ditherRes == nil || a.ditherKey != key {
 		a.ditherRes = c64.AutoDither(a.pic, a.pal, o, nil)
@@ -143,14 +149,14 @@ func (a *App) panelDither(x, y, w int) int {
 	m := a.img
 	th := a.th
 	o := &a.set.DitherBrush
-	y = a.section(x, y, w, "Dither brush")
+	y = a.section(x, y, w, "Dither brush (experimental)")
 	y = a.ditherStyleButtons("db", x, y, w, &o.Style)
 	for _, ln := range wrapText(font.UI, c64.StyleInfo[o.Style], w) {
 		m.Text(font.UI, x, y, ln, th.TextDim)
 		y += font.UI.Height + 2
 	}
 	y += 6
-	y = a.ditherSliders("db", x, y, w, o)
+	y = a.ditherSliders("db", x, y, w, o, true)
 	y = a.cellModeRow("db", x, y, w, &o.Colors)
 	if u.Button("db_auto", gfx.Rect{X: x, Y: y, W: w, H: 22}, "Auto dither whole picture …") {
 		a.later(a.openAutoDither)
@@ -188,7 +194,7 @@ func (a *App) openAutoDither() {
 	a.modal = d
 }
 
-func (d *autoDitherDialog) Title() string          { return "Auto dither" }
+func (d *autoDitherDialog) Title() string          { return "Auto dither (experimental)" }
 func (d *autoDitherDialog) Size(a *App) (int, int) { return 1060, 720 }
 
 func (d *autoDitherDialog) Key(a *App, k KeyEvent) {
@@ -348,7 +354,7 @@ func (d *autoDitherDialog) Draw(a *App, r gfx.Rect) {
 	}
 	y += 8
 	hdr("Settings")
-	y = a.ditherSliders("ad", cx, y, w, &d.opts)
+	y = a.ditherSliders("ad", cx, y, w, &d.opts, false)
 	y = a.cellModeRow("ad", cx, y, w, &d.opts.Colors)
 	if u.Button("ad_def", gfx.Rect{X: cx, Y: y, W: w, H: 22}, "Default settings") {
 		st := d.opts.Style
