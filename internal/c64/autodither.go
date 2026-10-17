@@ -539,6 +539,7 @@ func nearestOf(pal *Palette, c uint8, set []int) uint8 {
 // that stay in a cell keep their slot, so screen and color RAM change little.
 func buildPicture(src *Picture, px []uint8, cellCols [][]int) *Picture {
 	p := src.Clone()
+	p.Layered = false // the result is a plain picture (the editor copies the changes into a layer)
 	bg := int(src.BG)
 	for cell := 0; cell < Cells; cell++ {
 		var slotOf [16]int

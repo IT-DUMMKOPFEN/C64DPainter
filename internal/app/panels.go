@@ -31,6 +31,7 @@ func (a *App) toolButtons() []toolBtn {
 		{id: "t_spray", icon: "spray", tool: ToolSpray, alt2: -1, tip: "Airbrush (A)"},
 		{id: "t_dith", icon: "dither", tool: ToolDither, alt2: -1, tip: "Dither brush, experimental (Shift+D) · right-click: Auto dither", right: func() { a.setTool(ToolDither); a.later(a.openAutoDither) }},
 		{id: "t_smear", icon: "smear", tool: ToolSmear, alt2: -1, tip: "Smear (Shift+S)"},
+		{id: "t_erase", icon: "eraser", tool: ToolErase, alt2: -1, tip: "Eraser (W) – makes the active layer transparent"},
 		{id: "t_rect", icon: "rect", alt: "rectf", tool: ToolRect, alt2: ToolRectF, tip: "Rectangle (R) / filled (Shift+R)"},
 		{id: "t_circ", icon: "circle", alt: "circlef", tool: ToolCircle, alt2: ToolCircleF, tip: "Circle (C) / filled (Shift+C)"},
 		{id: "t_ell", icon: "ellipse", alt: "ellipsef", tool: ToolEllipse, alt2: ToolEllipseF, tip: "Ellipse (E) / filled (Shift+E)"},
@@ -284,7 +285,7 @@ func (a *App) drawPanel() {
 		y = a.panelSmear(x, y, w)
 	}
 	y = a.panelBrush(x, y, w)
-	if a.tool != ToolDither && a.tool != ToolSmear {
+	if a.tool != ToolDither && a.tool != ToolSmear && a.tool != ToolErase {
 		y = a.panelPattern(x, y, w)
 	}
 	y = a.panelColors(x, y, w)
@@ -478,74 +479,6 @@ func (a *App) panelColors(x, y, w int) int {
 	return y + 8
 }
 
-func (a *App) panelLayers(x, y, w int) int {
-	u := &a.ui
-	m := a.img
-	th := a.th
-	y = a.section(x, y, w, "Layers")
-	layerRow := func(id, name, sub string, visible bool, toggle func()) {
-		r := gfx.Rect{X: x, Y: y, W: w, H: 34}
-		m.Fill(r, th.PanelAlt)
-		m.Frame(r, th.Border)
-		eye := gfx.Rect{X: r.X + 4, Y: r.Y + 7, W: 22, H: 20}
-		ec := th.TextDim
-		if visible {
-			ec = th.Text
-		}
-		drawIcon(m, "eye", eye.X+3, eye.Y+2, ec, th.Accent)
-		if !visible {
-			m.Line(eye.X+4, eye.Bottom()-4, eye.Right()-4, eye.Y+4, ec)
-		}
-		if c, _ := u.press(id, eye, 0); c {
-			toggle()
-		}
-		u.Tip(id, eye, "Show / hide")
-		m.Text(font.UIB, r.X+32, r.Y+3, gfx.Elide(font.UIB, name, r.W-38), th.Text)
-		m.Text(font.UI, r.X+32, r.Y+18, gfx.Elide(font.UI, sub, r.W-38), th.TextDim)
-		y += 38
-	}
-	tname := "(none)"
-	if a.tpl.src != nil {
-		tname = a.tpl.name
-	}
-	layerRow("lv_tpl", "Template", tname, a.tpl.visible && a.tpl.src != nil, func() { a.tpl.visible = !a.tpl.visible })
-	layerRow("lv_pic", "Picture (C64 multicolor)", "160×200, page "+itoa(a.page+1), !a.tpl.hidePic, func() { a.tpl.hidePic = !a.tpl.hidePic })
-	bw := (w - 4) / 2
-	if u.Button("tplload", gfx.Rect{X: x, Y: y, W: bw, H: 22}, "Load template …") {
-		a.later(a.loadTemplateDialog)
-	}
-	if u.ButtonEx("tplclear", gfx.Rect{X: x + bw + 4, Y: y, W: bw, H: 22}, "Remove", false, a.tpl.src != nil) {
-		a.clearTemplate()
-	}
-	y += 28
-	if a.tpl.src != nil {
-		a.tpl.opacity = u.Slider("tplop", gfx.Rect{X: x, Y: y, W: w, H: 22}, "Opacity", a.tpl.opacity, 0, 100, " %")
-		y += 26
-		if u.Radio("tplover", gfx.Rect{X: x, Y: y, W: bw, H: 20}, "Above picture", !a.tpl.under) {
-			a.tpl.under = false
-		}
-		if u.Radio("tplunder", gfx.Rect{X: x + bw + 4, Y: y, W: bw, H: 20}, "Below picture", a.tpl.under) {
-			a.tpl.under = true
-		}
-		u.Tip("tplunder", gfx.Rect{X: x + bw + 4, Y: y, W: bw, H: 20}, "Template shows only through background pixels (%00)")
-		y += 24
-		fits := []string{"Stretch", "Fit", "Fill"}
-		fw := (w - 8) / 3
-		for i, f := range fits {
-			if u.ButtonEx("tplfit"+itoa(i), gfx.Rect{X: x + i*(fw+4), Y: y, W: fw, H: 22}, f, int(a.tpl.fit) == i, true) && int(a.tpl.fit) != i {
-				a.tpl.fit = c64.FitMode(i)
-				a.tpl.rebuild()
-			}
-		}
-		y += 28
-		if u.Button("tplconv", gfx.Rect{X: x, Y: y, W: w, H: 22}, "Convert template to C64 picture …") {
-			a.modal = newImportDialog(a, a.tpl.src, a.tpl.name)
-		}
-		y += 28
-	}
-	return y + 6
-}
-
 func (a *App) panelCell(x, y, w int) int {
 	u := &a.ui
 	m := a.img
@@ -557,6 +490,7 @@ func (a *App) panelCell(x, y, w int) int {
 	} else {
 		cell := c64.CellOf(a.mpx, a.mpy)
 		cols, used := a.pic.CellColors(cell)
+		hidden := a.pic.HiddenOnly(cell)
 		u.Label(gfx.Rect{X: x, Y: y, W: w, H: 18}, fmt.Sprintf("Column %d, row %d  (4×8 pixels)", cell%c64.Cols, cell/c64.Cols), false)
 		y += 20
 		src := []string{"%00 $D021", "%01 Screen hi", "%10 Screen lo", "%11 Color RAM"}
@@ -567,6 +501,9 @@ func (a *App) panelCell(x, y, w int) int {
 			m.Text(font.Mono, x+24, y, src[s], th.Text)
 			st := c64.ColorNames[cols[s]]
 			c := th.Text
+			if hidden[s] {
+				st += " (hidden layer)"
+			}
 			if !used[s] {
 				st = "free"
 				c = th.TextDim

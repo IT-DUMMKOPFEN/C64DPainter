@@ -358,7 +358,7 @@ func (a *App) drawBrushPreview() {
 			continue
 		}
 		c := col
-		if a.tool == ToolSmear {
+		if a.tool == ToolSmear || a.tool == ToolErase {
 			continue // only the outline
 		}
 		if dsrc != nil {

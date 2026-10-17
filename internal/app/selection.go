@@ -141,8 +141,12 @@ func (a *App) grab(p *c64.Picture, x0, y0, x1, y1 int, transp bool) *CustomBrush
 	b := &CustomBrush{W: w, H: h, Pix: make([]int8, w*h)}
 	for y := 0; y < h; y++ {
 		for x := 0; x < w; x++ {
-			c := p.ColorAt(x0+x, y0+y)
-			if transp && c == p.BG {
+			// with layers: only the active layer; empty pixels are transparent
+			c, ok := p.ColorAt(x0+x, y0+y), true
+			if p.Layered {
+				c, ok = p.LayerColorAt(p.Active, x0+x, y0+y)
+			}
+			if !ok || (transp && c == p.BG) {
 				b.Pix[y*w+x] = -1
 			} else {
 				b.Pix[y*w+x] = int8(c)
@@ -165,7 +169,7 @@ func (a *App) selLift(copy bool) {
 	if !copy {
 		for y := y0; y <= y1; y++ {
 			for x := x0; x <= x1; x++ {
-				s.under.Bits[y*c64.W+x] = 0 // %00 = Hintergrund ist immer erlaubt
+				s.under.Erase(x, y) // transparent (without layers: %00)
 			}
 		}
 	}
@@ -575,7 +579,7 @@ func (a *App) selDelete() {
 		x0, y0, x1, y1 := a.selRect()
 		for y := y0; y <= y1; y++ {
 			for x := x0; x <= x1; x++ {
-				a.pic.Bits[y*c64.W+x] = 0
+				a.pic.Erase(x, y)
 			}
 		}
 		s.state = selNone

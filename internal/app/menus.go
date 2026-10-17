@@ -94,6 +94,27 @@ func (a *App) buildMenus() {
 			{Label: "Standard brush", Key: "Shift+B", Action: a.restoreBrush, Enabled: func() bool { return a.brushShape == BrushCustom }},
 			check("Background color transparent", "", func() bool { return a.sel.transpBG }, func() { a.sel.transpBG = !a.sel.transpBG }),
 		}},
+		{Title: "Layer", Items: []MenuItem{
+			head("Paint on"),
+			check("Layer 4 (top)", "4", func() bool { return a.pic.Active == 2 }, func() { a.setActiveLayer(2) }),
+			check("Layer 3", "3", func() bool { return a.pic.Active == 1 }, func() { a.setActiveLayer(1) }),
+			check("Layer 2 (bottom)", "2", func() bool { return a.pic.Active == 0 }, func() { a.setActiveLayer(0) }),
+			sep(),
+			head("Show"),
+			check("Layer 4", "", func() bool { return !a.pic.Hide[2] }, func() { a.toggleLayer(2) }),
+			check("Layer 3", "", func() bool { return !a.pic.Hide[1] }, func() { a.toggleLayer(1) }),
+			check("Layer 2", "", func() bool { return !a.pic.Hide[0] }, func() { a.toggleLayer(0) }),
+			check("Layer 1 (template)", "T", func() bool { return a.tpl.src != nil && a.tpl.visible }, func() {
+				if a.tpl.src == nil {
+					a.later(a.loadTemplateDialog)
+				} else {
+					a.tpl.visible = !a.tpl.visible
+				}
+			}),
+			sep(),
+			item("Clear active layer", "", a.clearActiveLayer),
+			item("Load template …", "", func() { a.later(a.loadTemplateDialog) }),
+		}},
 		{Title: "View", Items: []MenuItem{
 			item("Zoom in", ">", func() { a.zoomStep(1, -1, -1) }),
 			item("Zoom out", "<", func() { a.zoomStep(-1, -1, -1) }),

@@ -258,9 +258,14 @@ func (d *autoDitherDialog) update(a *App) {
 func (d *autoDitherDialog) apply(a *App) {
 	d.update(a)
 	a.pushUndo(a.pic.Clone())
-	border := a.pic.Border
-	*a.pic = *d.preview
-	a.pic.Border = border
+	// the changed pixels go into the active layer (rules over all layers)
+	for y := 0; y < c64.H; y++ {
+		for x := 0; x < c64.W; x++ {
+			if c := d.preview.ColorAt(x, y); c != d.src.ColorAt(x, y) {
+				a.pic.Plot(x, y, c, c64.ConflictBlock, a.pal)
+			}
+		}
+	}
 	a.set.DitherAuto = d.opts
 	a.saveSettings()
 	a.closeModal(false)

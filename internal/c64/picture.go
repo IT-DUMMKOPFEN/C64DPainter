@@ -26,6 +26,13 @@ type Picture struct {
 	ColorRAM [Cells]uint8 // Farbspeicher (nur Bits 0–3) = %11
 	BG       uint8        // Hintergrundfarbe $D021 = %00
 	Border   uint8        // Rahmenfarbe $D020 (nur für PRG/Anzeige)
+
+	// Paint layers of the editor (see layers.go). Bits, Screen and ColorRAM
+	// then hold the composite of the visible layers.
+	Layered bool
+	L       [LayerCount][W * H]uint8 // 0 = transparent, 1..16 = color+1, 17 = background
+	Hide    [LayerCount]bool
+	Active  int // layer that tools paint into
 }
 
 // ConflictMode bestimmt, was passiert, wenn eine Zelle schon vier Farben hat.
@@ -98,6 +105,9 @@ func (p *Picture) ColorAt(x, y int) uint8 {
 // Usage zählt, wie viele Bildpunkte einer Zelle jedes Bitpaar nutzen.
 // Der Bildpunkt (ex,ey) wird nicht mitgezählt (ex<0: alle zählen).
 func (p *Picture) Usage(cell, ex, ey int) [4]int {
+	if p.Layered {
+		return p.usageLayers(cell, ex, ey)
+	}
 	var u [4]int
 	cx, cy := (cell%Cols)*4, (cell/Cols)*8
 	for y := cy; y < cy+8; y++ {
@@ -128,6 +138,9 @@ func (p *Picture) Plot(x, y int, c uint8, mode ConflictMode, pal *Palette) PlotR
 		return PlotOK
 	}
 	c &= 15
+	if p.Layered {
+		return p.plotLayer(x, y, c, mode, pal)
+	}
 	i := y*W + x
 	cell := CellOf(x, y)
 	if c == p.BG {
@@ -191,6 +204,9 @@ func rgbOf(c uint32) (int, int, int) { return int(c >> 16 & 255), int(c >> 8 & 2
 
 // Clear löscht das Bild (alle Bildpunkte = Hintergrund).
 func (p *Picture) Clear() {
+	for l := range p.L {
+		p.L[l] = [W * H]uint8{}
+	}
 	p.Bits = [W * H]uint8{}
 	p.Screen = [Cells]uint8{}
 	p.ColorRAM = [Cells]uint8{}
@@ -198,6 +214,10 @@ func (p *Picture) Clear() {
 
 // CleanUnused setzt unbenutzte Bitpaar-Farben auf 0 (rein kosmetisch, ändert nichts Sichtbares).
 func (p *Picture) CleanUnused() {
+	if p.Layered {
+		p.Recomposite() // assigns only used colors
+		return
+	}
 	for cell := 0; cell < Cells; cell++ {
 		u := p.Usage(cell, -1, -1)
 		for s := 1; s <= 3; s++ {
@@ -264,6 +284,9 @@ func (p *Picture) ReplaceCellColor(cell int, from, to uint8, both bool) int {
 	to &= 15
 	if from == to || from == p.BG || to == p.BG || cell < 0 || cell >= Cells {
 		return 0
+	}
+	if p.Layered {
+		return p.replaceCellColorLayers(cell, from, to, both)
 	}
 	u := p.Usage(cell, -1, -1)
 	var fromSlots, toSlots []int

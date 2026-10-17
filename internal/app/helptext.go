@@ -30,7 +30,7 @@ The layout follows **Deluxe Paint** and **PyDPainter**: the menu bar at the top,
 
 ## Menu bar
 
-File, edit, selection and view commands, options (palette, color conflicts, theme, interface size) and this help. The sun/moon icon at the top right switches between the light and the dark theme.
+File, edit, selection, layer and view commands, options (palette, color conflicts, theme, interface size) and this help. The sun/moon icon at the top right switches between the light and the dark theme.
 
 **Options → Interface size** makes the whole interface 100 %, 200 % or 300 % large; the window is resized to match. Sizes that do not fit on your screen are greyed out.
 
@@ -49,7 +49,7 @@ File, edit, selection and view commands, options (palette, color conflicts, them
 - **Brush**: shape (round, square, diamond, custom), size 1–16, preview, airbrush settings.
 - **Patterns**: fill patterns for all tools (hidden for the dither brush).
 - **Colors**: background ($D021), border ($D020) and the behavior for color conflicts.
-- **Layers**: template layer and picture layer.
+- **Layers**: the paint layers 2–4 (click = paint on it, eye = show/hide) and the template (layer 1).
 - **Cell under the mouse**: the four colors of the cell and which bit pairs are free.
 - **Navigator**: the whole picture in small; click or drag to choose the visible area.
 
@@ -188,6 +188,10 @@ Paint over the borders between flat color areas: they are blended with the chose
 ## [smear] Smear (Shift+S)
 
 Smears the colors along the stroke, like the smudge tool of other paint programs: the brush picks up the colors under it and drags them along. **Strength** (side panel) sets how far: high values pull long streaks, low values blend softly. The brush shape and size come from the Brush panel. In full cells the nearest cell color is used, so the multicolor rules always hold.
+
+## [eraser] Eraser (W)
+
+Makes pixels of the **active layer** transparent again, so the layers below (or the background) show through. Brush shape and size come from the Brush panel; ` + "`Ctrl`" + ` gives a straight line. Without layers below, erasing gives the background color.
 
 ## [rect|rectf] Rectangle (R / Shift+R)
 
@@ -445,106 +449,49 @@ With **View → Grid settings …** (` + "`Shift+G`" + ` or right-click the grid
 - **Show border**: shows the C64 border in the border color ($D020), like on a TV.
 `},
 	{id: "layers", title: "Layers & template", body: `
-# Layers and template
+# Layers
 
-There are two layers: the **template** and the **picture** (the actual C64 graphics).
+A picture has **four layers** (side panel **Layers** or the **Layer** menu):
 
-## Template layer
+= Layer 4 | paint layer (top)
+= Layer 3 | paint layer
+= Layer 2 | paint layer (bottom) – loaded and imported pictures go here
+= Layer 1 | the **template**: any image for tracing, its colors do not matter
 
-Load a PNG, BMP, JPG or GIF image as a template (**File → Load template …**, the button in the side panel or right-click the layer button). The template does **not** become part of the C64 graphics – it is only for tracing.
+## Paint layers 2–4
+
+- **Click a layer** (or press ` + "`2`" + `, ` + "`3`" + `, ` + "`4`" + `) to paint on it. The active layer is highlighted and shown in the status bar. All tools paint into the active layer; the selection, Auto dither, the Dither brush and Smear work on it too.
+- Pixels you have not painted on a layer are **transparent**: the layers below show through. Where no layer has a pixel, you see the background color.
+- The **Eraser** (` + "`W`" + `) makes pixels of the active layer transparent again. **Clear layer** empties the whole active layer.
+- The **eye icon** shows or hides a layer.
+
+> **The multicolor rules apply to layers 2–4 together.** In every 4 × 8 cell, all three layers together may use the background color plus at most three colors – **also when a layer is hidden**. So every combination of visible layers is always a valid C64 picture. The cell info marks colors that only come from hidden layers.
+
+What you see (the visible layers) is what you save as KLA, PNG or PRG. To keep the layers, save as a **project (.c64dp)**.
+
+Pixels painted in the background color follow the background: when you change $D021, they change too (like %00 pixels on a real C64).
+
+## Layer 1: template
+
+Load a PNG, BMP, JPG or GIF image as a template (**File → Load template …**, the button in the side panel or the **Layer** menu). The template does **not** become part of the C64 graphics – it is only for tracing.
 
 - **Eye icon** or key ` + "`T`" + `: show/hide.
 - **Opacity** 0–100 %.
 - **Above picture**: the template lies semi-transparent over your drawing.
 - **Below picture**: the template only shows through pixels with background bit pair ` + "`%00`" + `. So you see what has not been painted yet.
 - **Stretch / Fit / Fill** decides how the template is mapped to 320 × 200.
-- **Convert template to C64 picture …** opens the converter with all its settings.
-
-## Picture layer
-
-The eye icon of the picture layer hides your drawing so you can see the template alone. You can still paint.
+- **Convert template to C64 picture …** opens the converter with all its settings. Like opening or importing a picture, this replaces all layers (undo brings them back).
 
 ## Spare page
 
-Like Deluxe Paint there is a second page. ` + "`J`" + ` switches between both pages, **Edit → Copy picture to other page** keeps a backup. Each page has its own undo history.
-`},
-	{id: "import", group: "Files", title: "Import & convert", body: `
-# Import and convert pictures
-
-**File → Import image (320×200) …** (` + "`Ctrl+I`" + `) opens the converter. It also opens when you open a PNG or BMP file with **File → Open** or drop one onto the window.
-
-The converter is made for pictures with **320 × 200 pixels** – the size of the C64 screen. Such pictures are taken over 1:1. Other sizes are scaled first. 160 × 200 pictures are treated as multicolor pixels.
-
-## Preview
-
-The large preview shows the result **in multicolor**, exactly as the C64 will show it, and updates immediately with every change.
-
-- **Multicolor** – the converted result.
-- **Original** – the source picture with your adjustments.
-- **Split** – left half original, right half multicolor.
-- **Hold the mouse button** on the preview to see the original for a moment.
-
-Below the preview you see the chosen background color and how many cells use all four colors.
-
-## Use as
-
-- **C64 picture**: the picture is converted following the multicolor rules.
-- **Template**: the picture becomes the template layer for tracing.
-- **Both**: converted picture plus template.
-
-## Size and pixel pairs
-
-- **Stretch / Fit / Fill** – only for pictures that are not 320 × 200.
-- **Pixel pairs**: a multicolor pixel is as wide as two screen pixels. **Average** mixes both, **Left pixel** or **Right pixel** takes only one of them. For pixel art drawn in 320 × 200 the left or right pixel often gives sharper results.
-
-## Adjustments
-
-= Brightness | −100 to +100, makes the picture darker or lighter
-= Contrast | −100 to +100, flattens or strengthens light/dark differences
-= Saturation | −100 (grey) to +100 (twice as colorful)
-= Hue | −180° to +180°, rotates all colors around the color wheel
-= Gamma | −100 to +100, darkens or brightens the mid-tones only
-
-**Reset adjustments** sets everything back to 0.
-
-## Dithering
-
-Dithering mixes neighboring pixels of the cell colors to simulate colors the C64 does not have. **Strength** (0–100 %) controls how strong the effect is. 0 % equals no dithering.
-
-**Ordered (pattern) methods** – regular patterns, very "C64-like", stable when pictures move:
-
-= None | every pixel gets the nearest allowed color
-= Bayer 2×2 | very fine, coarse steps
-= Bayer 4×4 | classic dither pattern, good all-rounder
-= Bayer 8×8 | finest gradients
-= Clustered dot | dots grow like newspaper print
-= Line pattern | horizontal lines, typical for C64 demos
-= Noise | random pattern, natural look
-
-**Error diffusion** – distributes the color error to the neighboring pixels, more detail for photos:
-
-= Floyd–Steinberg | the classic, sharp and detailed
-= Atkinson | lighter, more contrast, loses some detail in dark/light areas
-= Jarvis-Judice-Ninke | spreads further, smoother
-= Stucki | similar to Jarvis, a little sharper
-= Burkes | fast and smooth
-= Sierra | balanced between Floyd–Steinberg and Jarvis
-= Sierra Lite | very compact, little spreading
-
-**Serpentine scanning** (error diffusion only) processes every other row from right to left. This avoids diagonal streaks.
-
-## Background color
-
-**A** chooses the background color automatically (the one with the smallest total error). Or pick one of the 16 colors yourself.
-
-## How the conversion works
-
-For every 4×8 cell, the three colors are chosen from all useful combinations that give the smallest color error together with the background color. Then every pixel is assigned to one of these four colors – with the chosen dithering. The result always follows the multicolor rules.
-
-> The converter remembers your last settings while the program is running.
+Like Deluxe Paint there is a second page. ` + "`J`" + ` switches between both pages, **Edit → Copy picture to other page** keeps a backup. Each page has its own layers and undo history.
 `},
 	{id: "formats", title: "Saving & file formats", body: `
 # Saving and file formats
+
+## C64 DPainter project (.c64dp) – keeps the layers
+
+Saves **all layers** (also hidden ones), the active layer, the background and border color, the palette and the **template** with its settings. Use it for work in progress; export KLA, PNG or PRG for the C64 – these contain the visible layers merged into one picture.
 
 ## Koala Painter (.kla / .koa) – standard format
 
@@ -556,7 +503,7 @@ The classic C64 format for multicolor pictures, 10 003 bytes:
 = 1000 bytes | color RAM (color %11)
 = 1 byte | background color
 
-` + "`Ctrl+S`" + ` saves in the format of the current file, a new picture as .kla. Files without a load address (10 001 bytes) are also read.
+` + "`Ctrl+S`" + ` saves in the format of the current file; a new picture is saved as a project (.c64dp) – choose .kla, .png or .prg in the save dialog. Files without a load address (10 001 bytes) are also read.
 
 ## PNG
 
@@ -572,7 +519,7 @@ A **runnable program** with a built-in viewer. See "Running the C64 program".
 
 ## Loading
 
-**PNG**, **BMP** (1/4/8/16/24/32 bit, also RLE compressed) and **KLA/KOA**. Templates can also be JPG and GIF.
+**C64 DPainter projects (.c64dp)**, **PNG**, **BMP** (1/4/8/16/24/32 bit, also RLE compressed) and **KLA/KOA**. KLA, PNG and BMP go into layer 2. Templates can also be JPG and GIF.
 
 -> prg | Running the C64 program
 -> import | Import & convert
@@ -619,6 +566,7 @@ As in Deluxe Paint, letter keys work directly, without Ctrl.
 = A | Airbrush
 = Shift+D | Dither brush (experimental)
 = Shift+S | Smear
+= W | Eraser (active layer)
 = R / Shift+R | Rectangle / filled
 = C / Shift+C | Circle / filled
 = E / Shift+E | Ellipse / filled
@@ -626,6 +574,11 @@ As in Deluxe Paint, letter keys work directly, without Ctrl.
 = , | Color picker (also Alt+click)
 = Space | hold: move the view
 = Ctrl | while painting (freehand, dots): straight line, with Shift at 45°
+
+## Layers
+
+= 2 / 3 / 4 | paint on layer 2 / 3 / 4
+= T | template (layer 1) on/off
 
 ## Brush, colors, patterns
 
@@ -655,7 +608,6 @@ As in Deluxe Paint, letter keys work directly, without Ctrl.
 = Ctrl+1 | 100 %
 = G / Shift+G | grid on/off / settings
 = M | pixel grid
-= T | template on/off
 = Tab | side panel on/off
 
 ## Edit and files
@@ -666,7 +618,7 @@ As in Deluxe Paint, letter keys work directly, without Ctrl.
 = Shift+A | Auto dither (experimental)
 = Shift+K | clear picture
 = Ctrl+N | new
-= Ctrl+O | open
+= Ctrl+O | open (also .c64dp projects)
 = Ctrl+I | import & convert image
 = Ctrl+S / Ctrl+Shift+S | save / save as
 = Ctrl+E | export as C64 program

@@ -114,6 +114,27 @@ func main() {
 	hover(a, 82, 60)
 	shot(a, "01_main_window")
 
+	// 1b layers: paint on layer 3 over the picture, panel scrolled to the layers
+	char(a, '3')
+	a.Debug("fg", 13)
+	for i := 0; i < 4; i++ {
+		char(a, '+')
+	}
+	stroke(a, 0, [2]int{20, 150}, [2]int{40, 140}, [2]int{60, 150}, [2]int{80, 140})
+	a.Debug("fg", 1)
+	stroke(a, 0, [2]int{24, 170}, [2]int{70, 166})
+	a.Debug("panelscroll", 520)
+	hover(a, 60, 150)
+	shot(a, "01b_layers")
+	a.Debug("panelscroll", 0)
+	char(a, 'u')
+	char(a, 'u')
+	char(a, '2')
+	for i := 0; i < 4; i++ {
+		char(a, '-')
+	}
+	a.Debug("fg", 7)
+
 	// 2 zoomed in: cells, grid and the cell info
 	cx, cy := a.PicToScreenCenter(84, 62)
 	for i := 0; i < 3; i++ {

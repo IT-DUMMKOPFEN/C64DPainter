@@ -28,7 +28,8 @@ const (
 )
 
 var openFilters = []Filter{
-	{"All supported images", "*.kla;*.koa;*.png;*.bmp"},
+	{"All supported files", "*.c64dp;*.kla;*.koa;*.png;*.bmp"},
+	{"C64 DPainter project with layers (*.c64dp)", "*.c64dp"},
 	{"Koala Painter (*.kla, *.koa)", "*.kla;*.koa"},
 	{"PNG image (*.png)", "*.png"},
 	{"Windows bitmap (*.bmp)", "*.bmp"},
@@ -145,7 +146,7 @@ func (a *App) cmdNew() {
 	}
 	a.sel.state = selNone
 	bg, border := a.pic.BG, a.pic.Border
-	*a.pic = *c64.NewPicture(bg, border)
+	a.setFlatPicture(c64.NewPicture(bg, border))
 	a.undos[a.page], a.redos[a.page] = nil, nil
 	a.dirty[a.page] = false
 	a.filePath[a.page] = ""
@@ -171,6 +172,16 @@ func (a *App) openPath(p string) {
 	}
 	a.rememberDir(p)
 	ext := strings.ToLower(filepath.Ext(p))
+	if ext == ".c64dp" || isProject(data) {
+		if a.loadProject(data, p) {
+			a.filePath[a.page] = p
+			a.dirty[a.page] = false
+			a.sel.state = selNone
+			a.updateTitle()
+			a.setStatus("Project loaded: " + filepath.Base(p))
+		}
+		return
+	}
 	if ext == ".kla" || ext == ".koa" || ((len(data) == 10003 || len(data) == 10001) && ext != ".png" && ext != ".bmp") {
 		pic, err := c64.LoadKLA(data)
 		if err != nil {
@@ -182,7 +193,7 @@ func (a *App) openPath(p string) {
 		}
 		pic.Border = a.pic.Border
 		a.pushUndo(a.pic.Clone())
-		*a.pic = *pic
+		a.setFlatPicture(pic)
 		a.filePath[a.page] = p
 		a.dirty[a.page] = false
 		a.sel.state = selNone
@@ -243,15 +254,16 @@ func (a *App) cmdSave() bool {
 
 func (a *App) cmdSaveAs() bool {
 	a.commitOrCancelForHistory()
-	name := "picture.kla"
+	name := "picture.c64dp"
 	if a.filePath[a.page] != "" {
 		name = filepath.Base(a.filePath[a.page])
 	}
 	p, ok := a.host.SaveFile("Save as", []Filter{
+		{"C64 DPainter project with layers (*.c64dp)", "*.c64dp"},
 		{"Koala Painter (*.kla)", "*.kla"},
 		{"PNG image 320×200 (*.png)", "*.png"},
 		{"C64 program (*.prg)", "*.prg"},
-	}, a.set.LastDir, name, "kla")
+	}, a.set.LastDir, name, "c64dp")
 	if !ok {
 		return false
 	}
@@ -265,6 +277,21 @@ func (a *App) cmdSaveAs() bool {
 
 func (a *App) saveTo(p string) bool {
 	ext := strings.ToLower(filepath.Ext(p))
+	if ext == ".c64dp" {
+		data, err := a.encodeProject()
+		if err == nil {
+			err = a.host.WriteFile(p, data)
+		}
+		if err != nil {
+			a.host.Info(AppName, "Saving failed:\n"+err.Error())
+			return false
+		}
+		a.dirty[a.page] = false
+		a.rememberDir(p)
+		a.updateTitle()
+		a.setStatus(fmt.Sprintf("Project saved: %s (%d bytes, all layers)", filepath.Base(p), len(data)))
+		return true
+	}
 	kind := exportKLA
 	switch ext {
 	case ".png":
@@ -278,7 +305,25 @@ func (a *App) saveTo(p string) bool {
 	a.dirty[a.page] = false
 	a.rememberDir(p)
 	a.updateTitle()
+	if a.usesLayers() {
+		a.setStatus("Saved " + filepath.Base(p) + " – visible layers merged. Save as .c64dp to keep the layers.")
+	}
 	return true
+}
+
+// usesLayers reports whether a plain C64 file would lose anything: more than
+// one painted layer, a hidden layer or a template.
+func (a *App) usesLayers() bool {
+	n := 0
+	for l := 0; l < c64.LayerCount; l++ {
+		if a.pic.LayerPixels(l) > 0 {
+			n++
+			if a.pic.Hide[l] {
+				return true
+			}
+		}
+	}
+	return n > 1 || a.tpl.src != nil
 }
 
 func (a *App) writeExport(p string, kind int) bool {

@@ -21,7 +21,7 @@ Version 0.95 beta · Created by IT-Dummköpfen · Free for private use.
 ## Features
 
 - Strict multicolor rules (160×200 pixels, 4×8 cells, bit pairs %00/%01/%10/%11). When a cell is full, the program can block the pixel, replace the rarest cell color or use the nearest cell color.
-- Tools: dots, freehand, line, curve, fill, airbrush, dither, smear, rectangle, circle and ellipse (each outlined or filled), select and color picker.
+- Tools: dots, freehand, line, curve, fill, airbrush, dither, smear, eraser, rectangle, circle and ellipse (each outlined or filled), select and color picker.
 - Round, square or diamond brushes from 1 to 16 pixels, plus custom brushes made from a selection.
 - 42 patterns (density steps, dots, lines, diagonals, grids and textures).
 - **Auto dither** (Edit menu) and a **Dither brush**, both experimental: blend the borders between flat color areas in clean steps (two colors per transition, 25 %/50 % bands, outlines and silhouettes stay sharp) in the styles Artist, Scanlines, Checker and Stripes, reconstructed from hand-pixelled C64 pictures – or shade with **Color**, which darkens with the colors of the cell.
@@ -30,9 +30,10 @@ Version 0.95 beta · Created by IT-Dummköpfen · Free for private use.
 - Selections can be moved, copied, flipped, rotated by 90° or freely, scaled and sheared in both directions.
 - Zoom from 1× to 32×, configurable grid (8×8 by default), pixel grid and C64 border.
 - Only the 16 C64 colors, with 116 palette variants from c64gfx.com.
-- Layers: a template (PNG/BMP/JPG/GIF, above or below the picture, with opacity) and the picture, plus a spare page.
+- Layers: three paint layers (show/hide, eraser) on which the multicolor rules apply together – every combination of visible layers is a valid C64 picture – plus a template layer (PNG/BMP/JPG/GIF, above or below the picture, with opacity) and a spare page.
 - **Import & convert** for 320×200 images: live multicolor preview (multicolor / original / split view), brightness, contrast, saturation, hue and gamma, 13 dithering methods with adjustable strength, pixel-pair modes and background color choice.
-- Loading: KLA/KOA, PNG, BMP.
+- Project files (.c64dp) keep all layers and the template.
+- Loading: C64 DPainter projects, KLA/KOA, PNG, BMP.
 - Saving: KLA, PNG (320×200, 160×200, 384×272 with border) and PRG (a runnable C64 program with a viewer).
 - Detailed built-in help (F1), light and dark theme, interface size 100/200/300 %, movable dialog windows.
 

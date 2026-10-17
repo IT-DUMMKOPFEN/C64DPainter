@@ -68,7 +68,7 @@ func (a *App) Debug(what string, v int) {
 		}
 	case "importok":
 		if d, ok := a.modal.(*importDialog); ok {
-			*a.pic = *d.preview
+			a.setFlatPicture(d.preview)
 			a.closeModal(false)
 		}
 	case "clear":

@@ -1,6 +1,8 @@
 package app
 
 import (
+	"image"
+	"image/color"
 	"os"
 	"path/filepath"
 	"testing"
@@ -79,8 +81,8 @@ func TestToolboxAndPalette(t *testing.T) {
 	if a.tool != ToolLine {
 		t.Fatalf("Linie nicht gewählt: %d", a.tool)
 	}
-	// geteilter Knopf Rechteck (Index 8, nach Dither- und Smear-Pinsel): unten rechts = gefüllt
-	x, y = toolRect(a, 8)
+	// geteilter Knopf Rechteck: unten rechts = gefüllt
+	x, y = toolRect(a, toolIndex(a, "t_rect"))
 	tclick(a, x+10, y+9, 0)
 	if a.tool != ToolRectF {
 		t.Fatalf("gefülltes Rechteck erwartet, %d", a.tool)
@@ -759,5 +761,115 @@ func TestSmearBrush(t *testing.T) {
 	a.undo()
 	if countDiff(orig, a.pic, 0, 0, 159, 199) != 0 {
 		t.Fatal("one undo step for the smear stroke")
+	}
+}
+
+// toolIndex finds a toolbox button by its id.
+func toolIndex(a *App, id string) int {
+	for i, tb := range a.toolButtons() {
+		if tb.id == id {
+			return i
+		}
+	}
+	panic("no tool button " + id)
+}
+
+func TestLayersInTheApp(t *testing.T) {
+	a, _ := setup(t)
+	a.Char('d')
+	step(a)
+	a.fg = 2
+	x0, y0 := pc(a, 10, 50)
+	x1, y1 := pc(a, 40, 50)
+	tdrag(a, x0, y0, x1, y1, 0) // red line on layer 2
+	a.Char('3')
+	step(a)
+	if a.pic.Active != 1 {
+		t.Fatalf("key 3 should select layer 3, active = %d", a.pic.Active)
+	}
+	a.fg = 7
+	tdrag(a, x0, y0, x1, y1, 0) // yellow line on layer 3, same place
+	if a.pic.ColorAt(20, 50) != 7 || a.pic.LayerPixels(0) == 0 || a.pic.LayerPixels(1) == 0 {
+		t.Fatal("layer 3 must cover layer 2")
+	}
+	// hide layer 3: the red line shows
+	a.toggleLayer(1)
+	step(a)
+	if a.pic.ColorAt(20, 50) != 2 {
+		t.Fatal("hidden layer 3 must show layer 2")
+	}
+	// undo keeps the visibility
+	a.undo()
+	if !a.pic.Hide[1] {
+		t.Fatal("undo must not change the visibility")
+	}
+	a.redo()
+	a.toggleLayer(1)
+	// eraser on layer 3 brings back the red line
+	a.Char('w')
+	step(a)
+	if a.tool != ToolErase {
+		t.Fatalf("W should select the eraser: %d", a.tool)
+	}
+	tdrag(a, x0, y0, x1, y1, 0)
+	if a.pic.ColorAt(20, 50) != 2 {
+		t.Fatalf("after erasing layer 3 the red line must show, got %d", a.pic.ColorAt(20, 50))
+	}
+	// the rules count hidden layers too: fill a cell with three colors on
+	// layer 2, hide it, a 4th color on layer 4 is blocked
+	a.Char('2')
+	step(a)
+	for i, c := range []uint8{5, 6, 14} {
+		a.pic.Plot(100+i, 100, c, c64.ConflictBlock, a.pal)
+	}
+	a.toggleLayer(0)
+	a.Char('4')
+	step(a)
+	if r := a.pic.Plot(103, 101, 1, c64.ConflictBlock, a.pal); r != c64.PlotBlocked {
+		t.Fatal("4th color must be blocked although layer 2 is hidden")
+	}
+	if h := a.pic.HiddenOnly(c64.CellOf(100, 100)); !h[1] && !h[2] && !h[3] {
+		t.Fatal("the cell info must mark colors of hidden layers")
+	}
+}
+
+func TestProjectRoundTrip(t *testing.T) {
+	a, h := setup(t)
+	a.pic.Plot(5, 5, 2, c64.ConflictBlock, a.pal)
+	a.setActiveLayer(2)
+	a.pic.Plot(6, 5, 7, c64.ConflictBlock, a.pal)
+	a.pic.Plot(7, 5, a.pic.BG, c64.ConflictBlock, a.pal)
+	a.toggleLayer(0)
+	tpl := image.NewRGBA(image.Rect(0, 0, 32, 20))
+	tpl.Set(3, 3, color.RGBA{255, 0, 0, 255})
+	a.setTemplate(tpl, "sketch.png")
+	a.tpl.opacity = 33
+	a.tpl.under = true
+	want := a.pic.Clone()
+	h.save = filepath.Join(t.TempDir(), "test.c64dp")
+	if !a.cmdSaveAs() {
+		t.Fatal("saving the project failed")
+	}
+	data, err := os.ReadFile(h.save)
+	if err != nil || !isProject(data) {
+		t.Fatalf("project file: %v", err)
+	}
+	// open it on a fresh page
+	b, hb := setup(t)
+	hb.open = h.save
+	b.dirty[b.page] = false
+	b.later(b.cmdOpen)
+	step(b)
+	if b.pic.L != want.L || b.pic.Hide != want.Hide || b.pic.Active != want.Active || b.pic.BG != want.BG {
+		t.Fatal("layers, visibility or active layer lost")
+	}
+	if b.pic.Bits != want.Bits {
+		t.Fatal("composite differs after loading")
+	}
+	if b.tpl.src == nil || b.tpl.name != "sketch.png" || b.tpl.opacity != 33 || !b.tpl.under {
+		t.Fatal("template lost")
+	}
+	if b.tpl.src.Bounds().Dx() != 32 {
+		t.Fatal("template image size")
 	}
 }

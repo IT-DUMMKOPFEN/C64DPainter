@@ -269,7 +269,7 @@ func (d *importDialog) Draw(a *App, r gfx.Rect) {
 			a.sel.state = selNone
 			a.pushUndo(a.pic.Clone())
 			border := a.pic.Border
-			*a.pic = *d.preview
+			a.setFlatPicture(d.preview)
 			a.pic.Border = border
 			a.filePath[a.page] = ""
 			a.updateTitle()

@@ -62,13 +62,14 @@ const (
 	ToolCellSwap
 	ToolDither
 	ToolSmear
+	ToolErase
 	toolCount
 )
 
 var toolNames = [toolCount]string{
 	"Dots", "Freehand", "Line", "Curve", "Fill", "Airbrush",
 	"Rectangle", "Filled rectangle", "Circle", "Filled circle",
-	"Ellipse", "Filled ellipse", "Select", "Color picker", "Pan", "Cell color swap", "Dither brush (experimental)", "Smear",
+	"Ellipse", "Filled ellipse", "Select", "Color picker", "Pan", "Cell color swap", "Dither brush (experimental)", "Smear", "Eraser",
 }
 
 var toolHints = [toolCount]string{
@@ -90,6 +91,7 @@ var toolHints = [toolCount]string{
 	"Paint over cells to swap their colors  ·  right button = other way  ·  any tool or Esc stops",
 	"Paint over color borders to dither them  ·  style and softness in the side panel  ·  Ctrl = straight line",
 	"Drag: smear the colors along the stroke  ·  strength in the side panel",
+	"Drag: erase on the active layer (it becomes transparent)  ·  Ctrl = straight line",
 }
 
 // App ist der Programmzustand.
@@ -209,6 +211,7 @@ func New(host Host) *App {
 	a.pal = &c64.Palettes[a.palIdx]
 	for i := range a.pages {
 		a.pages[i] = c64.NewPicture(0, 0)
+		a.pages[i].ToLayers()
 	}
 	a.pic = a.pages[0]
 	a.fg, a.fg2 = 1, 0
@@ -448,7 +451,7 @@ func (a *App) undo() {
 	last := (*u)[len(*u)-1]
 	*u = (*u)[:len(*u)-1]
 	a.redos[a.page] = append(a.redos[a.page], a.pic.Clone())
-	*a.pic = *last
+	a.restoreKeepingView(last)
 	a.markDirty()
 	a.setStatus("Undo")
 }
@@ -463,7 +466,7 @@ func (a *App) redo() {
 	last := (*r)[len(*r)-1]
 	*r = (*r)[:len(*r)-1]
 	a.undos[a.page] = append(a.undos[a.page], a.pic.Clone())
-	*a.pic = *last
+	a.restoreKeepingView(last)
 	a.markDirty()
 	a.setStatus("Redo")
 }
@@ -533,6 +536,12 @@ func (a *App) stamp() *Stamp {
 func (a *App) dab(p *c64.Picture, x, y, btn int) {
 	if a.tool == ToolDither {
 		a.ditherDab(p, x, y)
+		return
+	}
+	if a.tool == ToolErase {
+		for _, o := range a.stamp().Offs {
+			p.Erase(x+o.X, y+o.Y)
+		}
 		return
 	}
 	st := a.stamp()
@@ -702,7 +711,7 @@ func (a *App) drawStatus() {
 		text = toolNames[a.tool] + ": " + toolHints[a.tool]
 	}
 	// rechts: Zoom, Palette, Konfliktmodus
-	right := fmt.Sprintf("Zoom %d×   ·   %s   ·   %s", a.zoom, a.pal.Name, conflictNames[a.set.Conflict])
+	right := fmt.Sprintf("%s   ·   Zoom %d×   ·   %s   ·   %s", layerName(a.pic.Active), a.zoom, a.pal.Name, conflictNames[a.set.Conflict])
 	rw := f.Width(right)
 	a.img.TextL(f, gfx.Rect{X: r.Right() - rw - 10, Y: r.Y, W: rw, H: r.H}, right, th.TextDim)
 	// Mitte: Position
@@ -833,6 +842,10 @@ func (a *App) charShortcut(c rune) {
 		a.setTool(ToolDither)
 	case 'S':
 		a.setTool(ToolSmear)
+	case 'w':
+		a.setTool(ToolErase)
+	case '2', '3', '4':
+		a.setActiveLayer(int(c - '2'))
 	case 'A':
 		a.later(a.openAutoDither)
 	case 'v':
@@ -996,7 +1009,7 @@ func (a *App) clearPicture() {
 	a.sel.state = selNone
 	a.pushUndo(a.pic.Clone())
 	a.pic.Clear()
-	a.setStatus("Picture cleared (background color kept)")
+	a.setStatus("All layers cleared (background color kept)")
 }
 
 func (a *App) setBG(c uint8) {
@@ -1005,7 +1018,8 @@ func (a *App) setBG(c uint8) {
 	}
 	a.commitOrCancelForHistory()
 	a.pushUndo(a.pic.Clone())
-	a.pic.BG = c
+	a.pic.SetBG(c)
+	a.ditherRes = nil
 	a.setStatus("Background color ($D021): " + c64.ColorNames[c])
 }
 
