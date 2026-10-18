@@ -34,6 +34,10 @@ type Settings struct {
 	SmearStrength int                   `json:"smearStrength"`
 	DitherAuto    c64.AutoDitherOptions `json:"autoDither"`
 	Gradient      GradientSettings      `json:"gradient"`
+	Sym           SymSettings           `json:"symmetry"`
+	ShadeRamp     int                   `json:"shadeRamp"` // -1 = all colors by brightness
+	CRT           CRTSettings           `json:"crt"`
+	WorkDir       string                `json:"workDir"`
 }
 
 func defaultSettings() Settings {
@@ -52,6 +56,8 @@ func defaultSettings() Settings {
 		DitherBrush:   defaultDitherBrush(),
 		SmearStrength: 60,
 		DitherAuto:    c64.DefaultAutoDither(),
+		ShadeRamp:     -1,
+		CRT:           CRTSettings{Scale: 2, On: true},
 	}
 }
 

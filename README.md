@@ -21,14 +21,18 @@ Version 0.96 beta · Created by IT-Dummköpfen · Free for private use.
 ## Features
 
 - Strict multicolor rules (160×200 pixels, 4×8 cells, bit pairs %00/%01/%10/%11). When a cell is full, the program can block the pixel, replace the rarest cell color or use the nearest cell color.
-- Tools: dots, freehand, line, curve, fill, gradient fill, airbrush, dither, smear, eraser, rectangle, circle and ellipse (each outlined or filled), select and color picker.
+- Tools: dots, freehand, line, curve, fill, gradient fill, airbrush, dither, smear, shade, eraser, rectangle, square, circle, ellipse, triangle, hexagon and star (each outlined or filled), select and color picker.
+- **Symmetry**: paint mirrored left ↔ right, top ↔ bottom or four-fold, with movable axes.
+- **Shade** brush: lightens or darkens one step per stroke, by brightness or along a color ramp.
+- **Mirrored view** (Shift+M) and a floating **CRT preview** window (100/200/300 %, scanlines and PAL color bleed).
+- **Working folder** and **quick save** (F2): numbered PNGs without a dialog.
 - Round, square or diamond brushes from 1 to 16 pixels, plus custom brushes made from a selection.
 - 42 patterns (density steps, dots, lines, diagonals, grids and textures).
 - **Auto dither** (Edit menu) and a **Dither brush**, both experimental: blend the borders between flat color areas in clean steps (two colors per transition, 25 %/50 % bands, outlines and silhouettes stay sharp) in the styles Artist, Scanlines, Checker and Stripes, reconstructed from hand-pixelled C64 pictures – or shade with **Color**, which darkens with the colors of the cell.
 - **Gradient fill**: 15 C64 color ramps in three versions (3 colors, 5 colors dark → light → dark, 5 colors light → dark → light), linear, circle or diamond, single click or drag for direction and width, optional dithered transitions.
 - **Smear** brush: drags colors along the stroke like a smudge tool.
 - Swap colors in the whole picture or with a cell brush (the background color is never touched).
-- Selections can be moved, copied, flipped, rotated by 90° or freely, scaled and sheared in both directions.
+- Selections can be copied (default) or moved (Shift), flipped, rotated by 90° or freely, scaled and sheared in both directions.
 - Zoom from 1× to 32×, configurable grid (8×8 by default), pixel grid and C64 border.
 - Only the 16 C64 colors, with 116 palette variants from c64gfx.com.
 - Layers: three paint layers (layer 2 in front, 4 at the back; layers 3 + 4 have an on/off switch; show/hide, eraser) on which the multicolor rules apply together – every combination of visible layers is a valid C64 picture – plus a template layer (PNG/BMP/JPG/GIF, above or below the picture, with opacity) and a spare page.

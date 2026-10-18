@@ -785,3 +785,20 @@ func safe(f func()) {
 	}()
 	f()
 }
+
+func (linuxHost) ChooseFolder(title, dir string) (string, bool) {
+	tool := dialogTool()
+	start := dir
+	if start == "" {
+		start, _ = os.UserHomeDir()
+	}
+	switch filepath.Base(tool) {
+	case "zenity":
+		return runExternal(tool, "--file-selection", "--directory", "--title="+title, "--filename="+start+"/")
+	case "kdialog":
+		return runExternal(tool, "--getexistingdirectory", start, "--title", title)
+	}
+	inModal++
+	defer func() { inModal--; releaseAll() }()
+	return a.SyncFolderDialog(pump, title, start)
+}

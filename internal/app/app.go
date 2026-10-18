@@ -64,13 +64,23 @@ const (
 	ToolSmear
 	ToolErase
 	ToolGradient
+	ToolShade
+	ToolSquare
+	ToolSquareF
+	ToolTriangle
+	ToolTriangleF
+	ToolHexagon
+	ToolHexagonF
+	ToolStar
+	ToolStarF
 	toolCount
 )
 
 var toolNames = [toolCount]string{
 	"Dots", "Freehand", "Line", "Curve", "Fill", "Airbrush",
 	"Rectangle", "Filled rectangle", "Circle", "Filled circle",
-	"Ellipse", "Filled ellipse", "Select", "Color picker", "Pan", "Cell color swap", "Dither brush (experimental)", "Smear", "Eraser", "Gradient fill",
+	"Ellipse", "Filled ellipse", "Select", "Color picker", "Pan", "Cell color swap", "Dither brush (experimental)", "Smear", "Eraser", "Gradient fill", "Shade",
+	"Square", "Filled square", "Triangle", "Filled triangle", "Hexagon", "Filled hexagon", "Star", "Filled star",
 }
 
 var toolHints = [toolCount]string{
@@ -86,7 +96,7 @@ var toolHints = [toolCount]string{
 	"Drag from the center: filled circle",
 	"Drag from the center: ellipse",
 	"Drag from the center: filled ellipse",
-	"Drag: select  ·  drag inside = move (Ctrl = copy)",
+	"Drag: select  ·  drag inside = move a copy (Shift = move and cut out)",
 	"Click: pick a color (left = color 1, right = color 2)",
 	"Drag: move the view",
 	"Paint over cells to swap their colors  ·  right button = other way  ·  any tool or Esc stops",
@@ -94,6 +104,15 @@ var toolHints = [toolCount]string{
 	"Drag: smear the colors along the stroke  ·  strength in the side panel",
 	"Drag: erase on the active layer (it becomes transparent)  ·  Ctrl = straight line",
 	"Click: fill an area with the gradient from that point  ·  drag: direction and width  ·  Shift+F: choose gradient",
+	"Left button: lighten one step  ·  right button: darken one step  ·  each pixel changes once per stroke",
+	"Drag from corner to corner: square (on screen)",
+	"Drag from corner to corner: filled square (on screen)",
+	"Drag from the center: triangle  ·  direction = rotation, Shift = upright",
+	"Drag from the center: filled triangle  ·  direction = rotation, Shift = upright",
+	"Drag from the center: hexagon  ·  direction = rotation, Shift = upright",
+	"Drag from the center: filled hexagon  ·  direction = rotation, Shift = upright",
+	"Drag from the center: star  ·  direction = rotation, Shift = upright",
+	"Drag from the center: filled star  ·  direction = rotation, Shift = upright",
 }
 
 // App ist der Programmzustand.
@@ -182,6 +201,11 @@ type App struct {
 	extraLayers bool   // layers 3 and 4 switched on
 	smearBuf    []int8 // colors carried by the smear brush
 	grad        gradientDrag
+	noSym       bool   // symmetry paused (selection, smear, mirrored dabs)
+	shadeDone   []bool // pixels the shade brush already changed in this stroke
+	mirrorView  bool   // the view is mirrored horizontally (Shift+M)
+	crt         crtWindow
+	quickNum    int // last number used by quick save (F2)
 }
 
 type dragState struct {
@@ -236,11 +260,16 @@ func New(host Host) *App {
 	a.ui.in = &a.in
 	a.buildMenus()
 	a.updateTitle()
-	if !a.set.HelpSeen {
+	showHelp := !a.set.HelpSeen
+	if showHelp {
 		a.set.HelpSeen = true
 		a.saveSettings()
-		a.openHelp("start")
 	}
+	a.askWorkDir(func() {
+		if showHelp {
+			a.openHelp("start")
+		}
+	})
 	a.setStatus("Welcome to " + AppName + " " + AppVersion + "! Press F1 for help.")
 	return a
 }
@@ -509,6 +538,13 @@ func (a *App) otherColor(btn int) uint8 {
 
 // plot setzt einen Bildpunkt nach den Multicolor-Regeln und merkt Konflikte.
 func (a *App) plot(p *c64.Picture, x, y int, c uint8) {
+	if a.symActive() {
+		a.noSym = true
+		for _, q := range a.symMirrors(x, y) {
+			a.plot(p, q.X, q.Y, c)
+		}
+		a.noSym = false
+	}
 	if x < 0 || y < 0 || x >= c64.W || y >= c64.H {
 		return
 	}
@@ -540,13 +576,27 @@ func (a *App) stamp() *Stamp {
 
 // dab setzt einen Pinselabdruck.
 func (a *App) dab(p *c64.Picture, x, y, btn int) {
-	if a.tool == ToolDither {
-		a.ditherDab(p, x, y)
-		return
-	}
-	if a.tool == ToolErase {
-		for _, o := range a.stamp().Offs {
-			p.Erase(x+o.X, y+o.Y)
+	switch a.tool {
+	case ToolDither, ToolErase, ToolShade:
+		// the brush works on what is under it: run it at every mirrored
+		// position on its own
+		centers := []pt{{x, y}}
+		if a.symActive() {
+			centers = append(centers, a.symMirrors(x, y)...)
+		}
+		a.noSym = true
+		defer func() { a.noSym = false }()
+		for _, c := range centers {
+			switch a.tool {
+			case ToolDither:
+				a.ditherDab(p, c.X, c.Y)
+			case ToolShade:
+				a.shadeDab(p, c.X, c.Y, btn)
+			default:
+				for _, o := range a.stamp().Offs {
+					p.Erase(c.X+o.X, c.Y+o.Y)
+				}
+			}
 		}
 		return
 	}
@@ -653,16 +703,22 @@ func (a *App) frameOnce() *gfx.Image {
 	a.handleKeys()
 
 	// Eingabesperre für die Grundfläche, solange Menü oder Dialog offen sind
-	a.ui.blocked = a.modal != nil || a.menuOpen >= 0
+	// the CRT window takes the mouse when it is over it
+	overCRT := a.crtHit() && !a.drag.active
+	a.ui.blocked = a.modal != nil || a.menuOpen >= 0 || overCRT
 	if !a.ui.blocked {
 		a.canvasInput()
 	} else if a.drag.active {
 		a.canvasInput()
+	} else if overCRT {
+		a.mouseIn = false
 	}
 	a.drawCanvas()
 	a.drawPanel()
 	a.drawToolbox()
 	a.drawStatus()
+	a.ui.blocked = a.modal != nil || a.menuOpen >= 0
+	a.drawCRT()
 	a.ui.blocked = a.modal != nil
 	a.drawMenuBar()
 	if a.menuOpen >= 0 {
@@ -801,6 +857,8 @@ func (a *App) handleKeys() {
 			a.zoomStep(1, -1, -1)
 		case m.Ctrl && (k.Key == KeyMinus):
 			a.zoomStep(-1, -1, -1)
+		case k.Key == KeyF2:
+			a.quickSave()
 		case k.Key == KeyF1:
 			a.openHelp("")
 		case k.Key == KeyEsc:
@@ -850,6 +908,30 @@ func (a *App) charShortcut(c rune) {
 		a.setTool(ToolSmear)
 	case 'w':
 		a.setTool(ToolErase)
+	case 'W':
+		a.setTool(ToolShade)
+	case 'X':
+		a.toggleSymmetry()
+	case 'M':
+		a.toggleMirrorView()
+	case 'V':
+		a.toggleCRT()
+	case 'n':
+		a.setTool(ToolSquare)
+	case 'N':
+		a.setTool(ToolSquareF)
+	case 'i':
+		a.setTool(ToolTriangle)
+	case 'I':
+		a.setTool(ToolTriangleF)
+	case 'o':
+		a.setTool(ToolHexagon)
+	case 'O':
+		a.setTool(ToolHexagonF)
+	case 'l':
+		a.setTool(ToolStar)
+	case 'L':
+		a.setTool(ToolStarF)
 	case 'F':
 		a.setTool(ToolGradient)
 		a.later(a.openGradientDialog)

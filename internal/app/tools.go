@@ -9,6 +9,11 @@ import (
 // canvasInput verarbeitet Maus-Eingaben auf der Zeichenfläche.
 func (a *App) canvasInput() {
 	in := &a.in
+	if a.mirrorView {
+		mx := in.MX
+		in.MX = a.mirrorX(mx)
+		defer func() { in.MX = mx }()
+	}
 	cr := a.rCanvas
 	over := cr.Contains(in.MX, in.MY)
 	px, py := a.screenToPic(in.MX, in.MY)
@@ -109,7 +114,8 @@ func (a *App) toolInput(px, py int, over bool) {
 		d.straight = false
 		d.lineBase = nil
 		switch a.tool {
-		case ToolDraw, ToolDots, ToolSpray, ToolDither, ToolErase:
+		case ToolDraw, ToolDots, ToolSpray, ToolDither, ToolErase, ToolShade:
+			a.shadeDone = nil
 			if a.tool == ToolDither {
 				d.ditherSrc = a.ditherResult()
 			}
@@ -142,7 +148,7 @@ func (a *App) toolInput(px, py int, over bool) {
 		return
 	}
 	if in.Down[d.btn] {
-		if a.tool == ToolDraw || a.tool == ToolDots || a.tool == ToolDither || a.tool == ToolErase {
+		if a.tool == ToolDraw || a.tool == ToolDots || a.tool == ToolDither || a.tool == ToolErase || a.tool == ToolShade {
 			if a.straightLine(px, py) {
 				return
 			}
@@ -150,7 +156,7 @@ func (a *App) toolInput(px, py int, over bool) {
 		if px != d.lx || py != d.ly {
 			d.moved = true
 			switch a.tool {
-			case ToolDraw, ToolDither, ToolErase:
+			case ToolDraw, ToolDither, ToolErase, ToolShade:
 				a.lineDabs(a.pic, d.lx, d.ly, px, py, d.btn)
 			case ToolDots:
 				a.dab(a.pic, px, py, d.btn)
@@ -171,7 +177,7 @@ func (a *App) toolInput(px, py int, over bool) {
 		if a.tool == ToolSpray {
 			a.spray(px, py)
 		}
-		if (a.tool == ToolRect || a.tool == ToolRectF || a.tool == ToolLine) && in.Mods.Shift {
+		if (a.tool == ToolRect || a.tool == ToolRectF || a.tool == ToolLine || isShapeTool(a.tool)) && (in.Mods.Shift || isShapeTool(a.tool)) {
 			a.shapePreview(px, py)
 		}
 		return
@@ -179,6 +185,8 @@ func (a *App) toolInput(px, py int, over bool) {
 	// losgelassen
 	switch a.tool {
 	case ToolDraw, ToolDots, ToolSpray, ToolErase:
+	case ToolShade:
+		a.shadeDone = nil
 	case ToolDither:
 		d.ditherSrc = nil
 	case ToolSmear:
@@ -254,6 +262,10 @@ func (a *App) shapePreview(px, py int) {
 			rx, ry = m/2, m
 		}
 		a.ellipse(x0, y0, rx, ry, a.tool == ToolEllipseF, d.btn)
+	default:
+		if isShapeTool(a.tool) {
+			a.drawShape(x0, y0, x1, y1, d.btn, shift)
+		}
 	}
 }
 

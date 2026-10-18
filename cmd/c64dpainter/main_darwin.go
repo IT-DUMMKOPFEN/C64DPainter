@@ -879,3 +879,26 @@ func main() {
 	}
 	msg(nsApp, "run")
 }
+
+func (macHost) ChooseFolder(title, dir string) (string, bool) {
+	panel := msg(cls("NSOpenPanel"), "openPanel")
+	msg(panel, "setCanChooseFiles:", false)
+	msg(panel, "setCanChooseDirectories:", true)
+	msg(panel, "setCanCreateDirectories:", true)
+	msg(panel, "setAllowsMultipleSelection:", false)
+	msg(panel, "setMessage:", nsstr(title))
+	msg(panel, "setPrompt:", nsstr("Choose"))
+	if dir != "" {
+		msg(panel, "setDirectoryURL:", msg(cls("NSURL"), "fileURLWithPath:", nsstr(dir)))
+	}
+	inModal++
+	r := objc.Send[int64](panel, sel("runModal"))
+	inModal--
+	releaseAll()
+	if r != 1 {
+		return "", false
+	}
+	url := msg(msg(panel, "URLs"), "firstObject")
+	p := gostr(msg(url, "path"))
+	return p, p != ""
+}

@@ -38,6 +38,8 @@ func (a *App) buildMenus() {
 			item("Import image (320×200) …", "Ctrl+I", func() { a.later(a.cmdImport) }),
 			item("Save", "Ctrl+S", func() { a.later(func() { a.cmdSave() }) }),
 			item("Save as …", "Ctrl+Shift+S", func() { a.later(func() { a.cmdSaveAs() }) }),
+			item("Quick save PNG (numbered)", "F2", a.quickSave),
+			item("Working folder …", "", func() { a.askWorkDir(nil) }),
 			sep(),
 			head("Export"),
 			item("Koala Painter (.kla) …", "", func() { a.later(func() { a.cmdExport(exportKLA) }) }),
@@ -120,7 +122,7 @@ func (a *App) buildMenus() {
 		{Title: "View", Items: []MenuItem{
 			item("Zoom in", ">", func() { a.zoomStep(1, -1, -1) }),
 			item("Zoom out", "<", func() { a.zoomStep(-1, -1, -1) }),
-			item("Fit to window", "Ctrl+0", a.zoomFit),
+			item("Fit to window", "0", a.zoomFit),
 			item("Actual size (100 %)", "Ctrl+1", func() { a.setZoomCentered(1) }),
 			sep(),
 			check("Grid", "G", func() bool { return a.set.GridOn }, func() { a.set.GridOn = !a.set.GridOn; a.saveSettings() }),
@@ -131,6 +133,10 @@ func (a *App) buildMenus() {
 			check("Side panel", "Tab", func() bool { return a.set.ShowPanel }, func() { a.set.ShowPanel = !a.set.ShowPanel; a.saveSettings() }),
 			sep(),
 			check("Show template", "T", func() bool { return a.tpl.visible }, func() { a.tpl.visible = !a.tpl.visible }),
+			sep(),
+			check("Mirrored view", "Shift+M", func() bool { return a.mirrorView }, a.toggleMirrorView),
+			check("CRT preview window", "Shift+V", func() bool { return a.crt.open }, a.toggleCRT),
+			check("Symmetry (paint mirrored)", "Shift+X", func() bool { return a.set.Sym.On }, a.toggleSymmetry),
 		}},
 		{Title: "Options", Items: []MenuItem{
 			item("Choose palette …", "P", a.openPaletteDialog),

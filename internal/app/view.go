@@ -269,8 +269,12 @@ func (a *App) drawCanvas() {
 		a.drawBrushPreview()
 	}
 	a.drawGradientLine()
+	a.drawSymAxes()
 	// Auswahl
 	a.drawSelection()
+	if a.mirrorView {
+		a.flipCanvas()
+	}
 }
 
 func (a *App) drawGrid(vis gfx.Rect, ox, oy, z int) {
@@ -362,7 +366,7 @@ func (a *App) drawBrushPreview() {
 			continue
 		}
 		c := col
-		if a.tool == ToolSmear || a.tool == ToolErase {
+		if a.tool == ToolSmear || a.tool == ToolErase || a.tool == ToolShade {
 			continue // only the outline
 		}
 		if dsrc != nil {
@@ -385,5 +389,15 @@ func (a *App) drawBrushPreview() {
 	r := gfx.Rect{X: sx - 1, Y: sy - 1, W: st.W*2*z + 2, H: st.H*z + 2}
 	if st.W*st.H > 1 || z >= 3 {
 		dashedFrame(m, r, 0xFFFFFF, 0x000000, 0)
+	}
+	// mirrored positions (symmetry)
+	if a.symActive() {
+		for _, q := range a.symMirrors(a.mpx, a.mpy) {
+			qx, qy := a.picToScreen(q.X, q.Y)
+			c := gfx.Rect{X: qx + z - 4, Y: qy + z/2 - 4, W: 9, H: 9}
+			dashedFrame(m, gfx.Rect{X: qx + z - st.W*z - 1, Y: qy + z/2 - st.H*z/2 - 1, W: st.W*2*z + 2, H: st.H*z + 2}, 0xFF40C0, 0xFFFFFF, 0)
+			m.HLine(c.X, c.Right()-1, c.Y+4, 0xFF40C0)
+			m.VLine(c.X+4, c.Y, c.Bottom()-1, 0xFF40C0)
+		}
 	}
 }

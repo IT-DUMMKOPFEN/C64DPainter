@@ -45,7 +45,8 @@ File, edit, selection, layer and view commands, options (palette, color conflict
 ## Side panel (left)
 
 - **Selection** (only with the select tool): rotate, scale, shear.
-- **Dither brush** / **Smear** / **Gradient fill** (only with these tools): their settings.
+- **Symmetry** (while it is on): axes and mirror mode.
+- **Dither brush** / **Smear** / **Shade** / **Gradient fill** (only with these tools): their settings.
 - **Brush**: shape (round, square, diamond, custom), size 1–16, preview, airbrush settings.
 - **Patterns**: fill patterns for all tools (hidden for the dither brush).
 - **Colors**: background ($D021), border ($D020) and the behavior for color conflicts.
@@ -208,6 +209,10 @@ Smears the colors along the stroke, like the smudge tool of other paint programs
 
 Makes pixels of the **active layer** transparent again, so the layers below (or the background) show through. Brush shape and size come from the Brush panel; ` + "`Ctrl`" + ` gives a straight line. Without layers below, erasing gives the background color.
 
+## [shade] Shade (Shift+W)
+
+Lightens or darkens the colors under the brush by **one step**: left mouse button = lighter, right mouse button = darker. Each pixel changes only once per stroke, so you can paint over an area without it turning white or black – for the next step start a new stroke. In the side panel you choose the steps: **All colors by brightness** (the 16 C64 colors from black to white) or one of the 15 **color ramps** of the gradient fill (e.g. blue: blue → light blue → cyan); colors that are not in the chosen ramp stay as they are. In full cells the conflict mode decides.
+
 ## [rect|rectf] Rectangle (R / Shift+R)
 
 Drag from corner to corner. Outlines use the brush, filled shapes use the pattern. ` + "`Shift`" + ` = square (on screen).
@@ -219,6 +224,22 @@ Drag from the center. The circle is round on screen – so in pixels it is twice
 ## [ellipse|ellipsef] Ellipse (E / Shift+E)
 
 Drag from the center. Width and height follow the mouse. ` + "`Shift`" + ` = circle.
+
+## [square|squaref] Square (N / Shift+N)
+
+Drag from corner to corner. The square is square on screen (in pixels it is twice as high as wide).
+
+## [triangle|trianglef] Triangle (I / Shift+I)
+
+## [hexagon|hexagonf] Hexagon (O / Shift+O)
+
+## [star|starf] Star (L / Shift+L)
+
+For all three: drag from the center: the distance sets the size, the direction the rotation – the first corner points to the mouse. Hold ` + "`Shift`" + ` to keep the shape upright. Like the circle, the shapes are regular on screen. Outlines use the brush, filled shapes the pattern.
+
+## [symmetry] Symmetry (Shift+X)
+
+Everything you paint is also painted mirrored: **left ↔ right**, **top ↔ bottom** or **both** (four-fold). The dashed lines show the axes; by default they lie in the middle of the picture, in the side panel you can move them (**Axis X / Axis Y**, **Axis to the center**). Symmetry works with dots, freehand, lines, curves, the airbrush, the dither and shade brushes, the eraser, all shapes and both fill tools – not with the selection and the smear brush. Switch it on and off with ` + "`Shift+X`" + `, the toolbox button or **View → Symmetry**.
 
 ## [select] Select (B)
 
@@ -399,8 +420,9 @@ Choose the select tool (` + "`B`" + `) and drag a frame. ` + "`Ctrl+A`" + ` sele
 
 ## Moving and copying
 
-- Dragging inside the selection **moves** the content. The old place becomes background (` + "`%00`" + `).
-- With ` + "`Ctrl`" + ` held while dragging you **copy**. Dragging an already floating selection with ` + "`Ctrl`" + ` leaves a copy behind (stamping).
+- Dragging inside the selection moves a **copy** of the content – the original stays in the picture.
+- Hold ` + "`Shift`" + ` when you start dragging to **move** the content instead: the old place becomes transparent (background ` + "`%00`" + `).
+- Dragging an already floating selection with ` + "`Ctrl`" + ` leaves a copy behind (stamping).
 - The arrow keys move by 1 pixel, with ` + "`Shift`" + ` by 4 pixels.
 - ` + "`Enter`" + ` applies the selection to the picture, ` + "`Esc`" + ` cancels and restores the previous state.
 
@@ -456,6 +478,17 @@ With **View → Grid settings …** (` + "`Shift+G`" + ` or right-click the grid
 - Presets: 8×8 (cell), 16×16, 32×32, 2×1 (one pixel), 4×4.
 
 {MACNOTE}
+
+## Mirrored view (Shift+M)
+
+` + "`Shift+M`" + ` shows the picture mirrored left ↔ right. Looking at a picture mirrored for a moment shows mistakes in proportions you no longer notice. Only the **view** changes – the picture is not changed, and you can keep painting. "MIRRORED VIEW" is shown in the corner; ` + "`Shift+M`" + ` switches back.
+
+## CRT preview (Shift+V)
+
+A separate window shows the picture with its border like on a TV. It does not block the program: keep painting, the preview follows every change. Drag it by its title bar.
+
+- **100 %** – 384 × 272 screen pixels, the real size of a C64 picture with border; **200 %** and **300 %** larger. When the window does not fit, the middle part is shown.
+- **CRT** on: scanlines, the slightly soft picture and the PAL color bleed – good for judging dithering. Off: sharp pixels.
 
 ## More display aids
 
@@ -521,6 +554,12 @@ The classic C64 format for multicolor pictures, 10 003 bytes:
 
 ` + "`Ctrl+S`" + ` saves in the format of the current file; a new picture is saved as a project (.c64dp) – choose .kla, .png or .prg in the save dialog. Files without a load address (10 001 bytes) are also read.
 
+## Working folder and quick save (F2)
+
+At the start and with **File → New** the program asks for the **working folder** – the folder where your pictures and data are saved. The save and open dialogs start there. **File → Working folder …** changes it at any time.
+
+` + "`F2`" + ` saves the picture at once, without a dialog, as a numbered PNG (320 × 200) into the working folder: ` + "`picture_0001.png`" + `, ` + "`picture_0002.png`" + ` … The numbers continue after the highest number already in the folder. When the picture already has a file name, that name is used instead of "picture". The status bar shows the file name.
+
 ## PNG
 
 - **320 × 200**: as on screen (every pixel 2 pixels wide). Default for "Save as" with .png.
@@ -580,6 +619,12 @@ As in Deluxe Paint, letter keys work directly, without Ctrl.
 = Q | Curve
 = F | Fill
 = Shift+F | Gradient fill (opens the gradient window)
+= Shift+W | Shade (left lighter, right darker)
+= N / Shift+N | Square / filled
+= I / Shift+I | Triangle / filled
+= O / Shift+O | Hexagon / filled
+= L / Shift+L | Star / filled
+= Shift+X | Symmetry on/off
 = A | Airbrush
 = Shift+D | Dither brush (experimental)
 = Shift+S | Smear
@@ -625,6 +670,8 @@ As in Deluxe Paint, letter keys work directly, without Ctrl.
 = Ctrl+1 | 100 %
 = G / Shift+G | grid on/off / settings
 = M | pixel grid
+= Shift+M | mirrored view on/off
+= Shift+V | CRT preview window
 = Tab | side panel on/off
 
 ## Edit and files
@@ -638,6 +685,7 @@ As in Deluxe Paint, letter keys work directly, without Ctrl.
 = Ctrl+O | open (also .c64dp projects)
 = Ctrl+I | import & convert image
 = Ctrl+S / Ctrl+Shift+S | save / save as
+= F2 | quick save: numbered PNG into the working folder
 = Ctrl+E | export as C64 program
 = F1 / ? | help / keyboard shortcuts
 = Ctrl+Q | exit
@@ -703,7 +751,7 @@ Runs on **Windows 11** (Windows 10 may crash), **macOS** (M chips only) and **Li
 
 Created by **IT-Dummköpfen**. Free for private use.
 
-Inspired by **Deluxe Paint** (Electronic Arts, 1985) and **PyDPainter**. Controls and keyboard shortcuts follow these programs.
+Inspired by **Deluxe Paint** (Electronic Arts, 1985), **PyDPainter** and **Multipaint**. Controls and keyboard shortcuts follow these programs.
 
 I was also inspired by many comments from users. Thank you so much! ❤
 
@@ -721,7 +769,7 @@ Thank you all for making your work available and letting us use it:
 - **Dithering:** articles and guides on pixelparmesan.com, pixel-editor.com, pixnote.net, divoom.com and pixie.haus.
 - **Dither styles:** 16 hand-pixelled C64 scene pictures, analyzed pattern by pattern.
 - **Gradients:** color ramp table by IT-Dummköpfen.
-- **Inspiration:** Deluxe Paint (Electronic Arts, 1985) and PyDPainter.
+- **Inspiration:** Deluxe Paint (Electronic Arts, 1985), PyDPainter and Multipaint (Marq/Kameli).
 
 ## Settings
 

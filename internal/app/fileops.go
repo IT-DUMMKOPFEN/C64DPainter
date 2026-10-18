@@ -152,6 +152,7 @@ func (a *App) cmdNew() {
 	a.filePath[a.page] = ""
 	a.updateTitle()
 	a.setStatus("New picture")
+	a.askWorkDir(nil)
 }
 
 func (a *App) cmdOpen() {

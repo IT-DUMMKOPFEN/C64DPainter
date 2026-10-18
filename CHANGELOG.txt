@@ -49,6 +49,59 @@ Gradient fill (new tool, Shift+F)
 - The side panel shows the chosen gradient and a button to open the
   window again.
 
+Shade brush (new tool, Shift+W)
+- Lightens (left mouse button) or darkens (right mouse button) the colors
+  under the brush by one step.
+- Each pixel changes only once per stroke, so you can paint over an area
+  without it turning white or black.
+- Steps: all 16 colors by brightness, or one of the 15 color ramps of the
+  gradient fill. Colors outside the chosen ramp stay as they are.
+
+Symmetry (Shift+X)
+- Everything you paint is also painted mirrored: left <-> right,
+  top <-> bottom or both (four-fold).
+- The axes are shown as dashed lines. They lie in the middle of the
+  picture by default and can be moved in the side panel.
+- Works with dots, freehand, line, curve, airbrush, dither brush, shade
+  brush, eraser, all shapes, fill and gradient fill.
+- Toolbox button and View > Symmetry.
+
+New shapes, outlined and filled
+- Square (N / Shift+N): drag from corner to corner, square on screen.
+- Triangle (I / Shift+I), Hexagon (O / Shift+O) and Star (L / Shift+L):
+  drag from the center; the direction sets the rotation, Shift keeps the
+  shape upright. All shapes are regular on screen, like the circle.
+- New icons; the rectangle icon is now clearly wider than the square icon.
+
+Mirrored view (Shift+M)
+- Shows the picture mirrored left <-> right for a fresh look at it.
+  Only the view changes, the picture stays as it is, and you can keep
+  painting.
+
+CRT preview window (Shift+V)
+- A floating window that shows the picture with its border like on a TV.
+  It does not block the program: keep painting, it follows every change.
+- Sizes 100 % (384 x 272, the real size), 200 % and 300 %.
+- CRT on/off: scanlines, soft picture and the PAL color bleed, or sharp
+  pixels.
+
+Selection
+- Dragging a selection now moves a copy: the original stays in the
+  picture. Hold Shift when you start dragging to move it (the old place is
+  cut out).
+
+Working folder and quick save
+- At the start and with File > New the program asks for the working
+  folder where pictures and data are saved. The save and open dialogs
+  start there; File > Working folder ... changes it at any time.
+- F2 saves the picture at once as a numbered PNG (picture_0001.png,
+  picture_0002.png ...) into the working folder. Numbering continues after
+  the highest number in the folder; a picture that already has a file name
+  uses that name.
+
+About
+- Multipaint (Marq/Kameli) added to the inspirations.
+
 Other changes
 - Key 0 fits the picture to the window (like Ctrl+0 and Home).
 - About window: supported systems, a thank-you to all users and a full

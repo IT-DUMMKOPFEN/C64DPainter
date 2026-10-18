@@ -118,6 +118,7 @@ type fileEntry struct {
 
 type fileDialog struct {
 	save      bool
+	folder    bool // choose a folder instead of a file
 	title     string
 	filters   []Filter
 	filter    int
@@ -192,7 +193,7 @@ func (d *fileDialog) load(dir string) {
 				isDir = st.IsDir()
 			}
 		}
-		if isDir || d.matches(n) {
+		if isDir || (!d.folder && d.matches(n)) {
 			d.entries = append(d.entries, fileEntry{n, isDir})
 		}
 	}
@@ -213,6 +214,9 @@ func (d *fileDialog) Size(a *App) (int, int) { return 780, 560 }
 func (d *fileDialog) Cancel(a *App)          { d.done, d.ok = true, false }
 
 func (d *fileDialog) Char(a *App, r rune) {
+	if d.folder {
+		return
+	}
 	if r >= 32 && r != '/' {
 		if d.fresh {
 			d.name = ""
@@ -258,6 +262,14 @@ func (d *fileDialog) pick(i int) {
 }
 
 func (d *fileDialog) accept() {
+	if d.folder {
+		p := d.dir
+		if d.sel >= 0 && d.sel < len(d.entries) && d.entries[d.sel].dir {
+			p = filepath.Join(d.dir, d.entries[d.sel].name)
+		}
+		d.result, d.ok, d.done = p, true, true
+		return
+	}
 	if d.sel >= 0 && d.sel < len(d.entries) && d.entries[d.sel].dir && (d.name == "" || !d.save) {
 		d.load(filepath.Join(d.dir, d.entries[d.sel].name))
 		return
@@ -292,6 +304,15 @@ func (d *fileDialog) accept() {
 		return
 	}
 	d.result, d.ok, d.done = p, true, true
+}
+
+// SyncFolderDialog: the program's own folder dialog (Linux without zenity/kdialog).
+func (a *App) SyncFolderDialog(pump func() bool, title, dir string) (string, bool) {
+	d := newFileDialog(false, title, nil, dir, "", "")
+	d.folder = true
+	d.load(d.dir)
+	a.runSync(pump, d, func() bool { return d.done })
+	return d.result, d.ok
 }
 
 func (d *fileDialog) Draw(a *App, r gfx.Rect) {
@@ -389,8 +410,21 @@ func (d *fileDialog) Draw(a *App, r gfx.Rect) {
 	if len(d.entries) == 0 {
 		m.TextC(font.UI, lr, "(no matching files)", th.TextDim)
 	}
-	// name + filter
 	y := lr.Bottom() + 10
+	if d.folder {
+		m.TextL(font.UI, gfx.Rect{X: lx, Y: y, W: lw, H: 26}, gfx.Elide(font.UI, "Folder: "+d.dir, lw), th.Text)
+		y += 34
+	} else {
+		y = d.drawNameAndFilter(a, r, lx, lw, y)
+	}
+	d.drawButtons(a, r)
+}
+
+func (d *fileDialog) drawNameAndFilter(a *App, r gfx.Rect, lx, lw, y int) int {
+	u := &a.ui
+	m := a.img
+	th := a.th
+	// name + filter
 	m.TextL(font.UI, gfx.Rect{X: lx, Y: y, W: 80, H: 26}, "File name", th.Text)
 	nr := gfx.Rect{X: lx + 80, Y: y, W: lw - 80, H: 26}
 	m.Fill(nr, th.Popup)
@@ -430,6 +464,13 @@ func (d *fileDialog) Draw(a *App, r gfx.Rect) {
 			fx += w + 4
 		}
 	}
+	return y
+}
+
+func (d *fileDialog) drawButtons(a *App, r gfx.Rect) {
+	u := &a.ui
+	m := a.img
+	th := a.th
 	// status + buttons
 	by := r.Bottom() - 28
 	msgText := d.errText
@@ -446,6 +487,9 @@ func (d *fileDialog) Draw(a *App, r gfx.Rect) {
 	okLabel := "Open"
 	if d.save {
 		okLabel = "Save"
+	}
+	if d.folder {
+		okLabel = "Choose folder"
 	}
 	if u.ButtonEx("fd_ok", gfx.Rect{X: r.Right() - 115, Y: by, W: 115, H: 28}, okLabel, true, true) {
 		d.accept()

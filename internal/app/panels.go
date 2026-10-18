@@ -32,14 +32,23 @@ func (a *App) toolButtons() []toolBtn {
 		{id: "t_dith", icon: "dither", tool: ToolDither, alt2: -1, tip: "Dither brush, experimental (Shift+D) · right-click: Auto dither", right: func() { a.setTool(ToolDither); a.later(a.openAutoDither) }},
 		{id: "t_smear", icon: "smear", tool: ToolSmear, alt2: -1, tip: "Smear (Shift+S)"},
 		{id: "t_erase", icon: "eraser", tool: ToolErase, alt2: -1, tip: "Eraser (W) – makes the active layer transparent"},
+		{id: "t_shade", icon: "shade", tool: ToolShade, alt2: -1, tip: "Shade (Shift+W): left = lighten, right = darken"},
 		{id: "t_grad", icon: "gradient", tool: ToolGradient, alt2: -1, tip: "Gradient fill (Shift+F) – opens the gradient window",
 			action: func() { a.later(a.openGradientDialog) }, right: func() { a.setTool(ToolGradient); a.later(a.openGradientDialog) }},
 		{id: "t_rect", icon: "rect", alt: "rectf", tool: ToolRect, alt2: ToolRectF, tip: "Rectangle (R) / filled (Shift+R)"},
 		{id: "t_circ", icon: "circle", alt: "circlef", tool: ToolCircle, alt2: ToolCircleF, tip: "Circle (C) / filled (Shift+C)"},
 		{id: "t_ell", icon: "ellipse", alt: "ellipsef", tool: ToolEllipse, alt2: ToolEllipseF, tip: "Ellipse (E) / filled (Shift+E)"},
+		{id: "t_sq", icon: "square", alt: "squaref", tool: ToolSquare, alt2: ToolSquareF, tip: "Square (N) / filled (Shift+N)"},
+		{id: "t_tri", icon: "triangle", alt: "trianglef", tool: ToolTriangle, alt2: ToolTriangleF, tip: "Triangle (I) / filled (Shift+I)"},
+		{id: "t_hex", icon: "hexagon", alt: "hexagonf", tool: ToolHexagon, alt2: ToolHexagonF, tip: "Hexagon (O) / filled (Shift+O)"},
+		{id: "t_star", icon: "star", alt: "starf", tool: ToolStar, alt2: ToolStarF, tip: "Star (L) / filled (Shift+L)"},
 		{id: "t_sel", icon: "select", tool: ToolSelect, alt2: -1, tip: "Select (B)"},
 		{id: "t_pick", icon: "picker", tool: ToolPicker, alt2: -1, tip: "Color picker (,) – also Alt+click"},
 		{id: "t_hand", icon: "hand", tool: ToolHand, alt2: -1, tip: "Pan view (hold Space)"},
+		{id: "t_sym", icon: "symmetry", tool: -1, alt2: -1, tip: "Symmetry on/off (Shift+X): paint mirrored",
+			action: a.toggleSymmetry, active: func() bool { return a.set.Sym.On }},
+		{id: "t_crt", icon: "crt", tool: -1, alt2: -1, tip: "CRT preview window (Shift+V)",
+			action: a.toggleCRT, active: func() bool { return a.crt.open }},
 		{id: "t_grid", icon: "grid", tool: -1, alt2: -1, tip: "Grid on/off (G) · right-click: settings",
 			action: func() { a.set.GridOn = !a.set.GridOn; a.saveSettings() }, active: func() bool { return a.set.GridOn }, right: a.openGridDialog},
 		{id: "t_tpl", icon: "layer", tool: -1, alt2: -1, tip: "Template on/off (T) · right-click: load",
@@ -122,13 +131,18 @@ func (a *App) drawToolbox() {
 		a.ui.Tip(fmt.Sprintf("bp%d", i), br, fmt.Sprintf("Brush %s %d (+/− changes size)", brushShapeNames[p.shape], p.size))
 	}
 	y += ((len(brushPresets)+3)/4)*15 + 4
-	// Werkzeuge
+	// Werkzeuge (flatter buttons when the window is low)
+	rows := (len(a.toolButtons()) + 1) / 2
+	tbh := bh
+	if free := r.Bottom() - y - 8 - 40 - 8*16 - 6; rows*(tbh+1) > free {
+		tbh = clampI(free/rows-1, 18, bh)
+	}
 	for i, tb := range a.toolButtons() {
-		br := gfx.Rect{X: x0 + (i%2)*(bw+1), Y: y + (i/2)*(bh+1), W: bw, H: bh}
+		br := gfx.Rect{X: x0 + (i%2)*(bw+1), Y: y + (i/2)*(tbh+1), W: bw, H: tbh}
 		a.toolButton(tb, br)
 	}
 	n := len(a.toolButtons())
-	y += ((n+1)/2)*(bh+1) + 8
+	y += ((n+1)/2)*(tbh+1) + 8
 	// Farbanzeige: Farbe 1 / Farbe 2
 	cr := gfx.Rect{X: x0, Y: y, W: 61, H: 34}
 	m.Fill(cr, th.PanelAlt)
@@ -289,12 +303,18 @@ func (a *App) drawPanel() {
 	if a.tool == ToolSmear {
 		y = a.panelSmear(x, y, w)
 	}
+	if a.set.Sym.On {
+		y = a.panelSymmetry(x, y, w)
+	}
+	if a.tool == ToolShade {
+		y = a.panelShade(x, y, w)
+	}
 	if a.tool == ToolGradient {
 		y = a.panelGradient(x, y, w)
 	} else {
 		y = a.panelBrush(x, y, w)
 	}
-	if a.tool != ToolDither && a.tool != ToolSmear && a.tool != ToolErase && a.tool != ToolGradient {
+	if a.tool != ToolDither && a.tool != ToolSmear && a.tool != ToolErase && a.tool != ToolGradient && a.tool != ToolShade {
 		y = a.panelPattern(x, y, w)
 	}
 	y = a.panelColors(x, y, w)

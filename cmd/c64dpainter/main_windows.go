@@ -860,3 +860,67 @@ func main() {
 		pDispatchMessageW.Call(uintptr(unsafe.Pointer(&mg)))
 	}
 }
+
+// --- Folder dialog -------------------------------------------------------------------
+
+var (
+	ole32                 = syscall.NewLazyDLL("ole32.dll")
+	pOleInitialize        = ole32.NewProc("OleInitialize")
+	pCoTaskMemFree        = ole32.NewProc("CoTaskMemFree")
+	pSHBrowseForFolderW   = shell32.NewProc("SHBrowseForFolderW")
+	pSHGetPathFromIDListW = shell32.NewProc("SHGetPathFromIDListW")
+	pSendMessageW         = user32.NewProc("SendMessageW")
+	browseStart           []uint16
+	browseCallback        = syscall.NewCallback(browseProc)
+)
+
+type browseInfo struct {
+	hwndOwner      uintptr
+	pidlRoot       uintptr
+	pszDisplayName *uint16
+	lpszTitle      *uint16
+	ulFlags        uint32
+	lpfn           uintptr
+	lParam         uintptr
+	iImage         int32
+}
+
+// browseProc selects the start folder when the dialog opens.
+func browseProc(h, msg, lp, data uintptr) uintptr {
+	const bffmInitialized, bffmSetSelectionW = 1, 0x467
+	if msg == bffmInitialized && len(browseStart) > 0 {
+		pSendMessageW.Call(h, bffmSetSelectionW, 1, uintptr(unsafe.Pointer(&browseStart[0])))
+	}
+	return 0
+}
+
+func (winHost) ChooseFolder(title, dir string) (string, bool) {
+	pOleInitialize.Call(0)
+	display := make([]uint16, 260)
+	browseStart = nil
+	if dir != "" {
+		browseStart, _ = syscall.UTF16FromString(dir)
+	}
+	bi := browseInfo{
+		hwndOwner:      hwnd,
+		pszDisplayName: &display[0],
+		lpszTitle:      u16(title),
+		ulFlags:        0x1 | 0x10 | 0x40, // only file system folders, edit box, new style
+		lpfn:           browseCallback,
+	}
+	inModal++
+	pidl, _, _ := pSHBrowseForFolderW.Call(uintptr(unsafe.Pointer(&bi)))
+	inModal--
+	releaseAll()
+	runtime.KeepAlive(display)
+	if pidl == 0 {
+		return "", false
+	}
+	defer pCoTaskMemFree.Call(pidl)
+	buf := make([]uint16, 1024)
+	if r, _, _ := pSHGetPathFromIDListW.Call(pidl, uintptr(unsafe.Pointer(&buf[0]))); r == 0 {
+		return "", false
+	}
+	p := syscall.UTF16ToString(buf)
+	return p, p != ""
+}

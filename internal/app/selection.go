@@ -187,6 +187,8 @@ func (a *App) selRender() {
 	}
 	s.out, s.ox, s.oy = renderXform(s.src, s.xf)
 	*a.pic = *s.under
+	a.noSym = true
+	defer func() { a.noSym = false }()
 	for y := 0; y < s.out.H; y++ {
 		for x := 0; x < s.out.W; x++ {
 			c := s.out.Pix[y*s.out.W+x]
@@ -320,7 +322,7 @@ func (a *App) selectInput(px, py int, over bool) {
 		switch {
 		case h >= 0:
 			if s.state == selSelected {
-				a.selLift(false)
+				a.selLift(!in.Mods.Shift)
 			}
 			s.dragMode = 3
 			s.handle = h
@@ -330,7 +332,8 @@ func (a *App) selectInput(px, py int, over bool) {
 			s.dpx, s.dpy = a.screenToPicF(in.MX, in.MY)
 		case s.state != selNone && a.selContainsScreen(in.MX, in.MY):
 			if s.state == selSelected {
-				a.selLift(in.Mods.Ctrl)
+				// the original stays; Shift moves it (cuts it out)
+				a.selLift(!in.Mods.Shift)
 			} else if in.Mods.Ctrl && s.state == selFloating {
 				// Kopie stempeln: aktuelles Ergebnis bleibt im Bild
 				s.under = a.pic.Clone()

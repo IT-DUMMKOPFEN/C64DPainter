@@ -267,5 +267,52 @@ func main() {
 	stroke(a, 0, [2]int{125, 100})
 	hover(a, 140, 20)
 	shot(a, "15_gradient_fill")
+
+	// 16 symmetry and the new shapes on the spare page
+	for i := 0; i < 12; i++ {
+		char(a, 'u')
+	}
+	char(a, 'X')
+	a.Debug("symmode", 2)
+	char(a, '.')
+	char(a, '+')
+	a.Debug("fg", 13)
+	char(a, 'L')
+	stroke(a, 0, [2]int{40, 50}, [2]int{40, 30})
+	a.Debug("fg", 14)
+	char(a, 'O')
+	stroke(a, 0, [2]int{60, 90}, [2]int{60, 76})
+	a.Debug("fg", 7)
+	char(a, 'i')
+	stroke(a, 0, [2]int{20, 85}, [2]int{20, 72})
+	a.Debug("fg", 10)
+	char(a, 'n')
+	stroke(a, 0, [2]int{66, 20}, [2]int{72, 32})
+	a.Debug("fg", 1)
+	char(a, 'd')
+	stroke(a, 0, [2]int{10, 10}, [2]int{30, 40}, [2]int{50, 60}, [2]int{75, 95})
+	char(a, 'n')
+	hover(a, 50, 60)
+	shot(a, "16_symmetry_shapes")
+	char(a, 'X')
+
+	// 17 shade brush and CRT preview on the picture
+	char(a, 'j')
+	char(a, 'W')
+	for i := 0; i < 4; i++ {
+		char(a, '+')
+	}
+	stroke(a, 0, [2]int{90, 60}, [2]int{110, 70})
+	char(a, 'V')
+	hover(a, 30, 150)
+	shot(a, "17_shade_and_crt")
+	char(a, 'V')
+	char(a, 'u')
+
+	// 18 mirrored view
+	char(a, 'M')
+	move(a, 1355, 855)
+	shot(a, "18_mirrored_view")
+	char(a, 'M')
 	fmt.Println("done")
 }

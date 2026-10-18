@@ -102,6 +102,8 @@ func (a *App) Debug(what string, v int) {
 		}
 	case "gradient": // v = shape | dither<<4 | group<<8 | ramp<<12 | dir<<20
 		a.set.Gradient = GradientSettings{Shape: v & 15, Dither: v>>4&1 == 1, Group: v >> 8 & 15, Ramp: v >> 12 & 255, Dir: v >> 20 & 15}
+	case "symmode":
+		a.set.Sym.Mode = v
 	case "panelscroll":
 		a.panelScroll = v
 	}
