@@ -180,7 +180,17 @@ Fills the connected area of the same color (connected horizontally and verticall
 
 ## [gradient] Gradient fill (Shift+F)
 
-Fills the connected area of the same color with a **color gradient** (on the active layer). Clicking the tool button opens the **gradient window**: 15 C64 color ramps in three versions (tabs) – 3 colors light → dark, 5 colors dark → light → dark and 5 colors light → dark → light. There you also choose:
+Fills the connected area of the same color with a **color gradient** (on the active layer). Clicking the tool button opens the **gradient window** with five tabs:
+
+= 3 colors | 27 ramps light → dark (7 basic, 20 extended, e.g. Neon yellow, Mint, Sunset, Night sky)
+= 4 colors | 14 ramps with four different colors, light → dark
+= 5 colors | 13 ramps with five different colors, light → dark
+= dark → light → dark | the 3-color ramps as 5 bands, dark at both ends
+= light → dark → light | the 3-color ramps as 5 bands, light at both ends
+
+> A C64 cell can only hold **3 colors plus the background color**. Gradients with 4 or 5 different colors work best with wide color bands: then only two colors meet in a cell. Narrow gradients or dithered transitions can put more colors into one cell – then the conflict mode decides. The background color does not count, so ramps that end in the background color (often black) are easier.
+
+In the window you also choose:
 
 - **Shape**: Linear, Circle or Diamond.
 - **Direction** for a single click with the linear shape (8 directions).
@@ -211,7 +221,7 @@ Makes pixels of the **active layer** transparent again, so the layers below (or 
 
 ## [shade] Shade (Shift+W)
 
-Lightens or darkens the colors under the brush by **one step**: left mouse button = lighter, right mouse button = darker. Each pixel changes only once per stroke, so you can paint over an area without it turning white or black – for the next step start a new stroke. In the side panel you choose the steps: **All colors by brightness** (the 16 C64 colors from black to white) or one of the 15 **color ramps** of the gradient fill (e.g. blue: blue → light blue → cyan); colors that are not in the chosen ramp stay as they are. In full cells the conflict mode decides.
+Lightens or darkens the colors under the brush by **one step**: left mouse button = lighter, right mouse button = darker. Each pixel changes only once per stroke, so you can paint over an area without it turning white or black – for the next step start a new stroke. In the side panel you choose the steps: **All colors by brightness** (the 16 C64 colors from black to white) or one of the **color ramps** of the gradient fill with 3, 4 or 5 colors (e.g. blue: blue → light blue → cyan) – ramps with more colors give finer steps; colors that are not in the chosen ramp stay as they are. In full cells the conflict mode decides.
 
 ## [rect|rectf] Rectangle (R / Shift+R)
 
@@ -283,6 +293,20 @@ Select an area with the select tool and click **"Use as brush"**. Now you paint 
 - ` + "`X`" + `, ` + "`Y`" + `, ` + "`Z`" + `, ` + "`H`" + ` also flip, rotate and shrink the custom brush.
 - ` + "`Shift+B`" + ` returns to the standard brush.
 - With **"Background color transparent"** (Selection menu), background-colored pixels are skipped when stamping.
+
+## Brushes menu
+
+- **Load brush …** / **Save brush …** – brushes are PNG files with a transparent background. Every multicolor pixel is saved two pixels wide, as on screen, so the files can also be edited in other paint programs. Loading accepts both double-wide and single pixels; other colors become the nearest C64 color. The dialogs start in the folder ` + "`brushes`" + ` in the working folder. A stamp or one-color brush is saved in color 1.
+- **Selection as brush**, **Standard brush** (` + "`Shift+B`" + `), flip, rotate and resize the brush, and **Brush keeps its own colors**.
+
+## [stamp] Stamps
+
+The stamp button in the toolbox (or **Brushes → Stamps …**) opens a window with more than 150 ready-made **silhouettes** – people, animals and objects – in four sizes: 32 × 32, 32 × 64, 64 × 32 and 64 × 64 screen pixels (that is 16 or 32 multicolor pixels wide and 32 or 64 high). They are drawn with the wide multicolor pixels and use only one color, so they always fit the multicolor rules.
+
+- Click a stamp and **Use as brush** (or double-click it). The stamp becomes the brush and the tool switches to **Dots**, so every click stamps once.
+- Stamps paint in **color 1** (left mouse button) or **color 2** (right mouse button) – choose the color in the palette.
+- ` + "`X`" + `, ` + "`Y`" + `, ` + "`Z`" + ` and ` + "`H`" + ` flip, rotate and resize the stamp like any brush.
+- The tab **My brushes** shows the brushes you saved in the ` + "`brushes`" + ` folder of the working folder.
 `},
 	{id: "patterns", title: "Patterns", body: `
 # Patterns
@@ -487,7 +511,7 @@ With **View → Grid settings …** (` + "`Shift+G`" + ` or right-click the grid
 
 A separate window shows the picture with its border like on a TV. It does not block the program: keep painting, the preview follows every change. Drag it by its title bar.
 
-- **100 %** – 384 × 272 screen pixels, the real size of a C64 picture with border; **200 %** and **300 %** larger. When the window does not fit, the middle part is shown.
+- **100 %** – 384 × 272 screen pixels, the real size of a C64 picture with border; **200 %** twice as large. When the window does not fit, the middle part is shown.
 - **CRT** on: scanlines, the slightly soft picture and the PAL color bleed – good for judging dithering. Off: sharp pixels.
 
 ## More display aids
@@ -768,7 +792,7 @@ Thank you all for making your work available and letting us use it:
 - **Language:** Go and its standard library (BSD), The Go Authors.
 - **Dithering:** articles and guides on pixelparmesan.com, pixel-editor.com, pixnote.net, divoom.com and pixie.haus.
 - **Dither styles:** 16 hand-pixelled C64 scene pictures, analyzed pattern by pattern.
-- **Gradients:** color ramp table by IT-Dummköpfen.
+- **Gradients:** color ramp table by IT-Dummköpfen, extended with more C64 ramps.
 - **Inspiration:** Deluxe Paint (Electronic Arts, 1985), PyDPainter and Multipaint (Marq/Kameli).
 
 ## Settings

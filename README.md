@@ -24,12 +24,14 @@ Version 0.96 beta · Created by IT-Dummköpfen · Free for private use.
 - Tools: dots, freehand, line, curve, fill, gradient fill, airbrush, dither, smear, shade, eraser, rectangle, square, circle, ellipse, triangle, hexagon and star (each outlined or filled), select and color picker.
 - **Symmetry**: paint mirrored left ↔ right, top ↔ bottom or four-fold, with movable axes.
 - **Shade** brush: lightens or darkens one step per stroke, by brightness or along a color ramp.
-- **Mirrored view** (Shift+M) and a floating **CRT preview** window (100/200/300 %, scanlines and PAL color bleed).
+- **Mirrored view** (Shift+M) and a floating **CRT preview** window (100/200 %, scanlines and PAL color bleed).
 - **Working folder** and **quick save** (F2): numbered PNGs without a dialog.
+- **Stamps**: 156 silhouettes of people, animals and objects (32 × 32 to 64 × 64 screen pixels, multicolor-safe) to use as brush.
+- **Brushes** menu: load and save brushes as PNG with a transparent background.
 - Round, square or diamond brushes from 1 to 16 pixels, plus custom brushes made from a selection.
 - 42 patterns (density steps, dots, lines, diagonals, grids and textures).
 - **Auto dither** (Edit menu) and a **Dither brush**, both experimental: blend the borders between flat color areas in clean steps (two colors per transition, 25 %/50 % bands, outlines and silhouettes stay sharp) in the styles Artist, Scanlines, Checker and Stripes, reconstructed from hand-pixelled C64 pictures – or shade with **Color**, which darkens with the colors of the cell.
-- **Gradient fill**: 15 C64 color ramps in three versions (3 colors, 5 colors dark → light → dark, 5 colors light → dark → light), linear, circle or diamond, single click or drag for direction and width, optional dithered transitions.
+- **Gradient fill**: 27 three-color, 14 four-color and 13 five-color C64 ramps, plus five-band versions (dark → light → dark, light → dark → light), linear, circle or diamond, single click or drag for direction and width, optional dithered transitions.
 - **Smear** brush: drags colors along the stroke like a smudge tool.
 - Swap colors in the whole picture or with a cell brush (the background color is never touched).
 - Selections can be copied (default) or moved (Shift), flipped, rotated by 90° or freely, scaled and sheared in both directions.
@@ -112,7 +114,7 @@ go test ./internal/...
 | `internal/gfx`, `internal/font` | Software renderer and embedded DejaVu font |
 | `cmd/c64dpainter` | Front ends: Windows (Win32 via syscall), macOS (Cocoa via purego), Linux (X11 via xgb) |
 | `packaging` | Extra files for the Linux and macOS packages |
-| `tools` | Build script, macOS bundler, icon and font generators, dither analysis |
+| `tools` | Build script, macOS bundler, icon, font and stamp generators, dither analysis |
 | `third_party` | purego and xgb (with their licenses) |
 
 ## License

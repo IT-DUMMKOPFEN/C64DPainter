@@ -81,7 +81,7 @@ Mirrored view (Shift+M)
 CRT preview window (Shift+V)
 - A floating window that shows the picture with its border like on a TV.
   It does not block the program: keep painting, it follows every change.
-- Sizes 100 % (384 x 272, the real size), 200 % and 300 %.
+- Sizes 100 % (384 x 272, the real size) and 200 %.
 - CRT on/off: scanlines, soft picture and the PAL color bleed, or sharp
   pixels.
 
@@ -101,6 +101,47 @@ Working folder and quick save
 
 About
 - Multipaint (Marq/Kameli) added to the inspirations.
+
+More gradients
+- 12 new three-color ramps: Neon yellow (yellow - cyan - blue), Mint,
+  Toxic, Sunset, Peach, Skin, Rust, Ember, Night sky, Lavender,
+  Sand/Stone and Slate. They also appear in the two five-band tabs
+  (dark - light - dark and light - dark - light).
+- New tab "4 colors" (14 ramps) and "5 colors" (13 ramps) with four or
+  five different colors from light to dark, sorted by the brightness of
+  the C64 colors.
+- The gradient window now has five tabs and a note on the C64 rule: a
+  cell can only hold 3 colors plus the background, so 4- and 5-color
+  gradients work best with wide color bands.
+
+Shade brush
+- The 4- and 5-color ramps can be chosen as steps too (finer shading).
+
+CRT preview
+- Sizes 100 % and 200 % (300 % removed).
+
+Brushes menu (new)
+- Stamps ..., Load brush ..., Save brush ..., Selection as brush,
+  Standard brush, flip / rotate / resize the brush and "Brush keeps its
+  own colors".
+- Brushes are saved as PNG with a transparent background (every
+  multicolor pixel two pixels wide, so other paint programs show them
+  right). Loading accepts double-wide and single pixels; other colors
+  become the nearest C64 color. The dialogs start in the folder "brushes"
+  in the working folder.
+
+Stamps (new, toolbox button)
+- A window with 156 silhouettes: 35 people, 41 animals and 80 objects.
+- Sizes 32 x 32, 32 x 64, 64 x 32 and 64 x 64 screen pixels (16 or 32
+  multicolor pixels wide, 32 or 64 high), drawn with the wide multicolor
+  pixels in one color with a transparent background - they always fit the
+  multicolor rules.
+- Tabs People, Animals, Objects and My brushes (the brushes saved in the
+  brushes folder), a size filter, and the name and size of the chosen
+  stamp.
+- The chosen stamp becomes the brush and the tool switches to Dots: every
+  click stamps once, in color 1 (left button) or color 2 (right button).
+  X, Y, Z and H flip, rotate and resize it.
 
 Other changes
 - Key 0 fits the picture to the window (like Ctrl+0 and Home).

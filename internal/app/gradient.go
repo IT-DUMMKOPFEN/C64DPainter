@@ -24,7 +24,8 @@ type gradientRamp struct {
 	dark  uint8
 }
 
-// gradientRamps: 7 basic and 8 extended C64 ramps, light → mid → dark.
+// gradientRamps: three-color C64 ramps, light → mid → dark. The first 7
+// are the basic ramps, then the extended ones (mixed hues).
 var gradientRamps = []gradientRamp{
 	{"Grey (contrast)", 1, 12, 0},
 	{"Grey (fine)", 15, 12, 11},
@@ -41,11 +42,71 @@ var gradientRamps = []gradientRamp{
 	{"Forest/Earth", 13, 5, 9},
 	{"Mono soft", 1, 15, 12},
 	{"Dusk", 8, 2, 4},
+	{"Neon yellow", 7, 3, 6},
+	{"Mint", 1, 13, 5},
+	{"Toxic", 13, 3, 5},
+	{"Sunset", 7, 10, 4},
+	{"Peach", 1, 10, 8},
+	{"Skin", 10, 8, 2},
+	{"Rust", 8, 2, 9},
+	{"Ember", 8, 2, 0},
+	{"Night sky", 14, 6, 0},
+	{"Lavender", 15, 14, 4},
+	{"Sand/Stone", 7, 15, 12},
+	{"Slate", 15, 11, 0},
 }
 
-const gradientBasic = 7 // the first 7 ramps are the basic ones
+const gradientBasic = 7 // the first 7 three-color ramps are the basic ones
 
-var gradientGroups = []string{"3 colors: light → dark", "5 colors: dark → light → dark", "5 colors: light → dark → light"}
+type namedRamp struct {
+	name string
+	cols []uint8 // light → dark
+}
+
+// gradientRamps4 / 5: ramps with four and five different colors, light → dark
+// (sorted by the brightness of the C64 colors).
+var gradientRamps4 = []namedRamp{
+	{"Grey (light)", []uint8{1, 15, 12, 11}},
+	{"Grey (dark)", []uint8{15, 12, 11, 0}},
+	{"Blue", []uint8{1, 3, 14, 6}},
+	{"Twilight", []uint8{3, 14, 4, 6}},
+	{"Steel blue", []uint8{1, 15, 14, 6}},
+	{"Sea", []uint8{13, 3, 14, 6}},
+	{"Fire", []uint8{7, 8, 2, 9}},
+	{"Lava", []uint8{7, 10, 2, 9}},
+	{"Gold", []uint8{1, 7, 8, 9}},
+	{"Skin", []uint8{7, 10, 8, 2}},
+	{"Green", []uint8{1, 13, 5, 0}},
+	{"Earth", []uint8{13, 5, 9, 0}},
+	{"Purple night", []uint8{10, 4, 6, 0}},
+	{"Dusk", []uint8{7, 10, 4, 6}},
+}
+
+var gradientRamps5 = []namedRamp{
+	{"Grey (full)", []uint8{1, 15, 12, 11, 0}},
+	{"Blue (full)", []uint8{1, 3, 14, 6, 0}},
+	{"Ocean", []uint8{13, 3, 14, 6, 0}},
+	{"Steel", []uint8{1, 15, 14, 4, 6}},
+	{"Fire", []uint8{7, 10, 8, 2, 9}},
+	{"Lava", []uint8{7, 8, 2, 9, 0}},
+	{"Gold", []uint8{1, 7, 8, 9, 0}},
+	{"Skin", []uint8{1, 10, 8, 2, 9}},
+	{"Green (full)", []uint8{1, 13, 5, 11, 0}},
+	{"Toxic", []uint8{1, 13, 3, 5, 11}},
+	{"Earth", []uint8{7, 5, 8, 9, 0}},
+	{"Purple", []uint8{1, 10, 4, 6, 0}},
+	{"Sunset", []uint8{7, 10, 8, 4, 6}},
+}
+
+// the tabs of the gradient window
+var gradientGroups = []string{
+	"3 colors: light → dark", "4 colors: light → dark", "5 colors: light → dark",
+	"5 colors: dark → light → dark", "5 colors: light → dark → light",
+}
+var gradientTabs = []string{"3 colors", "4 colors", "5 colors", "dark → light → dark", "light → dark → light"}
+
+const gradientConflictNote = "Note: a C64 cell can only hold 3 colors plus the background color. Gradients with 4 or 5 colors work best with wide color bands – narrow gradients or dithered transitions can cause color conflicts (then the conflict mode decides). The background color does not count."
+
 var gradientShapes = []string{"Linear", "Circle", "Diamond"}
 
 // direction presets for a single click with the linear shape (screen space)
@@ -61,6 +122,7 @@ var gradientDirs = []struct {
 
 // GradientSettings are saved with the settings.
 type GradientSettings struct {
+	Version int  `json:"version"` // 2: five tabs
 	Group   int  `json:"group"`
 	Ramp    int  `json:"ramp"`
 	Shape   int  `json:"shape"`
@@ -70,30 +132,69 @@ type GradientSettings struct {
 }
 
 func (g *GradientSettings) clamp() {
+	if g.Version < 2 {
+		// version 1 had three tabs: 3 colors, dark-light-dark, light-dark-light
+		if g.Group == 1 || g.Group == 2 {
+			g.Group += 2
+		}
+		g.Version = 2
+	}
 	g.Group = clampI(g.Group, 0, len(gradientGroups)-1)
-	g.Ramp = clampI(g.Ramp, 0, len(gradientRamps)-1)
+	g.Ramp = clampI(g.Ramp, 0, len(groupRamps(g.Group))-1)
 	g.Shape = clampI(g.Shape, 0, len(gradientShapes)-1)
 	g.Dir = clampI(g.Dir, 0, len(gradientDirs)-1)
 }
 
-// colors returns the ramp colors of a group, in fill order.
-func gradientColors(group, ramp int, reverse bool) []uint8 {
-	r := gradientRamps[ramp]
-	var c []uint8
+// groupRamps returns the ramps of a tab with their colors in fill order.
+func groupRamps(group int) []namedRamp {
 	switch group {
 	case 1:
-		c = []uint8{r.dark, r.mid, r.light, r.mid, r.dark}
+		return gradientRamps4
 	case 2:
-		c = []uint8{r.light, r.mid, r.dark, r.mid, r.light}
-	default:
-		c = []uint8{r.light, r.mid, r.dark}
+		return gradientRamps5
 	}
+	out := make([]namedRamp, len(gradientRamps))
+	for i, r := range gradientRamps {
+		var c []uint8
+		switch group {
+		case 3:
+			c = []uint8{r.dark, r.mid, r.light, r.mid, r.dark}
+		case 4:
+			c = []uint8{r.light, r.mid, r.dark, r.mid, r.light}
+		default:
+			c = []uint8{r.light, r.mid, r.dark}
+		}
+		out[i] = namedRamp{r.name, c}
+	}
+	return out
+}
+
+// rampExtended reports whether a ramp of a tab is an "extended" one.
+func rampExtended(group, i int) bool {
+	return (group == 0 || group >= 3) && i >= gradientBasic
+}
+
+// colors returns the ramp colors of a group, in fill order.
+func gradientColors(group, ramp int, reverse bool) []uint8 {
+	rs := groupRamps(group)
+	ramp = clampI(ramp, 0, len(rs)-1)
+	c := append([]uint8(nil), rs[ramp].cols...)
 	if reverse {
 		for i, j := 0, len(c)-1; i < j; i, j = i+1, j-1 {
 			c[i], c[j] = c[j], c[i]
 		}
 	}
 	return c
+}
+
+func gradientName(group, ramp int) string {
+	rs := groupRamps(group)
+	return rs[clampI(ramp, 0, len(rs)-1)].name
+}
+
+// shadeRamps: the steps the shade brush can use (all ramps, light → dark).
+func shadeRamps() []namedRamp {
+	return append(append(groupRamps(0), gradientRamps4...), gradientRamps5...)
 }
 
 var gradBayer = [16]float64{0, 8, 2, 10, 12, 4, 14, 6, 3, 11, 1, 9, 15, 7, 13, 5}
@@ -285,7 +386,7 @@ func (a *App) openGradientDialog() {
 }
 
 func (d *gradientDialog) Title() string          { return "Gradient fill" }
-func (d *gradientDialog) Size(a *App) (int, int) { return 760, 530 }
+func (d *gradientDialog) Size(a *App) (int, int) { return 900, 640 }
 
 func (d *gradientDialog) Key(a *App, k KeyEvent) {
 	if k.Key == KeyEnter {
@@ -300,7 +401,7 @@ func (d *gradientDialog) apply(a *App) {
 	if a.tool != ToolGradient {
 		a.setTool(ToolGradient)
 	}
-	a.setStatus("Gradient: " + gradientRamps[d.g.Ramp].name + " – click into an area, or drag for direction and width")
+	a.setStatus("Gradient: " + gradientName(d.g.Group, d.g.Ramp) + " – click into an area, or drag for direction and width")
 }
 
 // drawRampSwatch draws the colors of a ramp as a strip.
@@ -319,20 +420,25 @@ func (d *gradientDialog) Draw(a *App, r gfx.Rect) {
 	m := a.img
 	th := a.th
 	y := r.Y
-	// tabs: the three ramp versions
-	tw := (r.W - 8) / 3
-	for i, name := range gradientGroups {
-		if u.ButtonEx("gr_tab"+itoa(i), gfx.Rect{X: r.X + i*(tw+4), Y: y, W: tw, H: 26}, name, d.g.Group == i, true) {
+	// tabs: the ramp versions
+	tw := (r.W - 4*4) / len(gradientTabs)
+	for i, name := range gradientTabs {
+		br := gfx.Rect{X: r.X + i*(tw+4), Y: y, W: tw, H: 26}
+		if u.ButtonEx("gr_tab"+itoa(i), br, name, d.g.Group == i, true) && d.g.Group != i {
 			d.g.Group = i
+			d.g.Ramp = clampI(d.g.Ramp, 0, len(groupRamps(i))-1)
 		}
+		u.Tip("gr_tab"+itoa(i), br, gradientGroups[i])
 	}
-	y += 36
-	// ramps: three columns
-	cols := 3
-	cw := (r.W - 2*12) / cols
-	for i, rp := range gradientRamps {
+	y += 34
+	// ramps: four columns
+	const cols, rowH = 4, 38
+	gridRows := (len(gradientRamps) + cols - 1) / cols
+	cw := (r.W - (cols-1)*10) / cols
+	ramps := groupRamps(d.g.Group)
+	for i, rp := range ramps {
 		col, row := i%cols, i/cols
-		br := gfx.Rect{X: r.X + col*(cw+12), Y: y + row*44, W: cw, H: 40}
+		br := gfx.Rect{X: r.X + col*(cw+10), Y: y + row*rowH, W: cw, H: rowH - 3}
 		sel := d.g.Ramp == i
 		if sel {
 			m.Fill(br, gfx.Mix(th.PanelAlt, th.Accent, 70))
@@ -342,16 +448,25 @@ func (d *gradientDialog) Draw(a *App, r gfx.Rect) {
 			m.Fill(br, th.BtnHover)
 		}
 		name := rp.name
-		if i >= gradientBasic {
-			name += "  ·  extended"
+		if rampExtended(d.g.Group, i) {
+			name += "  ·  ext."
 		}
-		m.Text(font.UI, br.X+6, br.Y+3, name, th.Text)
-		a.drawRampSwatch(gfx.Rect{X: br.X + 6, Y: br.Y + 20, W: br.W - 12, H: 14}, gradientColors(d.g.Group, i, d.g.Reverse))
+		m.Text(font.UI, br.X+5, br.Y+2, gfx.Elide(font.UI, name, br.W-10), th.Text)
+		a.drawRampSwatch(gfx.Rect{X: br.X + 5, Y: br.Y + 19, W: br.W - 10, H: 12}, gradientColors(d.g.Group, i, d.g.Reverse))
 		if c, _ := u.press("gr_r"+itoa(i), br, 0); c {
 			d.g.Ramp = i
 		}
 	}
-	y += ((len(gradientRamps)+cols-1)/cols)*44 + 10
+	y += gridRows*rowH + 4
+	// the color rule note for the 4- and 5-color tabs
+	if d.g.Group == 1 || d.g.Group == 2 {
+		for _, ln := range wrapText(font.UI, gradientConflictNote, r.W) {
+			m.Text(font.UI, r.X, y, ln, th.Danger)
+			y += font.UI.Height + 2
+		}
+	}
+	y = r.Y + 34 + gridRows*rowH + 4 + 3*(font.UI.Height+2) + 8
+	top := y
 	// shape and options (left), preview (right)
 	lx := r.X
 	lw := 360
@@ -390,7 +505,7 @@ func (d *gradientDialog) Draw(a *App, r gfx.Rect) {
 		y += font.UI.Height + 2
 	}
 	// preview
-	pr := gfx.Rect{X: r.X + lw + 24, Y: r.Y + 36 + ((len(gradientRamps)+cols-1)/cols)*44 + 10, W: r.W - lw - 24, H: 150}
+	pr := gfx.Rect{X: r.X + lw + 24, Y: top, W: min(r.W-lw-24, 400), H: 150}
 	d.drawPreview(a, pr)
 	by := r.Bottom() - 28
 	if u.Button("gr_cancel", gfx.Rect{X: r.Right() - 250, Y: by, W: 120, H: 28}, "Cancel") {
@@ -478,7 +593,7 @@ func (a *App) panelGradient(x, y, w int) int {
 	g := &a.set.Gradient
 	g.clamp()
 	y = a.section(x, y, w, "Gradient fill")
-	m.Text(font.UIB, x, y, gradientRamps[g.Ramp].name, a.th.Text)
+	m.Text(font.UIB, x, y, gradientName(g.Group, g.Ramp), a.th.Text)
 	m.Text(font.UI, x, y+16, gradientGroups[g.Group], a.th.TextDim)
 	y += 36
 	a.drawRampSwatch(gfx.Rect{X: x, Y: y, W: w, H: 18}, gradientColors(g.Group, g.Ramp, g.Reverse))

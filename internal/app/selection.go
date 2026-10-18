@@ -634,6 +634,7 @@ func (a *App) selToBrush() {
 	a.sel.state = selNone
 	a.custom = b
 	a.brushShape = BrushCustom
+	a.customOwnColor = true
 	a.stampCache = nil
 	a.setTool(ToolDraw)
 	a.setStatus("The selection is now the brush (Shift+B = standard brush)")

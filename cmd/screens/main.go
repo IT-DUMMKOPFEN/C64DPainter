@@ -259,9 +259,9 @@ func main() {
 	stroke(a, 0, [2]int{100, 30}, [2]int{150, 170})
 	char(a, 'F')
 	key(a, app.KeyEsc, app.Mods{})
-	a.Debug("gradient", 1<<4|2<<8|2<<12|0<<20) // blue, light → dark → light, linear ↓, dithered
+	a.Debug("gradient", 1<<4|4<<8|2<<12|0<<20) // blue, light → dark → light, linear ↓, dithered
 	stroke(a, 0, [2]int{10, 10})
-	a.Debug("gradient", 1|1<<4|1<<8|8<<12) // fire, circle, dithered
+	a.Debug("gradient", 1|1<<4|3<<8|8<<12) // fire, circle, dithered
 	stroke(a, 0, [2]int{48, 100})
 	a.Debug("gradient", 2|0<<8|12<<12) // forest, diamond
 	stroke(a, 0, [2]int{125, 100})
@@ -314,5 +314,30 @@ func main() {
 	move(a, 1355, 855)
 	shot(a, "18_mirrored_view")
 	char(a, 'M')
+
+	// 19/20 stamps
+	a.Debug("stamps", 1)
+	move(a, 1355, 855)
+	shot(a, "19_stamps_window")
+	key(a, app.KeyEsc, app.Mods{})
+	char(a, 'j')
+	for i := 0; i < 20; i++ {
+		char(a, 'u')
+	}
+	a.Debug("fg", 13)
+	for _, st := range []struct {
+		name    string
+		x, y, c int
+	}{
+		{"Pine tree", 12, 160, 5}, {"Tree", 34, 165, 13}, {"House", 60, 158, 10}, {"Deer", 100, 165, 9},
+		{"Moon", 130, 30, 7}, {"Bird flying", 70, 40, 15}, {"Walking man", 140, 160, 1}, {"Castle", 30, 60, 12},
+	} {
+		a.Debug("fg", st.c)
+		a.Debug("stampbyname:"+st.name, 0)
+		stroke(a, 0, [2]int{st.x, st.y})
+	}
+	hover(a, 150, 20)
+	shot(a, "20_stamps_used")
+	char(a, 'j')
 	fmt.Println("done")
 }

@@ -194,20 +194,19 @@ var lumaOrder = []uint8{0, 6, 9, 11, 2, 4, 8, 12, 14, 5, 10, 3, 15, 7, 13, 1}
 
 // shadeStep returns the color one step lighter (dir > 0) or darker.
 func (a *App) shadeStep(c uint8, dir int) uint8 {
-	ramp := a.set.ShadeRamp
-	if ramp >= 0 && ramp < len(gradientRamps) {
-		r := gradientRamps[ramp]
-		seq := []uint8{r.dark, r.mid, r.light}
-		for i, v := range seq {
-			if v == c {
-				return seq[clampI(i+dir, 0, 2)]
-			}
+	seq := lumaOrder
+	rs := shadeRamps()
+	if r := a.set.ShadeRamp; r >= 0 && r < len(rs) {
+		// ramp colors are light → dark; walk them dark → light
+		cols := rs[r].cols
+		seq = make([]uint8, len(cols))
+		for i, v := range cols {
+			seq[len(cols)-1-i] = v
 		}
-		return c
 	}
-	for i, v := range lumaOrder {
+	for i, v := range seq {
 		if v == c {
-			return lumaOrder[clampI(i+dir, 0, 15)]
+			return seq[clampI(i+dir, 0, len(seq)-1)]
 		}
 	}
 	return c
@@ -238,7 +237,7 @@ func (a *App) panelShade(x, y, w int) int {
 	u := &a.ui
 	m := a.img
 	y = a.section(x, y, w, "Shade")
-	m.Text(font.UI, x, y, "Steps", a.th.Text)
+	m.Text(font.UI, x, y, "Steps (3, 4 or 5 colors)", a.th.Text)
 	y += 18
 	r := gfx.Rect{X: x, Y: y, W: w, H: 22}
 	if u.ButtonEx("sh_all", r, "All colors by brightness", a.set.ShadeRamp < 0, true) {
@@ -248,15 +247,38 @@ func (a *App) panelShade(x, y, w int) int {
 	a.drawRampSwatch(gfx.Rect{X: x, Y: y, W: w, H: 8}, lumaOrder)
 	y += 14
 	cw := (w - 4) / 2
-	for i, rp := range gradientRamps {
-		br := gfx.Rect{X: x + (i%2)*(cw+4), Y: y + (i/2)*26, W: cw, H: 24}
+	rs := shadeRamps()
+	n3, n4 := len(gradientRamps), len(gradientRamps4)
+	for i, rp := range rs {
+		k := i
+		switch {
+		case i == n3:
+			y += ((n3+1)/2)*26 + 2
+			m.Text(font.UI, x, y, "4 colors", a.th.TextDim)
+			y += 16
+		case i == n3+n4:
+			y += ((n4+1)/2)*26 + 2
+			m.Text(font.UI, x, y, "5 colors", a.th.TextDim)
+			y += 16
+		}
+		if i >= n3+n4 {
+			k = i - n3 - n4
+		} else if i >= n3 {
+			k = i - n3
+		}
+		br := gfx.Rect{X: x + (k%2)*(cw+4), Y: y + (k/2)*26, W: cw, H: 24}
 		if u.ButtonEx("sh_r"+itoa(i), br, "", a.set.ShadeRamp == i, true) {
 			a.set.ShadeRamp = i
 		}
-		a.drawRampSwatch(gfx.Rect{X: br.X + 4, Y: br.Y + 4, W: br.W - 8, H: br.H - 8}, []uint8{rp.dark, rp.mid, rp.light})
+		cols := rp.cols
+		rev := make([]uint8, len(cols))
+		for j, v := range cols {
+			rev[len(cols)-1-j] = v
+		}
+		a.drawRampSwatch(gfx.Rect{X: br.X + 4, Y: br.Y + 4, W: br.W - 8, H: br.H - 8}, rev)
 		u.Tip("sh_r"+itoa(i), br, rp.name)
 	}
-	y += ((len(gradientRamps)+1)/2)*26 + 4
+	y += ((len(gradientRamps5)+1)/2)*26 + 4
 	for _, ln := range wrapText(font.UI, "Left button lightens, right button darkens by one step. Colors outside the chosen ramp stay as they are.", w) {
 		m.Text(font.UI, x, y, ln, a.th.TextDim)
 		y += font.UI.Height + 2

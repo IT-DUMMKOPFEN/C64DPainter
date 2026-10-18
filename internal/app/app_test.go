@@ -926,7 +926,7 @@ func TestGradientFill(t *testing.T) {
 	}
 	// drag: circle from the center of the right half, width 20 pixels
 	a.set.Gradient.Shape = 1
-	a.set.Gradient.Group = 1 // dark → light → dark
+	a.set.Gradient.Group = 3 // dark → light → dark
 	x0, y0 := pc(a, 120, 100)
 	x1, y1 := pc(a, 130, 100)
 	tdrag(a, x0, y0, x1, y1, 0)

@@ -11,14 +11,14 @@ import (
 // --- CRT preview window --------------------------------------------------------------
 //
 // A floating window that shows the picture with its border as on a TV:
-// 100 % (384 × 272 screen pixels, the size of a real C64 picture), 200 % or
-// 300 %, with or without the CRT look (scanlines, soft picture and the PAL
+// 100 % (384 × 272 screen pixels, the size of a real C64 picture) or 200 %,
+// with or without the CRT look (scanlines, soft picture and the PAL
 // color bleed). It does not block the program: you keep painting while it
 // is open and it follows every change.
 
 // CRTSettings are saved with the settings.
 type CRTSettings struct {
-	Scale int  `json:"scale"` // 1, 2 or 3
+	Scale int  `json:"scale"` // 1 or 2
 	On    bool `json:"on"`
 	X     int  `json:"x"` // window position (0, 0 = not placed yet)
 	Y     int  `json:"y"`
@@ -43,7 +43,7 @@ func (a *App) toggleCRT() {
 	}
 }
 
-func (a *App) crtScale() int { return clampI(a.set.CRT.Scale, 1, 3) }
+func (a *App) crtScale() int { return clampI(a.set.CRT.Scale, 1, 2) }
 
 // crtRect returns the window rectangle.
 func (a *App) crtRect() gfx.Rect {
@@ -214,7 +214,7 @@ func (a *App) drawCRT() {
 	}
 	// controls
 	by := r.Y + 1 + crtTitleH + 4
-	for i, s := range []int{1, 2, 3} {
+	for i, s := range []int{1, 2} {
 		br := gfx.Rect{X: r.X + 8 + i*64, Y: by, W: 60, H: 22}
 		if u.ButtonEx("crt_s"+itoa(s), br, itoa(s*100)+" %", a.crtScale() == s, true) && a.set.CRT.Scale != s {
 			a.set.CRT.Scale = s
@@ -222,7 +222,7 @@ func (a *App) drawCRT() {
 			return
 		}
 	}
-	on := u.Checkbox("crt_on", gfx.Rect{X: r.X + 8 + 3*64 + 8, Y: by + 1, W: 70, H: 20}, "CRT", a.set.CRT.On)
+	on := u.Checkbox("crt_on", gfx.Rect{X: r.X + 8 + 2*64 + 8, Y: by + 1, W: 70, H: 20}, "CRT", a.set.CRT.On)
 	if on != a.set.CRT.On {
 		a.set.CRT.On = on
 		a.saveSettings()

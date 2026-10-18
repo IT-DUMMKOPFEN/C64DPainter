@@ -328,7 +328,7 @@ var aboutSources = [][2]string{
 	{"Language", "Go and its standard library (BSD), The Go Authors"},
 	{"Dithering", "pixelparmesan.com, pixel-editor.com, pixnote.net, divoom.com, pixie.haus"},
 	{"Dither styles", "16 hand-pixelled C64 scene pictures, analyzed pattern by pattern"},
-	{"Gradients", "color ramp table by IT-Dummköpfen"},
+	{"Gradients", "color ramp table by IT-Dummköpfen, extended"},
 	{"Inspiration", "Deluxe Paint (Electronic Arts, 1985), PyDPainter and Multipaint (Marq/Kameli)"},
 }
 
