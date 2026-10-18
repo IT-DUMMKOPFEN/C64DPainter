@@ -38,18 +38,18 @@ File, edit, selection, layer and view commands, options (palette, color conflict
 
 - At the top: twelve **brush presets** (round, square and diamond, different sizes).
 - Below: the **tools**. Split buttons (rectangle, circle, ellipse): click the upper left half for an outline, the lower right half for a filled shape.
-- **Right-clicking** a tool button opens its help or settings (grid, template, zoom).
+- **Right-clicking** a tool button opens its help or settings (grid, template, zoom, gradient).
 - The **color 1 / color 2** display. Clicking it swaps both colors.
 - The **palette** with the 16 C64 colors. "B" marks the background color (Ctrl+click a color to make it the background).
 
 ## Side panel (left)
 
 - **Selection** (only with the select tool): rotate, scale, shear.
-- **Dither brush** / **Smear** (only with these tools): their style and strength settings.
+- **Dither brush** / **Smear** / **Gradient fill** (only with these tools): their settings.
 - **Brush**: shape (round, square, diamond, custom), size 1–16, preview, airbrush settings.
 - **Patterns**: fill patterns for all tools (hidden for the dither brush).
 - **Colors**: background ($D021), border ($D020) and the behavior for color conflicts.
-- **Layers**: the paint layers 2–4 (click = paint on it, eye = show/hide) and the template (layer 1).
+- **Layers**: the template (layer 1) and the paint layers 2–4 (click = paint on it, eye = show/hide); the switch next to the title turns layers 3 and 4 on or off.
 - **Cell under the mouse**: the four colors of the cell and which bit pairs are free.
 - **Navigator**: the whole picture in small; click or drag to choose the visible area.
 
@@ -176,6 +176,21 @@ First drag the base line and release. Then move the mouse – the curve bends to
 ## [fill] Fill (F)
 
 Fills the connected area of the same color (connected horizontally and vertically). The selected **pattern** is used. In full cells the conflict mode decides.
+
+## [gradient] Gradient fill (Shift+F)
+
+Fills the connected area of the same color with a **color gradient** (on the active layer). Clicking the tool button opens the **gradient window**: 15 C64 color ramps in three versions (tabs) – 3 colors light → dark, 5 colors dark → light → dark and 5 colors light → dark → light. There you also choose:
+
+- **Shape**: Linear, Circle or Diamond.
+- **Direction** for a single click with the linear shape (8 directions).
+- **Reverse colors** and **Dithered transitions** (25 / 50 / 75 % patterns between the color bands instead of hard edges).
+
+Close the window with **OK**; the side panel shows the chosen gradient and a button to open the window again.
+
+- **Single click** into an area: the gradient starts at the click point. Linear runs in the chosen direction up to the far edge of the area; circle and diamond spread from the click point up to the farthest point of the area.
+- **Click and drag**: the drag sets the direction and the width of the gradient. A line shows it while you drag. Beyond the end the last color continues.
+
+A gradient uses at most three colors, so in empty cells it never runs into color conflicts. In cells that already hold other colors the conflict mode decides.
 
 ## [spray] Airbrush (A)
 
@@ -420,7 +435,7 @@ All values always refer to the **original** content, so trying things out never 
 
 - **Mouse wheel** over the picture: zoom in/out at the mouse position.
 - ` + "`>`" + ` and ` + "`<`" + ` or the magnifier buttons in the toolbox.
-- ` + "`Ctrl+0`" + ` or ` + "`Home`" + `: fit to window. ` + "`Ctrl+1`" + `: 100 % (320 × 200 screen pixels).
+- ` + "`0`" + `, ` + "`Ctrl+0`" + ` or ` + "`Home`" + `: fit to window. ` + "`Ctrl+1`" + `: 100 % (320 × 200 screen pixels).
 - Zoom levels from 1× to 32×.
 
 ## Moving the view
@@ -451,19 +466,20 @@ With **View → Grid settings …** (` + "`Shift+G`" + ` or right-click the grid
 	{id: "layers", title: "Layers & template", body: `
 # Layers
 
-A picture has **four layers** (side panel **Layers** or the **Layer** menu):
+A picture has **four layers** (side panel **Layers** or the **Layer** menu). They are listed from 1 at the top to 4 at the bottom, in the order they lie on top of each other:
 
-= Layer 4 | paint layer (top)
-= Layer 3 | paint layer
-= Layer 2 | paint layer (bottom) – loaded and imported pictures go here
 = Layer 1 | the **template**: any image for tracing, its colors do not matter
+= Layer 2 | paint layer **in front** – loaded and imported pictures go here
+= Layer 3 | paint layer behind layer 2
+= Layer 4 | paint layer **at the back**
 
 ## Paint layers 2–4
 
-- **Click a layer** (or press ` + "`2`" + `, ` + "`3`" + `, ` + "`4`" + `) to paint on it. The active layer is highlighted and shown in the status bar. All tools paint into the active layer; the selection, Auto dither, the Dither brush and Smear work on it too.
-- Pixels you have not painted on a layer are **transparent**: the layers below show through. Where no layer has a pixel, you see the background color.
+- At the start only **layer 2** is active; layers 3 and 4 are **switched off**. The switch **Layers 3 + 4** next to the title of the Layers panel (or **Layer → Use layers 3 + 4**) turns them on and off. While they are on, every layer can be shown or hidden on its own.
+- **Click a layer** (or press ` + "`2`" + `, ` + "`3`" + `, ` + "`4`" + `) to paint on it; ` + "`3`" + ` and ` + "`4`" + ` switch layers 3 + 4 on. The active layer is highlighted and shown in the status bar. All tools paint into the active layer; the selection, Auto dither, the Dither brush, Smear and Gradient fill work on it too.
+- Pixels you have not painted on a layer are **transparent**: the layers behind show through. Where no layer has a pixel, you see the background color.
 - The **Eraser** (` + "`W`" + `) makes pixels of the active layer transparent again. **Clear layer** empties the whole active layer.
-- The **eye icon** shows or hides a layer.
+- The **eye icon** shows or hides a layer. Switched-off layers 3 and 4 are hidden, but their colors still count for the cell rules.
 
 > **The multicolor rules apply to layers 2–4 together.** In every 4 × 8 cell, all three layers together may use the background color plus at most three colors – **also when a layer is hidden**. So every combination of visible layers is always a valid C64 picture. The cell info marks colors that only come from hidden layers.
 
@@ -563,6 +579,7 @@ As in Deluxe Paint, letter keys work directly, without Ctrl.
 = V | Line
 = Q | Curve
 = F | Fill
+= Shift+F | Gradient fill (opens the gradient window)
 = A | Airbrush
 = Shift+D | Dither brush (experimental)
 = Shift+S | Smear
@@ -577,7 +594,7 @@ As in Deluxe Paint, letter keys work directly, without Ctrl.
 
 ## Layers
 
-= 2 / 3 / 4 | paint on layer 2 / 3 / 4
+= 2 / 3 / 4 | paint on layer 2 / 3 / 4 (3 and 4 switch layers 3 + 4 on)
 = T | template (layer 1) on/off
 
 ## Brush, colors, patterns
@@ -604,7 +621,7 @@ As in Deluxe Paint, letter keys work directly, without Ctrl.
 
 = Mouse wheel | zoom at the mouse position
 = > / < | zoom in / out
-= Ctrl+0 or Home | fit to window
+= 0, Ctrl+0 or Home | fit to window
 = Ctrl+1 | 100 %
 = G / Shift+G | grid on/off / settings
 = M | pixel grid
@@ -680,17 +697,31 @@ When sprites are combined with the picture, bit pairs ` + "`%00`" + ` and ` + "`
 	{id: "about", title: "About C64 DPainter", body: `
 # About C64 DPainter
 
-**Version 0.95 beta** – a paint program for C64 multicolor bitmaps for Windows, macOS and Linux.
+**Version 0.96 beta** – a paint program for C64 multicolor bitmaps.
+
+Runs on **Windows 11** (Windows 10 may crash), **macOS** (M chips only) and **Linux**.
 
 Created by **IT-Dummköpfen**. Free for private use.
 
 Inspired by **Deluxe Paint** (Electronic Arts, 1985) and **PyDPainter**. Controls and keyboard shortcuts follow these programs.
 
+I was also inspired by many comments from users. Thank you so much! ❤
+
 ## Sources and thanks
 
-- Technical basics: C64-Wiki (multicolor bitmap mode, MULTI) and retro-programming.de (VIC-II graphics modes).
-- Palettes: collection from c64gfx.com/palettes. Two palettes were missing one color on the source page; it was taken from Pepto and is marked with * in the palette dialog.
-- Font: DejaVu Sans (free license, Bitstream Vera).
+Thank you all for making your work available and letting us use it:
+
+- **Palettes:** collection from c64gfx.com/palettes. Two palettes were missing one color on the source page; it was taken from Pepto's palette and is marked with * in the palette dialog.
+- **Technical basics:** C64-Wiki (multicolor bitmap mode, MULTI) and retro-programming.de (VIC-II graphics modes).
+- **Font:** DejaVu Sans (Bitstream Vera / DejaVu fonts license).
+- **macOS:** purego by Ebitengine (Apache 2.0) – the Cocoa window without cgo.
+- **Linux:** xgb by BurntSushi and jezek (BSD) – the X11 connection.
+- **Windows:** rsrc by akavel (MIT) – the program icon resource.
+- **Language:** Go and its standard library (BSD), The Go Authors.
+- **Dithering:** articles and guides on pixelparmesan.com, pixel-editor.com, pixnote.net, divoom.com and pixie.haus.
+- **Dither styles:** 16 hand-pixelled C64 scene pictures, analyzed pattern by pattern.
+- **Gradients:** color ramp table by IT-Dummköpfen.
+- **Inspiration:** Deluxe Paint (Electronic Arts, 1985) and PyDPainter.
 
 ## Settings
 

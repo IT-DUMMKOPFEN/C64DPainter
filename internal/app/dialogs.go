@@ -310,32 +310,64 @@ func (a *App) openAbout() {
 }
 
 func (d *aboutDialog) Title() string          { return "About " + AppName }
-func (d *aboutDialog) Size(a *App) (int, int) { return 540, 380 }
+func (d *aboutDialog) Size(a *App) (int, int) { return 640, min(690, a.H-40) }
 func (d *aboutDialog) Key(a *App, k KeyEvent) {
 	if k.Key == KeyEnter {
 		a.closeModal(false)
 	}
 }
+
+// aboutSources: sources and thanks (also in the help page "About").
+var aboutSources = [][2]string{
+	{"Palettes", "c64gfx.com palette collection (two missing colors from Pepto's palette)"},
+	{"C64 basics", "C64-Wiki and retro-programming.de"},
+	{"Font", "DejaVu Sans (Bitstream Vera / DejaVu fonts license)"},
+	{"macOS", "purego by Ebitengine (Apache 2.0)"},
+	{"Linux", "xgb by BurntSushi and jezek (BSD)"},
+	{"Windows", "rsrc by akavel (MIT) for the icon resource"},
+	{"Language", "Go and its standard library (BSD), The Go Authors"},
+	{"Dithering", "pixelparmesan.com, pixel-editor.com, pixnote.net, divoom.com, pixie.haus"},
+	{"Dither styles", "16 hand-pixelled C64 scene pictures, analyzed pattern by pattern"},
+	{"Gradients", "color ramp table by IT-Dummköpfen"},
+	{"Inspiration", "Deluxe Paint (Electronic Arts, 1985) and PyDPainter"},
+}
+
 func (d *aboutDialog) Draw(a *App, r gfx.Rect) {
 	m := a.img
 	th := a.th
 	// logo: the program icon as big pixel art
 	lr := gfx.Rect{X: r.X + (r.W-64)/2, Y: r.Y + 4, W: 64, H: 64}
 	drawBigLogo(m, lr)
-	y := lr.Bottom() + 16
-	center := func(f *font.Face, s string, c uint32) {
+	y := lr.Bottom() + 12
+	center := func(f *font.Face, s string, c uint32, gap int) {
 		m.Text(f, r.X+(r.W-f.Width(s))/2, y, s, c)
-		y += f.Height + 8
+		y += f.Height + gap
 	}
-	center(font.H1, AppName, th.Text)
-	center(font.BodyB, "Version "+AppVersion, th.Accent)
-	y += 6
-	center(font.Body, "Created by "+AppAuthor, th.Text)
-	center(font.Body, AppLicense, th.Text)
+	center(font.H1, AppName, th.Text, 6)
+	center(font.BodyB, "Version "+AppVersion, th.Accent, 10)
+	center(font.Body, "Created by "+AppAuthor, th.Text, 4)
+	center(font.Body, AppLicense, th.Text, 12)
+	center(font.UI, "A paint program for the C64 multicolor bitmap mode for", th.TextDim, 4)
+	center(font.UI, "Windows 11 (Windows 10 may crash) · macOS (M chips only) · Linux", th.TextDim, 10)
+	center(font.UI, "Inspired by Deluxe Paint (Electronic Arts, 1985) and PyDPainter.", th.Text, 4)
+	center(font.UI, "I was also inspired by many comments from users. Thank you so much! \u2764", th.Text, 14)
+	// sources and thanks
+	m.HLine(r.X, r.Right()-1, y, th.Border)
 	y += 8
-	center(font.UI, "A paint program for the C64 multicolor bitmap mode", th.TextDim)
-	center(font.UI, "for Windows, macOS and Linux.", th.TextDim)
-	center(font.UI, "Palettes: c64gfx.com · Font: DejaVu Sans · purego (Apache 2.0) · xgb (BSD)", th.TextDim)
+	center(font.UIB, "Sources & thanks", th.Text, 4)
+	center(font.UI, "Thank you all for making your work available and letting us use it.", th.TextDim, 8)
+	kw := 0
+	for _, s := range aboutSources {
+		kw = max(kw, font.UIB.Width(s[0]))
+	}
+	for _, s := range aboutSources {
+		if y+font.UI.Height > r.Bottom()-36 {
+			break
+		}
+		m.Text(font.UIB, r.X+8, y, s[0], th.Text)
+		m.Text(font.UI, r.X+8+kw+12, y, gfx.Elide(font.UI, s[1], r.W-kw-28), th.TextDim)
+		y += font.UI.Height + 4
+	}
 	by := r.Bottom() - 28
 	if a.ui.Button("ab_help", gfx.Rect{X: r.X, Y: by, W: 120, H: 28}, "More in Help") {
 		a.modal = nil

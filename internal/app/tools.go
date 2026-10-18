@@ -124,6 +124,8 @@ func (a *App) toolInput(px, py int, over bool) {
 			a.pushUndo(a.pic.Clone())
 			d.base = nil
 			a.smearStart(px, py)
+		case ToolGradient:
+			a.gradientPress(px, py)
 		case ToolFill:
 			snap := a.pic.Clone()
 			if a.floodFill(px, py, btn) {
@@ -159,6 +161,8 @@ func (a *App) toolInput(px, py int, over bool) {
 					}
 				})
 			case ToolSpray:
+			case ToolGradient:
+				a.gradientMove(px, py)
 			default:
 				a.shapePreview(px, py)
 			}
@@ -179,6 +183,10 @@ func (a *App) toolInput(px, py int, over bool) {
 		d.ditherSrc = nil
 	case ToolSmear:
 		a.smearBuf = nil
+	case ToolGradient:
+		a.gradientMove(px, py)
+		a.pushUndo(d.base)
+		a.grad = gradientDrag{}
 	case ToolCurve:
 		if d.sx == px && d.sy == py {
 			*a.pic = *d.base

@@ -202,12 +202,20 @@ func (m *Image) RoundRect(r Rect, rad int, c uint32) {
 	}
 }
 
+// HeartRed is the color of the heart character ❤ (U+2764).
+const HeartRed uint32 = 0xE02030
+
 // Text zeichnet s mit Oberkante bei y. Gibt die Breite zurück.
 func (m *Image) Text(f *font.Face, x, y int, s string, c uint32) int {
 	ox := x
 	base := y + f.Ascent
+	col := c
 	for _, r := range s {
 		g := f.Glyph(r)
+		c = col
+		if r == '\u2764' { // the heart is always red
+			c = HeartRed
+		}
 		if g.W > 0 {
 			gx, gy := x+g.BX, base+g.BY
 			// schneller Test gegen Clip

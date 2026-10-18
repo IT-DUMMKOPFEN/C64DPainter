@@ -33,6 +33,7 @@ type Settings struct {
 	DitherBrush   c64.AutoDitherOptions `json:"ditherBrush"`
 	SmearStrength int                   `json:"smearStrength"`
 	DitherAuto    c64.AutoDitherOptions `json:"autoDither"`
+	Gradient      GradientSettings      `json:"gradient"`
 }
 
 func defaultSettings() Settings {

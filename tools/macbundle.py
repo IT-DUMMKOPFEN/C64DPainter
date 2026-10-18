@@ -1,9 +1,9 @@
-# Builds "C64 DPainter.app" from two Mach-O binaries (arm64 + x86_64) on any OS.
-# Usage: macbundle.py <arm64-binary> <amd64-binary> <icon-png> <out-dir> <version>
+# Builds "C64 DPainter.app" for Apple silicon (arm64 Mach-O binary) on any OS.
+# Usage: macbundle.py <arm64-binary> <icon-png> <out-dir> <version>
 import os, shutil, struct, sys
 from PIL import Image
 
-arm, amd, icon, out, version = sys.argv[1:6]
+arm, icon, out, version = sys.argv[1:5]
 
 def macho_cpu(path):
     d = open(path, 'rb').read(12)
@@ -11,34 +11,15 @@ def macho_cpu(path):
     assert magic == 0xFEEDFACF, 'not a 64-bit Mach-O'
     return cpu, sub
 
-def lipo(paths, dst):
-    align = 14  # 16 KiB pages
-    slices = [open(p, 'rb').read() for p in paths]
-    hdr = struct.pack('>II', 0xCAFEBABE, len(slices))
-    off = 8 + 20 * len(slices)
-    entries, body = [], []
-    for p, data in zip(paths, slices):
-        off = (off + (1 << align) - 1) & ~((1 << align) - 1)
-        cpu, sub = macho_cpu(p)
-        entries.append(struct.pack('>iiIII', cpu, sub & 0x00FFFFFF, off, len(data), align))
-        body.append((off, data))
-        off += len(data)
-    buf = bytearray(off)
-    buf[0:8] = hdr
-    pos = 8
-    for e in entries:
-        buf[pos:pos + 20] = e
-        pos += 20
-    for o, data in body:
-        buf[o:o + len(data)] = data
-    open(dst, 'wb').write(buf)
-    os.chmod(dst, 0o755)
-
 app = os.path.join(out, 'C64 DPainter.app')
 shutil.rmtree(app, ignore_errors=True)
 os.makedirs(os.path.join(app, 'Contents', 'MacOS'))
 os.makedirs(os.path.join(app, 'Contents', 'Resources'))
-lipo([arm, amd], os.path.join(app, 'Contents', 'MacOS', 'C64DPainter'))
+cpu, _ = macho_cpu(arm)
+assert cpu == 0x0100000C, 'the macOS binary must be arm64 (Apple silicon)'
+exe = os.path.join(app, 'Contents', 'MacOS', 'C64DPainter')
+shutil.copyfile(arm, exe)
+os.chmod(exe, 0o755)
 
 # icon: pixel art scaled up with a margin like other macOS icons
 src = Image.open(icon).convert('RGBA')
@@ -49,6 +30,7 @@ canvas.save(os.path.join(app, 'Contents', 'Resources', 'AppIcon.icns'),
             sizes=[(16, 16), (32, 32), (64, 64), (128, 128), (256, 256), (512, 512), (1024, 1024)])
 
 doc_types = [
+    ('C64 DPainter project', ['c64dp'], 'Editor'),
     ('Koala Painter picture', ['kla', 'koa'], 'Editor'),
     ('PNG image', ['png'], 'Viewer'),
     ('BMP image', ['bmp'], 'Viewer'),

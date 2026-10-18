@@ -12,7 +12,7 @@ import (
 )
 
 const AppName = "C64 DPainter"
-const AppVersion = "0.95 beta"
+const AppVersion = "0.96 beta"
 
 // AppAuthor and AppLicense appear on the About page.
 const AppAuthor = "IT-Dummköpfen"
@@ -63,13 +63,14 @@ const (
 	ToolDither
 	ToolSmear
 	ToolErase
+	ToolGradient
 	toolCount
 )
 
 var toolNames = [toolCount]string{
 	"Dots", "Freehand", "Line", "Curve", "Fill", "Airbrush",
 	"Rectangle", "Filled rectangle", "Circle", "Filled circle",
-	"Ellipse", "Filled ellipse", "Select", "Color picker", "Pan", "Cell color swap", "Dither brush (experimental)", "Smear", "Eraser",
+	"Ellipse", "Filled ellipse", "Select", "Color picker", "Pan", "Cell color swap", "Dither brush (experimental)", "Smear", "Eraser", "Gradient fill",
 }
 
 var toolHints = [toolCount]string{
@@ -92,6 +93,7 @@ var toolHints = [toolCount]string{
 	"Paint over color borders to dither them  ·  style and softness in the side panel  ·  Ctrl = straight line",
 	"Drag: smear the colors along the stroke  ·  strength in the side panel",
 	"Drag: erase on the active layer (it becomes transparent)  ·  Ctrl = straight line",
+	"Click: fill an area with the gradient from that point  ·  drag: direction and width  ·  Shift+F: choose gradient",
 }
 
 // App ist der Programmzustand.
@@ -175,9 +177,11 @@ type App struct {
 	lastImport                              c64.ConvertOptions
 
 	// Dither brush: result for the current picture (cached) and its key
-	ditherRes *c64.Picture
-	ditherKey string
-	smearBuf  []int8 // colors carried by the smear brush
+	ditherRes   *c64.Picture
+	ditherKey   string
+	extraLayers bool   // layers 3 and 4 switched on
+	smearBuf    []int8 // colors carried by the smear brush
+	grad        gradientDrag
 }
 
 type dragState struct {
@@ -212,6 +216,8 @@ func New(host Host) *App {
 	for i := range a.pages {
 		a.pages[i] = c64.NewPicture(0, 0)
 		a.pages[i].ToLayers()
+		a.pages[i].Hide[1], a.pages[i].Hide[2] = true, true // layers 3 + 4 off at the start
+		a.pages[i].Recomposite()
 	}
 	a.pic = a.pages[0]
 	a.fg, a.fg2 = 1, 0
@@ -844,6 +850,11 @@ func (a *App) charShortcut(c rune) {
 		a.setTool(ToolSmear)
 	case 'w':
 		a.setTool(ToolErase)
+	case 'F':
+		a.setTool(ToolGradient)
+		a.later(a.openGradientDialog)
+	case '0':
+		a.zoomFit()
 	case '2', '3', '4':
 		a.setActiveLayer(int(c - '2'))
 	case 'A':
@@ -991,6 +1002,7 @@ func (a *App) swapPage() {
 	a.sel.state = selNone
 	a.page = 1 - a.page
 	a.pic = a.pages[a.page]
+	a.syncExtraLayers()
 	a.updateTitle()
 	a.setStatus(fmt.Sprintf("Page %d (J switches back)", a.page+1))
 }

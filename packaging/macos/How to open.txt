@@ -1,4 +1,5 @@
-C64 DPainter for macOS (Apple silicon and Intel, macOS 11 or newer)
+C64 DPainter for macOS (Apple silicon / M chips only, macOS 11 or newer)
+Macs with an Intel processor are not supported.
 
 1. Drag "C64 DPainter.app" into your Applications folder.
 2. The app is not notarized by Apple, so macOS blocks it the first time.

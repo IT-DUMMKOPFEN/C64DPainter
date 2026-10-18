@@ -382,9 +382,9 @@ func TestDialogDrag(t *testing.T) {
 	a.openAbout()
 	step(a)
 	r0 := a.modalTitle
-	// drag the title bar 200 px left and 150 px up
-	tdrag(a, r0.X+60, r0.Y+12, r0.X+60-200, r0.Y+12-150, 0)
-	if a.modalTitle.X != r0.X-200 || a.modalTitle.Y != r0.Y-150 {
+	// drag the title bar 200 px left and 50 px up
+	tdrag(a, r0.X+60, r0.Y+12, r0.X+60-200, r0.Y+12-50, 0)
+	if a.modalTitle.X != r0.X-200 || a.modalTitle.Y != r0.Y-50 {
 		t.Fatalf("dialog not moved: %v -> %v", r0, a.modalTitle)
 	}
 	if a.modal == nil {
@@ -415,9 +415,10 @@ func TestDialogDrag(t *testing.T) {
 		t.Fatalf("double-click did not center: %v vs %v", a.modalTitle, r0)
 	}
 	// buttons still work after moving
-	tdrag(a, r0.X+60, r0.Y+12, r0.X+160, r0.Y+62, 0)
+	tdrag(a, r0.X+60, r0.Y+12, r0.X+160, r0.Y+22, 0)
 	r := a.modalTitle
-	tclick(a, r.X+540-16-55, r.Y+380-12-14, 0) // "Close"
+	_, dh := (&aboutDialog{}).Size(a)
+	tclick(a, r.X+640-16-55, r.Y+dh-12-14, 0) // "Close"
 	if a.modal != nil {
 		t.Fatal("Close button does not work after moving")
 	}
@@ -776,57 +777,68 @@ func toolIndex(a *App, id string) int {
 
 func TestLayersInTheApp(t *testing.T) {
 	a, _ := setup(t)
+	// start: layer 2 active, layers 3 + 4 switched off
+	if a.pic.Active != 0 || a.extraLayers || !a.pic.Hide[1] || !a.pic.Hide[2] || a.pic.Hide[0] {
+		t.Fatal("start state: layer 2 active, layers 3 + 4 off")
+	}
+	a.toggleLayer(1)
+	if !a.pic.Hide[1] {
+		t.Fatal("layer 3 must not be shown while the switch is off")
+	}
 	a.Char('d')
 	step(a)
-	a.fg = 2
 	x0, y0 := pc(a, 10, 50)
 	x1, y1 := pc(a, 40, 50)
-	tdrag(a, x0, y0, x1, y1, 0) // red line on layer 2
+	// key 3 switches layers 3 + 4 on and selects layer 3
 	a.Char('3')
 	step(a)
-	if a.pic.Active != 1 {
-		t.Fatalf("key 3 should select layer 3, active = %d", a.pic.Active)
+	if a.pic.Active != 1 || !a.extraLayers || a.pic.Hide[1] || a.pic.Hide[2] {
+		t.Fatalf("key 3: active %d, switch %v", a.pic.Active, a.extraLayers)
 	}
 	a.fg = 7
-	tdrag(a, x0, y0, x1, y1, 0) // yellow line on layer 3, same place
-	if a.pic.ColorAt(20, 50) != 7 || a.pic.LayerPixels(0) == 0 || a.pic.LayerPixels(1) == 0 {
-		t.Fatal("layer 3 must cover layer 2")
-	}
-	// hide layer 3: the red line shows
-	a.toggleLayer(1)
+	tdrag(a, x0, y0, x1, y1, 0) // yellow line on layer 3 (behind layer 2)
+	a.Char('2')
 	step(a)
-	if a.pic.ColorAt(20, 50) != 2 {
-		t.Fatal("hidden layer 3 must show layer 2")
+	a.fg = 2
+	tdrag(a, x0, y0, x1, y1, 0) // red line on layer 2, in front
+	if a.pic.ColorAt(20, 50) != 2 || a.pic.LayerPixels(0) == 0 || a.pic.LayerPixels(1) == 0 {
+		t.Fatal("layer 2 must be in front of layer 3")
+	}
+	// hide layer 2: the yellow line of layer 3 shows
+	a.toggleLayer(0)
+	step(a)
+	if a.pic.ColorAt(20, 50) != 7 {
+		t.Fatal("hidden layer 2 must show layer 3")
 	}
 	// undo keeps the visibility
 	a.undo()
-	if !a.pic.Hide[1] {
+	if !a.pic.Hide[0] {
 		t.Fatal("undo must not change the visibility")
 	}
 	a.redo()
-	a.toggleLayer(1)
-	// eraser on layer 3 brings back the red line
+	a.toggleLayer(0)
+	// eraser on layer 2 brings back the yellow line
 	a.Char('w')
 	step(a)
 	if a.tool != ToolErase {
 		t.Fatalf("W should select the eraser: %d", a.tool)
 	}
 	tdrag(a, x0, y0, x1, y1, 0)
-	if a.pic.ColorAt(20, 50) != 2 {
-		t.Fatalf("after erasing layer 3 the red line must show, got %d", a.pic.ColorAt(20, 50))
+	if a.pic.ColorAt(20, 50) != 7 {
+		t.Fatalf("after erasing layer 2 the yellow line must show, got %d", a.pic.ColorAt(20, 50))
 	}
-	// the rules count hidden layers too: fill a cell with three colors on
-	// layer 2, hide it, a 4th color on layer 4 is blocked
-	a.Char('2')
+	// switching 3 + 4 off hides them and selects layer 2; their colors still count
+	a.Char('4')
 	step(a)
 	for i, c := range []uint8{5, 6, 14} {
 		a.pic.Plot(100+i, 100, c, c64.ConflictBlock, a.pal)
 	}
-	a.toggleLayer(0)
-	a.Char('4')
-	step(a)
+	a.setExtraLayers(false)
+	if a.pic.Active != 0 || !a.pic.Hide[1] || !a.pic.Hide[2] {
+		t.Fatal("switch off: layer 2 active, 3 + 4 hidden")
+	}
 	if r := a.pic.Plot(103, 101, 1, c64.ConflictBlock, a.pal); r != c64.PlotBlocked {
-		t.Fatal("4th color must be blocked although layer 2 is hidden")
+		t.Fatal("4th color must be blocked although layer 4 is switched off")
 	}
 	if h := a.pic.HiddenOnly(c64.CellOf(100, 100)); !h[1] && !h[2] && !h[3] {
 		t.Fatal("the cell info must mark colors of hidden layers")
@@ -871,5 +883,67 @@ func TestProjectRoundTrip(t *testing.T) {
 	}
 	if b.tpl.src.Bounds().Dx() != 32 {
 		t.Fatal("template image size")
+	}
+}
+
+func TestGradientFill(t *testing.T) {
+	a, _ := setup(t)
+	// the toolbox button selects the tool and opens the gradient window
+	x, y := toolRect(a, toolIndex(a, "t_grad"))
+	tclick(a, x, y, 0)
+	if a.tool != ToolGradient {
+		t.Fatalf("toolbox: tool %d", a.tool)
+	}
+	d, ok := a.modal.(*gradientDialog)
+	if !ok {
+		t.Fatal("gradient window must open")
+	}
+	d.g = GradientSettings{Group: 0, Ramp: 2, Shape: 0, Dir: 2} // blue, left → right
+	a.KeyDown(KeyEnter, Mods{})
+	step(a)
+	if a.modal != nil || a.set.Gradient.Ramp != 2 {
+		t.Fatal("OK must close the window and keep the ramp")
+	}
+	// a white frame splits the picture: the gradient stays inside
+	for yy := 0; yy < 200; yy++ {
+		a.pic.Plot(80, yy, 1, 0, a.pal)
+	}
+	orig := a.pic.Clone()
+	cx, cy := pc(a, 0, 100)
+	tclick(a, cx, cy, 0)
+	if a.pic.ColorAt(2, 100) != 3 || a.pic.ColorAt(40, 100) != 14 || a.pic.ColorAt(78, 100) != 6 {
+		t.Fatalf("single click linear: %d %d %d", a.pic.ColorAt(2, 100), a.pic.ColorAt(40, 100), a.pic.ColorAt(78, 100))
+	}
+	if countDiff(orig, a.pic, 80, 0, 159, 199) != 0 {
+		t.Fatal("gradient leaked out of the area")
+	}
+	if len(a.flash) != 0 {
+		t.Fatal("a three-color gradient must not cause conflicts")
+	}
+	a.undo()
+	if countDiff(orig, a.pic, 0, 0, 159, 199) != 0 {
+		t.Fatal("one undo step")
+	}
+	// drag: circle from the center of the right half, width 20 pixels
+	a.set.Gradient.Shape = 1
+	a.set.Gradient.Group = 1 // dark → light → dark
+	x0, y0 := pc(a, 120, 100)
+	x1, y1 := pc(a, 130, 100)
+	tdrag(a, x0, y0, x1, y1, 0)
+	if c := a.pic.ColorAt(120, 100); c != 6 {
+		t.Fatalf("circle center should be blue, got %d", c)
+	}
+	if c := a.pic.ColorAt(125, 100); c != 3 {
+		t.Fatalf("half way the light color (cyan) should be, got %d", c)
+	}
+	if c := a.pic.ColorAt(150, 100); c != 6 {
+		t.Fatalf("outside the width the last color (blue) should stay, got %d", c)
+	}
+	if a.pic.ColorAt(40, 100) != orig.ColorAt(40, 100) {
+		t.Fatal("left area must not change")
+	}
+	// dithered transitions produce mixed rows
+	if gradientColorAt([]uint8{1, 0}, 0.5, true, 0, 0) == gradientColorAt([]uint8{1, 0}, 0.5, true, 1, 0) {
+		t.Fatal("50 % transition should alternate")
 	}
 }

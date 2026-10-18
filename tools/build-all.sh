@@ -32,10 +32,9 @@ for arch in x86_64:amd64 arm64:arm64; do
 	tar -C "$WORK" -czf "$DIST/c64dpainter-linux-$name.tar.gz" "c64dpainter-linux-$name"
 done
 
-echo "- macOS (universal: Apple silicon + Intel)"
+echo "- macOS (Apple silicon)"
 GOOS=darwin GOARCH=arm64 go build -trimpath -ldflags "$LD" -o "$WORK/C64DPainter_arm64" ./cmd/c64dpainter
-GOOS=darwin GOARCH=amd64 go build -trimpath -ldflags "$LD" -o "$WORK/C64DPainter_amd64" ./cmd/c64dpainter
-python3 tools/macbundle.py "$WORK/C64DPainter_arm64" "$WORK/C64DPainter_amd64" res/c64dpainter.png "$WORK/mac" "$VNUM" >/dev/null
+python3 tools/macbundle.py "$WORK/C64DPainter_arm64" res/c64dpainter.png "$WORK/mac" "$VNUM" >/dev/null
 cp "packaging/macos/How to open.txt" "$WORK/mac/"
 (cd "$WORK/mac" && zip -qry ../../C64DPainter-macOS.zip .)
 

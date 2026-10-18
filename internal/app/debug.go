@@ -94,6 +94,14 @@ func (a *App) Debug(what string, v int) {
 		a.set.DitherBrush.Style = c64.DitherStyle(v)
 	case "smearstrength":
 		a.set.SmearStrength = v
+	case "gradientdlg": // v = group
+		a.setTool(ToolGradient)
+		a.openGradientDialog()
+		if d, ok := a.modal.(*gradientDialog); ok {
+			d.g.Group = v
+		}
+	case "gradient": // v = shape | dither<<4 | group<<8 | ramp<<12 | dir<<20
+		a.set.Gradient = GradientSettings{Shape: v & 15, Dither: v>>4&1 == 1, Group: v >> 8 & 15, Ramp: v >> 12 & 255, Dir: v >> 20 & 15}
 	case "panelscroll":
 		a.panelScroll = v
 	}

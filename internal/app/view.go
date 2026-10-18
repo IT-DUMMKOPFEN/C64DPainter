@@ -268,6 +268,7 @@ func (a *App) drawCanvas() {
 	if a.mouseIn && !a.drag.active && !a.panning && a.modal == nil && a.menuOpen < 0 && !a.in.Space {
 		a.drawBrushPreview()
 	}
+	a.drawGradientLine()
 	// Auswahl
 	a.drawSelection()
 }
@@ -339,6 +340,9 @@ func (a *App) drawBrushPreview() {
 	}
 	switch a.tool {
 	case ToolSelect, ToolPicker, ToolHand, ToolFill:
+		return
+	case ToolGradient:
+		a.drawGradientLine()
 		return
 	}
 	if a.curve.stage == 2 {

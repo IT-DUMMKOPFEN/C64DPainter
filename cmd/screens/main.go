@@ -242,5 +242,30 @@ func main() {
 	a.Debug("about", 0)
 	move(a, 1355, 855) // park the mouse: no tooltips
 	shot(a, "13_about")
+	key(a, app.KeyEsc, app.Mods{})
+
+	// 14/15 gradient fill on the spare page
+	char(a, 'j')
+	a.Debug("gradientdlg", 1)
+	move(a, 1355, 855)
+	shot(a, "14_gradient_window")
+	key(a, app.KeyEnter, app.Mods{})
+	a.Debug("fg", 1)
+	char(a, '.')
+	char(a, '+')
+	char(a, 'c')
+	stroke(a, 0, [2]int{48, 100}, [2]int{78, 100})
+	char(a, 'r')
+	stroke(a, 0, [2]int{100, 30}, [2]int{150, 170})
+	char(a, 'F')
+	key(a, app.KeyEsc, app.Mods{})
+	a.Debug("gradient", 1<<4|2<<8|2<<12|0<<20) // blue, light → dark → light, linear ↓, dithered
+	stroke(a, 0, [2]int{10, 10})
+	a.Debug("gradient", 1|1<<4|1<<8|8<<12) // fire, circle, dithered
+	stroke(a, 0, [2]int{48, 100})
+	a.Debug("gradient", 2|0<<8|12<<12) // forest, diamond
+	stroke(a, 0, [2]int{125, 100})
+	hover(a, 140, 20)
+	shot(a, "15_gradient_fill")
 	fmt.Println("done")
 }

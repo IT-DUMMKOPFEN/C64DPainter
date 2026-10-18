@@ -1,0 +1,94 @@
+C64 DPainter - Changelog
+========================
+
+Version 0.96 beta
+-----------------
+
+Layers
+- A picture now has four layers: layer 1 is the template for tracing,
+  layers 2 to 4 are paint layers.
+- The layers are listed from 1 at the top to 4 at the bottom, in the order
+  they lie on top of each other: layer 2 is in front, layer 3 behind it,
+  layer 4 at the back.
+- The multicolor rules apply to all paint layers together (hidden layers
+  included), so every combination of visible layers is always a valid C64
+  picture. The cell info marks colors that only come from hidden layers.
+- New switch "Layers 3 + 4" next to the Layers title (also in the Layer
+  menu). At the start only layer 2 is active and layers 3 and 4 are
+  switched off. Once they are on, every layer can be shown or hidden on
+  its own.
+- Keys 2 / 3 / 4 choose the layer to paint on (3 and 4 switch the extra
+  layers on). All tools, the selection, Auto dither, the Dither brush and
+  Smear work on the active layer.
+- Each page (spare page) has its own layers. Undo keeps the visibility and
+  the active layer.
+
+Eraser
+- New Eraser tool (W): makes pixels of the active layer transparent again,
+  with the normal brush shapes and Ctrl for straight lines.
+- "Clear layer" empties the whole active layer.
+
+Project files
+- New file format .c64dp (C64 DPainter project): keeps all layers with
+  their visibility, the active layer and the template with its settings.
+- KLA, PNG and PRG still contain the visible layers merged into one
+  picture; the program warns before layers would get lost.
+
+Gradient fill (new tool, Shift+F)
+- Fills the connected area under the mouse with a color gradient, on the
+  active layer.
+- A separate window shows all 45 gradients in three compact tabs:
+  15 C64 color ramps as 3 colors (light -> dark), 5 colors
+  (dark -> light -> dark) and 5 colors (light -> dark -> light).
+- Shapes: Linear, Circle and Diamond.
+- Single click: the gradient starts at the click point and reaches to the
+  far edge of the area (linear in one of 8 preset directions).
+- Click and drag: sets direction and width; a line shows it while you drag.
+- Options: Reverse colors and Dithered transitions (clean 25 / 50 / 75 %
+  patterns between the color bands, off by default).
+- The side panel shows the chosen gradient and a button to open the
+  window again.
+
+Other changes
+- Key 0 fits the picture to the window (like Ctrl+0 and Home).
+- About window: supported systems, a thank-you to all users and a full
+  list of sources with thanks.
+- macOS: the app is now built for Apple silicon (M chips) only.
+- Windows 11 is the supported Windows version (Windows 10 may crash).
+- Help pages updated.
+
+
+Version 0.95 beta
+-----------------
+- Dither styles reduced to Artist, Scanlines, Checker and Stripes.
+- New dither style "Color": shades by dithering with a darker color that is
+  already in the 4x8 cell (or fits into a free slot). Auto dither darkens
+  towards darker neighbors, the Dither brush darkens what you paint over
+  (Darkness 25 / 50 / 75 %).
+- Auto dither and the Dither brush are marked as experimental.
+- New Smear brush (Shift+S): drags the colors along the stroke like a
+  smudge tool, with a strength setting; full cells use the nearest cell
+  color, so the multicolor rules always hold.
+- New dithering engine: stepped transitions like pixel artists do it -
+  two colors per transition, a few clean stages (50 %, 25 %, 12 %),
+  outlines, thin lines and small details stay sharp, only color pairs that
+  artists really mix are blended. New settings: Width, Steps, Keep edges,
+  Details, Artist pairs.
+- Help and README updated.
+
+
+Version 0.9 beta
+----------------
+- New Edit > Auto dither (Shift+A): blends the borders between flat color
+  areas, with a live preview (dithered / original / split / changes), for
+  the whole picture or the selection.
+- New Dither brush (Shift+D): the same, only where you paint, with a
+  preview of the pixels it would change.
+- Dither styles reconstructed from 16 hand-pixelled C64 pictures.
+- Color pair affinities measured from the pictures ("color ramps").
+- Cell color modes Keep / Add / Re-choose; Add never causes color
+  conflicts.
+- Help pages, README and version updated.
+
+
+Created by IT-Dummköpfen - Free for private use.

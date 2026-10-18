@@ -36,22 +36,23 @@ func TestLayersFromFlat(t *testing.T) {
 func TestLayersStackAndVisibility(t *testing.T) {
 	p := NewPicture(0, 0)
 	p.ToLayers()
-	p.Plot(10, 10, 2, ConflictBlock, nil) // layer 2 (index 0): red
 	p.Active = 2
-	p.Plot(10, 10, 7, ConflictBlock, nil) // layer 4: yellow on top
+	p.Plot(10, 10, 2, ConflictBlock, nil) // layer 4 (index 2, back): red
+	p.Active = 0
+	p.Plot(10, 10, 7, ConflictBlock, nil) // layer 2 (index 0, front): yellow
 	if p.ColorAt(10, 10) != 7 {
-		t.Fatal("the top layer must win")
+		t.Fatal("the front layer must win")
 	}
-	p.SetLayerHidden(2, true)
+	p.SetLayerHidden(0, true)
 	if p.ColorAt(10, 10) != 2 {
-		t.Fatal("hiding the top layer must show the layer below")
+		t.Fatal("hiding the front layer must show the layer behind")
 	}
-	p.SetLayerHidden(2, false)
+	p.SetLayerHidden(0, false)
 	p.Erase(10, 10)
 	if p.ColorAt(10, 10) != 2 {
-		t.Fatal("erasing the top pixel must show the layer below")
+		t.Fatal("erasing the front pixel must show the layer behind")
 	}
-	p.Active = 0
+	p.Active = 2
 	p.Erase(10, 10)
 	if p.ColorAt(10, 10) != 0 {
 		t.Fatal("erased everywhere: background expected")

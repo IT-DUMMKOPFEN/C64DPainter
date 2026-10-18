@@ -32,6 +32,8 @@ func (a *App) toolButtons() []toolBtn {
 		{id: "t_dith", icon: "dither", tool: ToolDither, alt2: -1, tip: "Dither brush, experimental (Shift+D) · right-click: Auto dither", right: func() { a.setTool(ToolDither); a.later(a.openAutoDither) }},
 		{id: "t_smear", icon: "smear", tool: ToolSmear, alt2: -1, tip: "Smear (Shift+S)"},
 		{id: "t_erase", icon: "eraser", tool: ToolErase, alt2: -1, tip: "Eraser (W) – makes the active layer transparent"},
+		{id: "t_grad", icon: "gradient", tool: ToolGradient, alt2: -1, tip: "Gradient fill (Shift+F) – opens the gradient window",
+			action: func() { a.later(a.openGradientDialog) }, right: func() { a.setTool(ToolGradient); a.later(a.openGradientDialog) }},
 		{id: "t_rect", icon: "rect", alt: "rectf", tool: ToolRect, alt2: ToolRectF, tip: "Rectangle (R) / filled (Shift+R)"},
 		{id: "t_circ", icon: "circle", alt: "circlef", tool: ToolCircle, alt2: ToolCircleF, tip: "Circle (C) / filled (Shift+C)"},
 		{id: "t_ell", icon: "ellipse", alt: "ellipsef", tool: ToolEllipse, alt2: ToolEllipseF, tip: "Ellipse (E) / filled (Shift+E)"},
@@ -239,6 +241,9 @@ func (a *App) toolButton(tb toolBtn, br gfx.Rect) {
 				}
 			}
 			a.setTool(t)
+			if tb.action != nil {
+				tb.action()
+			}
 		} else if tb.action != nil {
 			tb.action()
 		}
@@ -284,8 +289,12 @@ func (a *App) drawPanel() {
 	if a.tool == ToolSmear {
 		y = a.panelSmear(x, y, w)
 	}
-	y = a.panelBrush(x, y, w)
-	if a.tool != ToolDither && a.tool != ToolSmear && a.tool != ToolErase {
+	if a.tool == ToolGradient {
+		y = a.panelGradient(x, y, w)
+	} else {
+		y = a.panelBrush(x, y, w)
+	}
+	if a.tool != ToolDither && a.tool != ToolSmear && a.tool != ToolErase && a.tool != ToolGradient {
 		y = a.panelPattern(x, y, w)
 	}
 	y = a.panelColors(x, y, w)

@@ -95,15 +95,14 @@ func (a *App) buildMenus() {
 			check("Background color transparent", "", func() bool { return a.sel.transpBG }, func() { a.sel.transpBG = !a.sel.transpBG }),
 		}},
 		{Title: "Layer", Items: []MenuItem{
+			check("Use layers 3 + 4", "", func() bool { return a.extraLayers }, func() { a.setExtraLayers(!a.extraLayers) }),
+			sep(),
 			head("Paint on"),
-			check("Layer 4 (top)", "4", func() bool { return a.pic.Active == 2 }, func() { a.setActiveLayer(2) }),
+			check("Layer 2 (front)", "2", func() bool { return a.pic.Active == 0 }, func() { a.setActiveLayer(0) }),
 			check("Layer 3", "3", func() bool { return a.pic.Active == 1 }, func() { a.setActiveLayer(1) }),
-			check("Layer 2 (bottom)", "2", func() bool { return a.pic.Active == 0 }, func() { a.setActiveLayer(0) }),
+			check("Layer 4 (back)", "4", func() bool { return a.pic.Active == 2 }, func() { a.setActiveLayer(2) }),
 			sep(),
 			head("Show"),
-			check("Layer 4", "", func() bool { return !a.pic.Hide[2] }, func() { a.toggleLayer(2) }),
-			check("Layer 3", "", func() bool { return !a.pic.Hide[1] }, func() { a.toggleLayer(1) }),
-			check("Layer 2", "", func() bool { return !a.pic.Hide[0] }, func() { a.toggleLayer(0) }),
 			check("Layer 1 (template)", "T", func() bool { return a.tpl.src != nil && a.tpl.visible }, func() {
 				if a.tpl.src == nil {
 					a.later(a.loadTemplateDialog)
@@ -111,6 +110,9 @@ func (a *App) buildMenus() {
 					a.tpl.visible = !a.tpl.visible
 				}
 			}),
+			check("Layer 2", "", func() bool { return !a.pic.Hide[0] }, func() { a.toggleLayer(0) }),
+			{Label: "Layer 3", Action: func() { a.toggleLayer(1) }, Check: func() bool { return !a.pic.Hide[1] }, Enabled: func() bool { return a.extraLayers }},
+			{Label: "Layer 4", Action: func() { a.toggleLayer(2) }, Check: func() bool { return !a.pic.Hide[2] }, Enabled: func() bool { return a.extraLayers }},
 			sep(),
 			item("Clear active layer", "", a.clearActiveLayer),
 			item("Load template …", "", func() { a.later(a.loadTemplateDialog) }),
