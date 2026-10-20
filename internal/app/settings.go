@@ -38,8 +38,7 @@ type Settings struct {
 	ShadeRamp     int                   `json:"shadeRamp"` // -1 = all colors by brightness
 	CRT           CRTSettings           `json:"crt"`
 	WorkDir       string                `json:"workDir"`
-	StampTab      int                   `json:"stampTab"`
-	StampSize     int                   `json:"stampSize"`
+	Recent        []string              `json:"recent"`
 }
 
 func defaultSettings() Settings {

@@ -28,9 +28,11 @@ const (
 )
 
 var openFilters = []Filter{
-	{"All supported files", "*.c64dp;*.kla;*.koa;*.png;*.bmp"},
+	{"All supported files", "*.c64dp;*.kla;*.koa;*.ocp;*.ami;*.png;*.bmp"},
 	{"C64 DPainter project with layers (*.c64dp)", "*.c64dp"},
 	{"Koala Painter (*.kla, *.koa)", "*.kla;*.koa"},
+	{"Advanced Art Studio (*.ocp)", "*.ocp"},
+	{"Amica Paint (*.ami)", "*.ami"},
 	{"PNG image (*.png)", "*.png"},
 	{"Windows bitmap (*.bmp)", "*.bmp"},
 	{"All files", "*.*"},
@@ -180,7 +182,35 @@ func (a *App) openPath(p string) {
 			a.sel.state = selNone
 			a.updateTitle()
 			a.setStatus("Project loaded: " + filepath.Base(p))
+			a.addRecent(p)
 		}
+		return
+	}
+	if ext == ".ocp" || ext == ".ami" {
+		load, kind := c64.LoadOCP, "Advanced Art Studio"
+		if ext == ".ami" {
+			load, kind = c64.LoadAMI, "Amica Paint"
+		}
+		pic, err := load(data)
+		if err != nil {
+			a.host.Info(AppName, err.Error())
+			return
+		}
+		if !a.confirmDiscard() {
+			return
+		}
+		if ext == ".ami" {
+			pic.Border = a.pic.Border
+		}
+		a.pushUndo(a.pic.Clone())
+		a.setFlatPicture(pic)
+		// these formats are only read: saving asks for a new file
+		a.filePath[a.page] = ""
+		a.dirty[a.page] = false
+		a.sel.state = selNone
+		a.updateTitle()
+		a.setStatus("Loaded " + kind + " picture: " + filepath.Base(p) + " (save as project, KLA, PNG or PRG)")
+		a.addRecent(p)
 		return
 	}
 	if ext == ".kla" || ext == ".koa" || ((len(data) == 10003 || len(data) == 10001) && ext != ".png" && ext != ".bmp") {
@@ -200,6 +230,7 @@ func (a *App) openPath(p string) {
 		a.sel.state = selNone
 		a.updateTitle()
 		a.setStatus("Loaded: " + filepath.Base(p))
+		a.addRecent(p)
 		return
 	}
 	img, err := decodeImage(data, p)
@@ -207,6 +238,7 @@ func (a *App) openPath(p string) {
 		a.host.Info(AppName, err.Error())
 		return
 	}
+	a.addRecent(p)
 	a.modal = newImportDialog(a, img, filepath.Base(p))
 }
 
@@ -291,6 +323,7 @@ func (a *App) saveTo(p string) bool {
 		a.rememberDir(p)
 		a.updateTitle()
 		a.setStatus(fmt.Sprintf("Project saved: %s (%d bytes, all layers)", filepath.Base(p), len(data)))
+		a.addRecent(p)
 		return true
 	}
 	kind := exportKLA
@@ -308,6 +341,9 @@ func (a *App) saveTo(p string) bool {
 	a.updateTitle()
 	if a.usesLayers() {
 		a.setStatus("Saved " + filepath.Base(p) + " – visible layers merged. Save as .c64dp to keep the layers.")
+	}
+	if ext == ".kla" || ext == ".koa" || ext == ".c64dp" {
+		a.addRecent(p)
 	}
 	return true
 }

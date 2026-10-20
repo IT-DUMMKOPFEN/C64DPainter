@@ -32,14 +32,17 @@ func (a *App) buildMenus() {
 	hasSel := func() bool { return a.sel.state == selSelected || a.sel.state == selFloating }
 	selOrBrush := func() bool { return hasSel() || a.brushShape == BrushCustom }
 	a.menus = []*Menu{
-		{Title: "File", Items: []MenuItem{
+		{Title: "File", Items: append(append([]MenuItem{
 			item("New", "Ctrl+N", func() { a.later(a.cmdNew) }),
-			item("Open … (KLA, PNG, BMP)", "Ctrl+O", func() { a.later(a.cmdOpen) }),
+			item("Open … (C64DP, KLA, OCP, AMI, PNG, BMP)", "Ctrl+O", func() { a.later(a.cmdOpen) }),
 			item("Import image (320×200) …", "Ctrl+I", func() { a.later(a.cmdImport) }),
 			item("Save", "Ctrl+S", func() { a.later(func() { a.cmdSave() }) }),
 			item("Save as …", "Ctrl+Shift+S", func() { a.later(func() { a.cmdSaveAs() }) }),
 			item("Quick save PNG (numbered)", "F2", a.quickSave),
 			item("Working folder …", "", func() { a.askWorkDir(nil) }),
+			sep(),
+			head("Recent files"),
+		}, a.recentItems()...), []MenuItem{
 			sep(),
 			head("Export"),
 			item("Koala Painter (.kla) …", "", func() { a.later(func() { a.cmdExport(exportKLA) }) }),
@@ -51,7 +54,7 @@ func (a *App) buildMenus() {
 			item("Load template …", "", func() { a.later(a.loadTemplateDialog) }),
 			sep(),
 			item("Exit", "Ctrl+Q", func() { a.later(a.cmdQuit) }),
-		}},
+		}...)},
 		{Title: "Edit", Items: []MenuItem{
 			{Label: "Undo", Key: "Ctrl+Z  U", Action: a.undo, Enabled: func() bool { return len(a.undos[a.page]) > 0 }},
 			{Label: "Redo", Key: "Ctrl+Y", Action: a.redo, Enabled: func() bool { return len(a.redos[a.page]) > 0 }},
@@ -120,7 +123,7 @@ func (a *App) buildMenus() {
 			item("Load template …", "", func() { a.later(a.loadTemplateDialog) }),
 		}},
 		{Title: "Brushes", Items: []MenuItem{
-			item("Stamps …", "", func() { a.later(a.openStamps) }),
+			item("My brushes …", "", func() { a.later(a.openStamps) }),
 			sep(),
 			item("Load brush …", "", func() { a.later(a.loadBrushDialog) }),
 			{Label: "Save brush …", Action: func() { a.later(a.saveBrushDialog) }, Enabled: func() bool { return a.brushShape == BrushCustom && a.custom != nil }},
@@ -162,6 +165,8 @@ func (a *App) buildMenus() {
 			check("Block (strict)", "", func() bool { return a.set.Conflict == 0 }, func() { a.setConflict(0) }),
 			check("Replace rarest cell color", "", func() bool { return a.set.Conflict == 1 }, func() { a.setConflict(1) }),
 			check("Use nearest cell color", "", func() bool { return a.set.Conflict == 2 }, func() { a.setConflict(2) }),
+			sep(),
+			check("Auto backup (every 3 minutes)", "", func() bool { return a.autoBackup }, a.toggleAutoBackup),
 			sep(),
 			check("Round brushes on screen (correct 2:1)", "", func() bool { return a.set.AspectBrush }, func() { a.set.AspectBrush = !a.set.AspectBrush; a.saveSettings() }),
 			sep(),

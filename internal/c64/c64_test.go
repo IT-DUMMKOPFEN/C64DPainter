@@ -325,3 +325,49 @@ func TestReplaceColor(t *testing.T) {
 		}
 	}
 }
+
+func TestLoadOCPAndAMI(t *testing.T) {
+	p := NewPicture(6, 14)
+	for y := 0; y < H; y += 3 {
+		for x := 0; x < W; x += 2 {
+			p.Plot(x, y, uint8((x/4+y/8)%16), ConflictReplace, nil)
+		}
+	}
+	// Advanced Art Studio layout
+	ocp := make([]byte, ocpSize)
+	ocp[0], ocp[1] = 0x00, 0x20
+	copy(ocp[2:], p.Bitmap())
+	copy(ocp[0x1f42:], p.Screen[:])
+	for i := 0; i < Cells; i++ {
+		ocp[0x233a+i] = p.ColorRAM[i]
+	}
+	ocp[0x232a], ocp[0x232b] = p.Border, p.BG
+	q, err := LoadOCP(ocp)
+	if err != nil {
+		t.Fatal(err)
+	}
+	for y := 0; y < H; y++ {
+		for x := 0; x < W; x++ {
+			if q.ColorAt(x, y) != p.ColorAt(x, y) {
+				t.Fatalf("OCP pixel %d,%d", x, y)
+			}
+		}
+	}
+	if q.Border != 14 || q.BG != 6 {
+		t.Fatal("OCP colors")
+	}
+	ami := p.SaveAMI()
+	if len(ami) >= klaSize {
+		t.Fatalf("AMI not packed: %d", len(ami))
+	}
+	r, err := LoadAMI(ami)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if string(r.KLABytes()) != string(p.KLABytes()) {
+		t.Fatal("AMI round trip")
+	}
+	if _, err := LoadAMI([]byte{0, 0x40, 1, 2, 3}); err == nil {
+		t.Fatal("short AMI must fail")
+	}
+}

@@ -142,7 +142,7 @@ func (a *App) loadBrushFile(p string) bool {
 
 func (a *App) saveBrushDialog() {
 	if a.brushShape != BrushCustom || a.custom == nil {
-		a.setStatus("No custom brush – make one from a selection or a stamp first")
+		a.setStatus("No custom brush – make one from a selection first")
 		return
 	}
 	dir := a.brushesDir()
@@ -172,60 +172,32 @@ func (a *App) saveBrushDialog() {
 	a.setStatus("Brush saved: " + filepath.Base(p))
 }
 
-// --- Stamps --------------------------------------------------------------------------
+// --- My brushes ---------------------------------------------------------------------
 //
-// Ready-made black silhouettes (people, animals, objects) in multicolor
-// pixels with a transparent background, plus the brushes saved in the
-// "brushes" folder. The chosen stamp becomes the brush; it paints in
-// color 1 (left button) or color 2 (right button).
-
-type stampDef struct {
-	name, cat string
-	w, h      int      // multicolor pixels
-	rows      []string // '#' = set, '.' = transparent
-}
-
-func (s *stampDef) brush() *CustomBrush {
-	b := &CustomBrush{W: s.w, H: s.h, Pix: make([]int8, s.w*s.h)}
-	for y, row := range s.rows {
-		for x := 0; x < s.w; x++ {
-			b.Pix[y*s.w+x] = -1
-			if x < len(row) && row[x] == '#' {
-				b.Pix[y*s.w+x] = 0
-			}
-		}
-	}
-	return b
-}
-
-var stampTabs = []string{"People", "Animals", "Objects", "My brushes"}
-var stampSizes = []struct {
-	label string
-	w, h  int
-}{{"All sizes", 0, 0}, {"32 × 32", 16, 32}, {"32 × 64", 16, 64}, {"64 × 32", 32, 32}, {"64 × 64", 32, 64}}
+// A window with the brushes saved in the "brushes" folder of the working
+// folder. The chosen brush becomes the current brush.
 
 type myBrush struct {
 	name string
 	b    *CustomBrush
 }
 
-type stampDialog struct {
-	tab, size int
-	sel       int
-	scroll    int
-	mine      []myBrush
+type myBrushesDialog struct {
+	sel    int
+	scroll int
+	mine   []myBrush
 }
 
 func (a *App) openStamps() {
 	a.commitOrCancelForHistory()
 	a.menuOpen = -1
-	d := &stampDialog{tab: clampI(a.set.StampTab, 0, len(stampTabs)-1), size: clampI(a.set.StampSize, 0, len(stampSizes)-1), sel: -1}
+	d := &myBrushesDialog{sel: -1}
 	d.loadMine(a)
 	a.modal = d
 }
 
 // loadMine reads the PNG brushes of the brushes folder.
-func (d *stampDialog) loadMine(a *App) {
+func (d *myBrushesDialog) loadMine(a *App) {
 	d.mine = nil
 	dir := a.brushesDir()
 	ents, err := os.ReadDir(dir)
@@ -240,7 +212,7 @@ func (d *stampDialog) loadMine(a *App) {
 	}
 	sort.Strings(names)
 	for _, n := range names {
-		if len(d.mine) >= 200 {
+		if len(d.mine) >= 300 {
 			break
 		}
 		data, err := os.ReadFile(filepath.Join(dir, n))
@@ -257,111 +229,57 @@ func (d *stampDialog) loadMine(a *App) {
 	}
 }
 
-func (d *stampDialog) Title() string          { return "Stamps" }
-func (d *stampDialog) Size(a *App) (int, int) { return 900, min(680, a.H-30) }
+func (d *myBrushesDialog) Title() string          { return "My brushes" }
+func (d *myBrushesDialog) Size(a *App) (int, int) { return 900, min(640, a.H-30) }
 
-// items returns the stamps of the current tab and size filter (indices
-// into stampDefs or d.mine).
-func (d *stampDialog) items() []int {
-	var out []int
-	if d.tab == 3 {
-		for i, m := range d.mine {
-			if d.fits(m.b.W, m.b.H) {
-				out = append(out, i)
-			}
-		}
-		return out
-	}
-	cat := stampTabs[d.tab]
-	for i := range stampDefs {
-		s := &stampDefs[i]
-		if s.cat == cat && d.fits(s.w, s.h) {
-			out = append(out, i)
-		}
-	}
-	return out
-}
-
-func (d *stampDialog) fits(w, h int) bool {
-	sz := stampSizes[d.size]
-	if sz.w == 0 || d.tab == 3 { // own brushes have any size
-		return true
-	}
-	return w == sz.w && h == sz.h
-}
-
-func (d *stampDialog) Key(a *App, k KeyEvent) {
+func (d *myBrushesDialog) Key(a *App, k KeyEvent) {
 	if k.Key == KeyEnter {
 		d.use(a)
 	}
 }
 
-func (d *stampDialog) use(a *App) {
-	items := d.items()
-	if d.sel < 0 || d.sel >= len(items) {
+func (d *myBrushesDialog) use(a *App) {
+	if d.sel < 0 || d.sel >= len(d.mine) {
 		return
 	}
-	a.set.StampTab, a.set.StampSize = d.tab, d.size
-	a.saveSettings()
 	a.closeModal(false)
-	i := items[d.sel]
-	if d.tab == 3 {
-		m := d.mine[i]
-		a.useBrush(m.b.clone(), true, "Brush: "+m.name+" – click to stamp")
-		return
-	}
-	s := &stampDefs[i]
-	a.useBrush(s.brush(), false, "Stamp: "+s.name+" – left click stamps in color 1, right click in color 2")
+	m := d.mine[d.sel]
+	a.useBrush(m.b.clone(), true, "Brush: "+m.name+" – click to stamp")
 }
 
-// drawBrushThumb draws a brush scaled into a box (stamps in black).
-func (a *App) drawBrushThumb(b *CustomBrush, r gfx.Rect, black bool) {
+// drawBrushThumb draws a brush scaled into a box.
+func (a *App) drawBrushThumb(b *CustomBrush, r gfx.Rect) {
 	s := max(1, min(r.W/(b.W*2), r.H/b.H))
 	w, h := b.W*2*s, b.H*s
 	ox, oy := r.X+(r.W-w)/2, r.Y+(r.H-h)/2
+	old := a.img.SetClip(r.Intersect(a.img.Clip))
+	defer a.img.SetClip(old)
 	for y := 0; y < b.H; y++ {
 		for x := 0; x < b.W; x++ {
-			v := b.Pix[y*b.W+x]
-			if v < 0 {
-				continue
+			if v := b.Pix[y*b.W+x]; v >= 0 {
+				a.img.Fill(gfx.Rect{X: ox + x*2*s, Y: oy + y*s, W: 2 * s, H: s}, a.pal.Colors[v&15])
 			}
-			c := uint32(0x000000)
-			if !black {
-				c = a.pal.Colors[v&15]
-			}
-			a.img.Fill(gfx.Rect{X: ox + x*2*s, Y: oy + y*s, W: 2 * s, H: s}, c)
 		}
 	}
 }
 
-func (d *stampDialog) Draw(a *App, r gfx.Rect) {
+func (d *myBrushesDialog) Draw(a *App, r gfx.Rect) {
 	u := &a.ui
 	m := a.img
 	th := a.th
 	y := r.Y
-	tw := (r.W - 3*4) / len(stampTabs)
-	for i, t := range stampTabs {
-		if u.ButtonEx("st_tab"+itoa(i), gfx.Rect{X: r.X + i*(tw+4), Y: y, W: tw, H: 26}, t, d.tab == i, true) && d.tab != i {
-			d.tab, d.sel, d.scroll = i, -1, 0
-		}
+	m.TextL(font.UI, gfx.Rect{X: r.X, Y: y, W: r.W - 130, H: 24}, gfx.Elide(font.UI, "Folder: "+a.brushesDir(), r.W-140), th.TextDim)
+	if u.Button("mb_reload", gfx.Rect{X: r.Right() - 120, Y: y, W: 120, H: 24}, "Reload") {
+		d.loadMine(a)
+		d.sel = -1
 	}
-	y += 34
-	sw := 100
-	for i, s := range stampSizes {
-		if u.ButtonEx("st_sz"+itoa(i), gfx.Rect{X: r.X + i*(sw+4), Y: y, W: sw, H: 22}, s.label, d.size == i, true) && d.size != i {
-			d.size, d.sel, d.scroll = i, -1, 0
-		}
-	}
-	m.TextR(font.UI, gfx.Rect{X: r.X, Y: y, W: r.W, H: 22}, "sizes in screen pixels (320 × 200)", th.TextDim)
-	y += 30
-	// grid of thumbnails
-	items := d.items()
+	y += 32
 	gr := gfx.Rect{X: r.X, Y: y, W: r.W, H: r.Bottom() - 40 - y}
 	m.Fill(gr, th.PanelAlt)
 	m.Frame(gr, th.Border)
 	const cell = 84
 	cols := max(1, (gr.W-8)/(cell+6))
-	rows := (len(items) + cols - 1) / cols
+	rows := (len(d.mine) + cols - 1) / cols
 	maxScroll := max(0, rows*(cell+22)+8-gr.H)
 	if u.hover(gr) && a.in.Wheel != 0 && !u.wheelUsed {
 		d.scroll -= a.in.Wheel * 60
@@ -369,32 +287,20 @@ func (d *stampDialog) Draw(a *App, r gfx.Rect) {
 	}
 	d.scroll = clampI(d.scroll, 0, maxScroll)
 	old := m.SetClip(gr.Inset(1))
-	for k, idx := range items {
+	for k, mb := range d.mine {
 		col, row := k%cols, k/cols
 		br := gfx.Rect{X: gr.X + 6 + col*(cell+6), Y: gr.Y + 6 + row*(cell+22) - d.scroll, W: cell, H: cell}
 		if br.Bottom()+18 < gr.Y || br.Y > gr.Bottom() {
 			continue
 		}
-		bg := uint32(0xD8D8D8)
 		if d.sel == k {
 			m.Fill(br.Inset(-3), th.Accent)
-		} else if u.hover(br) {
-			bg = 0xEFEFEF
 		}
-		m.Fill(br, bg)
-		var name string
-		if d.tab == 3 {
-			mb := d.mine[idx]
-			a.drawBrushThumb(mb.b, br.Inset(4), false)
-			name = mb.name
-		} else {
-			s := &stampDefs[idx]
-			a.drawBrushThumb(s.brush(), br.Inset(4), true)
-			name = s.name
-		}
-		m.TextC(font.UI, gfx.Rect{X: br.X - 3, Y: br.Bottom() + 2, W: br.W + 6, H: 16}, gfx.Elide(font.UI, name, br.W+6), th.Text)
+		m.Fill(br, a.pal.Colors[a.pic.BG])
+		a.drawBrushThumb(mb.b, br.Inset(4))
+		m.TextC(font.UI, gfx.Rect{X: br.X - 3, Y: br.Bottom() + 2, W: br.W + 6, H: 16}, gfx.Elide(font.UI, mb.name, br.W+6), th.Text)
 		if gr.Contains(a.in.MX, a.in.MY) {
-			if c, _ := u.press("st_i"+itoa(k), br, 0); c {
+			if c, _ := u.press("mb_i"+itoa(k), br, 0); c {
 				d.sel = k
 				if a.in.Double {
 					d.use(a)
@@ -405,14 +311,9 @@ func (d *stampDialog) Draw(a *App, r gfx.Rect) {
 		}
 	}
 	m.SetClip(old)
-	if len(items) == 0 {
-		msg := "No stamps in this size"
-		if d.tab == 3 {
-			msg = "No brushes yet – save brushes with Brushes → Save brush … into " + a.brushesDir()
-		}
-		m.TextC(font.UI, gr, gfx.Elide(font.UI, msg, gr.W-20), th.TextDim)
+	if len(d.mine) == 0 {
+		m.TextC(font.UI, gr, "No brushes yet – save brushes with Brushes → Save brush …", th.TextDim)
 	}
-	// scrollbar
 	if maxScroll > 0 {
 		tr := gfx.Rect{X: gr.Right() - 7, Y: gr.Y + 2, W: 5, H: gr.H - 4}
 		th0 := max(20, tr.H*gr.H/(gr.H+maxScroll))
@@ -420,22 +321,17 @@ func (d *stampDialog) Draw(a *App, r gfx.Rect) {
 		m.Fill(gfx.Rect{X: tr.X, Y: ty, W: tr.W, H: th0}, th.Track)
 	}
 	by := r.Bottom() - 28
-	info := fmt.Sprintf("%d stamps", len(items))
-	if d.sel >= 0 && d.sel < len(items) {
-		if d.tab == 3 {
-			b := d.mine[items[d.sel]].b
-			info = fmt.Sprintf("%s · %d × %d screen pixels", d.mine[items[d.sel]].name, b.W*2, b.H)
-		} else {
-			s := &stampDefs[items[d.sel]]
-			info = fmt.Sprintf("%s · %d × %d screen pixels · stamps in color 1 (left) or color 2 (right button)", s.name, s.w*2, s.h)
-		}
+	info := fmt.Sprintf("%d brushes", len(d.mine))
+	if d.sel >= 0 && d.sel < len(d.mine) {
+		b := d.mine[d.sel].b
+		info = fmt.Sprintf("%s · %d × %d screen pixels", d.mine[d.sel].name, b.W*2, b.H)
 	}
 	m.TextL(font.UI, gfx.Rect{X: r.X, Y: by, W: r.W - 260, H: 28}, gfx.Elide(font.UI, info, r.W-260), th.TextDim)
-	if u.Button("st_cancel", gfx.Rect{X: r.Right() - 250, Y: by, W: 120, H: 28}, "Cancel") {
+	if u.Button("mb_cancel", gfx.Rect{X: r.Right() - 250, Y: by, W: 120, H: 28}, "Cancel") {
 		a.closeModal(true)
 		return
 	}
-	if u.ButtonEx("st_ok", gfx.Rect{X: r.Right() - 120, Y: by, W: 120, H: 28}, "Use as brush", true, d.sel >= 0) {
+	if u.ButtonEx("mb_ok", gfx.Rect{X: r.Right() - 120, Y: by, W: 120, H: 28}, "Use as brush", true, d.sel >= 0) {
 		d.use(a)
 	}
 }

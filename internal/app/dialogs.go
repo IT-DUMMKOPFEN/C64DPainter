@@ -329,6 +329,7 @@ var aboutSources = [][2]string{
 	{"Dithering", "pixelparmesan.com, pixel-editor.com, pixnote.net, divoom.com, pixie.haus"},
 	{"Dither styles", "16 hand-pixelled C64 scene pictures, analyzed pattern by pattern"},
 	{"Gradients", "color ramp table by IT-Dummköpfen, extended"},
+	{"File formats", "OCP and AMI details from RECOIL by Piotr Fusik"},
 	{"Inspiration", "Deluxe Paint (Electronic Arts, 1985), PyDPainter and Multipaint (Marq/Kameli)"},
 }
 

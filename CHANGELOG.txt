@@ -1,155 +1,122 @@
 C64 DPainter - Changelog
 ========================
 
+A paint program for Commodore 64 multicolor bitmap pictures
+for Windows 11, macOS (Apple silicon) and Linux.
+
+
+Version 0.99 beta
+-----------------
+
+Auto backup
+- New option Options > Auto backup (every 3 minutes). It is off at every
+  start of the program.
+- When it is on, the picture is saved every 3 minutes into the working
+  folder as "Backup.c64dp" - always in the C64 DPainter project format,
+  with all layers and the template. When the spare page is used, it is
+  saved as "Backup (page 2).c64dp" too.
+- A backup is only written when the picture has changed; the file is
+  overwritten each time.
+
+Recent files
+- The File menu lists the last 8 files you opened or saved. A click opens
+  the file again; files that no longer exist are removed from the list.
+  "Clear list" empties it.
+
+More file formats
+- Open now also reads Advanced Art Studio (.ocp) and Amica Paint (.ami)
+  multicolor pictures (format details from RECOIL by Piotr Fusik). They
+  are only read: save the picture as project, KLA, PNG or PRG.
+
+My brushes
+- The ready-made stamp silhouettes were removed.
+- "My brushes" stays: a window (toolbox button or Brushes > My brushes)
+  with all brushes saved in the "brushes" folder of the working folder.
+  The chosen brush becomes the brush and the tool switches to Dots.
+
+About
+- New section in the help page "About": "Why This Software Is Free for
+  Personal Use".
+- RECOIL added to the sources.
+
+
 Version 0.96 beta
 -----------------
 
 Layers
-- A picture now has four layers: layer 1 is the template for tracing,
-  layers 2 to 4 are paint layers.
-- The layers are listed from 1 at the top to 4 at the bottom, in the order
-  they lie on top of each other: layer 2 is in front, layer 3 behind it,
-  layer 4 at the back.
+- A picture has four layers: layer 1 is the template for tracing,
+  layers 2 to 4 are paint layers, listed from 1 at the top to 4 at the
+  bottom in the order they lie on top of each other (layer 2 in front,
+  layer 4 at the back).
 - The multicolor rules apply to all paint layers together (hidden layers
   included), so every combination of visible layers is always a valid C64
   picture. The cell info marks colors that only come from hidden layers.
-- New switch "Layers 3 + 4" next to the Layers title (also in the Layer
-  menu). At the start only layer 2 is active and layers 3 and 4 are
-  switched off. Once they are on, every layer can be shown or hidden on
-  its own.
-- Keys 2 / 3 / 4 choose the layer to paint on (3 and 4 switch the extra
-  layers on). All tools, the selection, Auto dither, the Dither brush and
-  Smear work on the active layer.
-- Each page (spare page) has its own layers. Undo keeps the visibility and
-  the active layer.
+- Switch "Layers 3 + 4" next to the Layers title (also in the Layer menu).
+  At the start only layer 2 is active and layers 3 and 4 are off.
+- Keys 2 / 3 / 4 choose the layer to paint on. All tools, the selection,
+  Auto dither, the Dither brush and Smear work on the active layer.
+- Each page (spare page) has its own layers.
 
-Eraser
-- New Eraser tool (W): makes pixels of the active layer transparent again,
-  with the normal brush shapes and Ctrl for straight lines.
-- "Clear layer" empties the whole active layer.
+Eraser (W)
+- Makes pixels of the active layer transparent again. "Clear layer"
+  empties the whole active layer.
 
-Project files
-- New file format .c64dp (C64 DPainter project): keeps all layers with
-  their visibility, the active layer and the template with its settings.
-- KLA, PNG and PRG still contain the visible layers merged into one
-  picture; the program warns before layers would get lost.
+Project files (.c64dp)
+- Keep all layers with their visibility, the active layer and the
+  template. KLA, PNG and PRG contain the visible layers merged; the
+  program warns before layers would get lost.
 
-Gradient fill (new tool, Shift+F)
-- Fills the connected area under the mouse with a color gradient, on the
-  active layer.
-- A separate window shows all 45 gradients in three compact tabs:
-  15 C64 color ramps as 3 colors (light -> dark), 5 colors
-  (dark -> light -> dark) and 5 colors (light -> dark -> light).
-- Shapes: Linear, Circle and Diamond.
-- Single click: the gradient starts at the click point and reaches to the
-  far edge of the area (linear in one of 8 preset directions).
-- Click and drag: sets direction and width; a line shows it while you drag.
-- Options: Reverse colors and Dithered transitions (clean 25 / 50 / 75 %
-  patterns between the color bands, off by default).
-- The side panel shows the chosen gradient and a button to open the
-  window again.
+Gradient fill (Shift+F)
+- Fills the connected area under the mouse with a color gradient.
+- Gradient window with five tabs: 27 three-color ramps (light -> dark),
+  14 four-color and 13 five-color ramps, and the three-color ramps as
+  five bands (dark -> light -> dark, light -> dark -> light). A note
+  explains the C64 cell color rule for 4- and 5-color gradients.
+- Shapes Linear, Circle and Diamond. Single click: from the click point to
+  the far edge of the area (linear in one of 8 directions); click and
+  drag: direction and width.
+- Options: Reverse colors and Dithered transitions (25 / 50 / 75 %).
 
-Shade brush (new tool, Shift+W)
-- Lightens (left mouse button) or darkens (right mouse button) the colors
-  under the brush by one step.
-- Each pixel changes only once per stroke, so you can paint over an area
-  without it turning white or black.
-- Steps: all 16 colors by brightness, or one of the 15 color ramps of the
-  gradient fill. Colors outside the chosen ramp stay as they are.
+Shade brush (Shift+W)
+- Lightens (left button) or darkens (right button) the colors under the
+  brush by one step, once per stroke. Steps: all colors by brightness or
+  one of the 3-, 4- or 5-color ramps.
 
 Symmetry (Shift+X)
-- Everything you paint is also painted mirrored: left <-> right,
-  top <-> bottom or both (four-fold).
-- The axes are shown as dashed lines. They lie in the middle of the
-  picture by default and can be moved in the side panel.
-- Works with dots, freehand, line, curve, airbrush, dither brush, shade
-  brush, eraser, all shapes, fill and gradient fill.
-- Toolbox button and View > Symmetry.
+- Paint mirrored left <-> right, top <-> bottom or four-fold, with movable
+  axes. Works with all painting tools, shapes and fills.
 
-New shapes, outlined and filled
-- Square (N / Shift+N): drag from corner to corner, square on screen.
-- Triangle (I / Shift+I), Hexagon (O / Shift+O) and Star (L / Shift+L):
-  drag from the center; the direction sets the rotation, Shift keeps the
-  shape upright. All shapes are regular on screen, like the circle.
-- New icons; the rectangle icon is now clearly wider than the square icon.
+New shapes
+- Square (N), Triangle (I), Hexagon (O) and Star (L), outlined and filled
+  (with Shift). New icons; the rectangle icon is clearly wider than the
+  square icon.
 
-Mirrored view (Shift+M)
-- Shows the picture mirrored left <-> right for a fresh look at it.
-  Only the view changes, the picture stays as it is, and you can keep
-  painting.
-
-CRT preview window (Shift+V)
-- A floating window that shows the picture with its border like on a TV.
-  It does not block the program: keep painting, it follows every change.
-- Sizes 100 % (384 x 272, the real size) and 200 %.
-- CRT on/off: scanlines, soft picture and the PAL color bleed, or sharp
-  pixels.
+Views
+- Mirrored view (Shift+M): only the view is mirrored, painting keeps
+  working.
+- CRT preview window (Shift+V): floating, live while painting, 100 % and
+  200 %, CRT look (scanlines, soft picture, PAL color bleed) on or off.
 
 Selection
-- Dragging a selection now moves a copy: the original stays in the
-  picture. Hold Shift when you start dragging to move it (the old place is
-  cut out).
+- Dragging a selection moves a copy; with Shift the original is cut out.
 
 Working folder and quick save
-- At the start and with File > New the program asks for the working
-  folder where pictures and data are saved. The save and open dialogs
-  start there; File > Working folder ... changes it at any time.
-- F2 saves the picture at once as a numbered PNG (picture_0001.png,
-  picture_0002.png ...) into the working folder. Numbering continues after
-  the highest number in the folder; a picture that already has a file name
-  uses that name.
+- The working folder is asked for at the start and with File > New; the
+  save and open dialogs start there.
+- F2 saves a numbered PNG (picture_0001.png ...) into the working folder.
 
-About
-- Multipaint (Marq/Kameli) added to the inspirations.
-
-More gradients
-- 12 new three-color ramps: Neon yellow (yellow - cyan - blue), Mint,
-  Toxic, Sunset, Peach, Skin, Rust, Ember, Night sky, Lavender,
-  Sand/Stone and Slate. They also appear in the two five-band tabs
-  (dark - light - dark and light - dark - light).
-- New tab "4 colors" (14 ramps) and "5 colors" (13 ramps) with four or
-  five different colors from light to dark, sorted by the brightness of
-  the C64 colors.
-- The gradient window now has five tabs and a note on the C64 rule: a
-  cell can only hold 3 colors plus the background, so 4- and 5-color
-  gradients work best with wide color bands.
-
-Shade brush
-- The 4- and 5-color ramps can be chosen as steps too (finer shading).
-
-CRT preview
-- Sizes 100 % and 200 % (300 % removed).
-
-Brushes menu (new)
-- Stamps ..., Load brush ..., Save brush ..., Selection as brush,
-  Standard brush, flip / rotate / resize the brush and "Brush keeps its
-  own colors".
-- Brushes are saved as PNG with a transparent background (every
-  multicolor pixel two pixels wide, so other paint programs show them
-  right). Loading accepts double-wide and single pixels; other colors
-  become the nearest C64 color. The dialogs start in the folder "brushes"
-  in the working folder.
-
-Stamps (new, toolbox button)
-- A window with 156 silhouettes: 35 people, 41 animals and 80 objects.
-- Sizes 32 x 32, 32 x 64, 64 x 32 and 64 x 64 screen pixels (16 or 32
-  multicolor pixels wide, 32 or 64 high), drawn with the wide multicolor
-  pixels in one color with a transparent background - they always fit the
-  multicolor rules.
-- Tabs People, Animals, Objects and My brushes (the brushes saved in the
-  brushes folder), a size filter, and the name and size of the chosen
-  stamp.
-- The chosen stamp becomes the brush and the tool switches to Dots: every
-  click stamps once, in color 1 (left button) or color 2 (right button).
-  X, Y, Z and H flip, rotate and resize it.
+Brushes menu
+- Load and save brushes as PNG with a transparent background, selection
+  as brush, standard brush, flip / rotate / resize, own colors.
+- Stamps window with ready-made silhouettes and "My brushes".
 
 Other changes
-- Key 0 fits the picture to the window (like Ctrl+0 and Home).
-- About window: supported systems, a thank-you to all users and a full
-  list of sources with thanks.
-- macOS: the app is now built for Apple silicon (M chips) only.
+- Key 0 fits the picture to the window.
+- About window: supported systems, a thank-you to all users (with a red
+  heart) and a full list of sources with thanks; Multipaint added to the
+  inspirations.
+- macOS: built for Apple silicon (M chips) only.
 - Windows 11 is the supported Windows version (Windows 10 may crash).
-- Help pages updated.
 
 
 Version 0.95 beta
@@ -183,6 +150,34 @@ Version 0.9 beta
 - Cell color modes Keep / Add / Re-choose; Add never causes color
   conflicts.
 - Help pages, README and version updated.
+
+
+Version 0.8 beta
+----------------
+The first public version.
+- Strict multicolor rules: 160 x 200 pixels, 4 x 8 cells, bit pairs
+  %00 / %01 / %10 / %11. When a cell is full the program can block the
+  pixel, replace the rarest cell color or use the nearest cell color.
+- Tools: dots, freehand, line, curve, fill, airbrush, rectangle, circle and
+  ellipse (each outlined or filled), select and color picker.
+- Round, square and diamond brushes from 1 to 16 pixels, plus custom
+  brushes made from a selection.
+- 42 patterns (density steps, dots, lines, diagonals, grids, textures).
+- Swap colors in the whole picture or with a cell brush.
+- Selections can be moved, copied, flipped, rotated by 90 degrees or
+  freely, scaled and sheared.
+- Zoom from 1x to 32x, configurable grid (8 x 8 by default), pixel grid
+  and C64 border.
+- Only the 16 C64 colors, with 116 palette variants from c64gfx.com;
+  "B" marks the background color in the palette.
+- A template layer (PNG/BMP/JPG/GIF, above or below the picture, with
+  opacity) and a spare page.
+- Import & convert for 320 x 200 images with live multicolor preview,
+  color adjustments and 13 dithering methods.
+- Loading: KLA/KOA, PNG, BMP. Saving: KLA, PNG (320 x 200, 160 x 200,
+  384 x 272 with border) and PRG (a runnable C64 program with a viewer).
+- Detailed built-in help (F1), light and dark theme, interface size
+  100 / 200 / 300 %, movable dialog windows.
 
 
 Created by IT-Dummköpfen - Free for private use.

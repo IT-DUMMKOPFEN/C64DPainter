@@ -51,8 +51,10 @@ type projectTemplate struct {
 }
 
 // encodeProject writes the current page and the template as a project file.
-func (a *App) encodeProject() ([]byte, error) {
-	p := a.pic
+func (a *App) encodeProject() ([]byte, error) { return a.encodeProjectOf(a.pic) }
+
+// encodeProjectOf writes a page (with the template) as a project file.
+func (a *App) encodeProjectOf(p *c64.Picture) ([]byte, error) {
 	f := projectFile{
 		Format: projectFormat, Version: projectVersion, App: AppName + " " + AppVersion,
 		Background: p.BG, Border: p.Border, Active: p.Active, Palette: a.pal.Name,

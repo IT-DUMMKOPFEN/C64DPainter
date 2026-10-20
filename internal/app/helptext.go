@@ -296,17 +296,13 @@ Select an area with the select tool and click **"Use as brush"**. Now you paint 
 
 ## Brushes menu
 
-- **Load brush …** / **Save brush …** – brushes are PNG files with a transparent background. Every multicolor pixel is saved two pixels wide, as on screen, so the files can also be edited in other paint programs. Loading accepts both double-wide and single pixels; other colors become the nearest C64 color. The dialogs start in the folder ` + "`brushes`" + ` in the working folder. A stamp or one-color brush is saved in color 1.
+- **My brushes …** – your saved brushes (see below).
+- **Load brush …** / **Save brush …** – brushes are PNG files with a transparent background. Every multicolor pixel is saved two pixels wide, as on screen, so the files can also be edited in other paint programs. Loading accepts both double-wide and single pixels; other colors become the nearest C64 color. The dialogs start in the folder ` + "`brushes`" + ` in the working folder. A one-color brush is saved in color 1.
 - **Selection as brush**, **Standard brush** (` + "`Shift+B`" + `), flip, rotate and resize the brush, and **Brush keeps its own colors**.
 
-## [stamp] Stamps
+## [stamp] My brushes
 
-The stamp button in the toolbox (or **Brushes → Stamps …**) opens a window with more than 150 ready-made **silhouettes** – people, animals and objects – in four sizes: 32 × 32, 32 × 64, 64 × 32 and 64 × 64 screen pixels (that is 16 or 32 multicolor pixels wide and 32 or 64 high). They are drawn with the wide multicolor pixels and use only one color, so they always fit the multicolor rules.
-
-- Click a stamp and **Use as brush** (or double-click it). The stamp becomes the brush and the tool switches to **Dots**, so every click stamps once.
-- Stamps paint in **color 1** (left mouse button) or **color 2** (right mouse button) – choose the color in the palette.
-- ` + "`X`" + `, ` + "`Y`" + `, ` + "`Z`" + ` and ` + "`H`" + ` flip, rotate and resize the stamp like any brush.
-- The tab **My brushes** shows the brushes you saved in the ` + "`brushes`" + ` folder of the working folder.
+The button in the toolbox (or **Brushes → My brushes …**) opens a window with all brushes you saved in the folder ` + "`brushes`" + ` of the working folder – your own little stamp collection. Click a brush and **Use as brush** (or double-click it): it becomes the brush and the tool switches to **Dots**, so every click stamps it once. **Reload** reads the folder again, e.g. after you copied PNG files into it.
 `},
 	{id: "patterns", title: "Patterns", body: `
 # Patterns
@@ -598,7 +594,15 @@ A **runnable program** with a built-in viewer. See "Running the C64 program".
 
 ## Loading
 
-**C64 DPainter projects (.c64dp)**, **PNG**, **BMP** (1/4/8/16/24/32 bit, also RLE compressed) and **KLA/KOA**. KLA, PNG and BMP go into layer 2. Templates can also be JPG and GIF.
+**C64 DPainter projects (.c64dp)**, **PNG**, **BMP** (1/4/8/16/24/32 bit, also RLE compressed), **KLA/KOA**, **Advanced Art Studio (.ocp)** and **Amica Paint (.ami)**. KLA, OCP, AMI, PNG and BMP go into layer 2. OCP and AMI files are only read: save the picture as project, KLA, PNG or PRG.
+
+## Recent files
+
+The **File** menu lists the last 8 files you opened or saved. A click opens the file again; files that no longer exist are removed from the list. **Clear list** empties it.
+
+## Auto backup
+
+**Options → Auto backup** saves your work every 3 minutes into the working folder as ` + "`Backup.c64dp`" + ` (with all layers and the template) – and ` + "`Backup (page 2).c64dp`" + ` when the spare page is used. A backup is only written when the picture has changed; the file is overwritten each time. Auto backup is **off** at every start of the program; switch it on when you need it. Templates can also be JPG and GIF.
 
 -> prg | Running the C64 program
 -> import | Import & convert
@@ -769,7 +773,7 @@ When sprites are combined with the picture, bit pairs ` + "`%00`" + ` and ` + "`
 	{id: "about", title: "About C64 DPainter", body: `
 # About C64 DPainter
 
-**Version 0.96 beta** – a paint program for C64 multicolor bitmaps.
+**Version 0.99 beta** – a paint program for C64 multicolor bitmaps.
 
 Runs on **Windows 11** (Windows 10 may crash), **macOS** (M chips only) and **Linux**.
 
@@ -778,6 +782,14 @@ Created by **IT-Dummköpfen**. Free for private use.
 Inspired by **Deluxe Paint** (Electronic Arts, 1985), **PyDPainter** and **Multipaint**. Controls and keyboard shortcuts follow these programs.
 
 I was also inspired by many comments from users. Thank you so much! ❤
+
+## Why This Software Is Free for Personal Use
+
+When I develop software using artificial intelligence, I don’t view AI as a replacement for human work or merely as an automated tool. To me, AI is like a brilliant colleague—a partner who helps me develop ideas and brings them to life exactly as I envision them.
+
+Since this software was created through this collaborative process, I firmly believe that it belongs to the community. When code is developed side by side with AI, it shouldn’t be hidden behind paywalls or kept strictly to oneself. Technology should empower people, and software developed with the help of artificial intelligence should be free for personal, non-commercial use.
+
+This project is my contribution to this way of thinking. I hope you enjoy using it as much as I’ve enjoyed developing it over the past few weeks!
 
 ## Sources and thanks
 
@@ -791,6 +803,7 @@ Thank you all for making your work available and letting us use it:
 - **Windows:** rsrc by akavel (MIT) – the program icon resource.
 - **Language:** Go and its standard library (BSD), The Go Authors.
 - **Dithering:** articles and guides on pixelparmesan.com, pixel-editor.com, pixnote.net, divoom.com and pixie.haus.
+- **File formats:** the details of Advanced Art Studio and Amica Paint files from RECOIL by Piotr Fusik.
 - **Dither styles:** 16 hand-pixelled C64 scene pictures, analyzed pattern by pattern.
 - **Gradients:** color ramp table by IT-Dummköpfen, extended with more C64 ramps.
 - **Inspiration:** Deluxe Paint (Electronic Arts, 1985), PyDPainter and Multipaint (Marq/Kameli).

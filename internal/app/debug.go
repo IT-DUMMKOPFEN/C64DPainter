@@ -1,10 +1,6 @@
 package app
 
-import (
-	"strings"
-
-	"c64dpainter/internal/c64"
-)
+import "c64dpainter/internal/c64"
 
 // Hilfsfunktionen für das automatische Testprogramm.
 
@@ -16,14 +12,6 @@ func (a *App) PicToScreenCenter(x, y int) (int, int) {
 
 // Debug setzt interne Zustände für Tests.
 func (a *App) Debug(what string, v int) {
-	if n, ok := strings.CutPrefix(what, "stampbyname:"); ok {
-		for i := range stampDefs {
-			if stampDefs[i].name == n {
-				a.Debug("stampuse", i)
-			}
-		}
-		return
-	}
 	switch what {
 	case "bg":
 		a.setBG(uint8(v))
@@ -114,17 +102,8 @@ func (a *App) Debug(what string, v int) {
 		}
 	case "gradient": // v = shape | dither<<4 | group<<8 | ramp<<12 | dir<<20
 		a.set.Gradient = GradientSettings{Version: 2, Shape: v & 15, Dither: v>>4&1 == 1, Group: v >> 8 & 15, Ramp: v >> 12 & 255, Dir: v >> 20 & 15}
-	case "stamps": // v = tab
+	case "mybrushes":
 		a.openStamps()
-		if d, ok := a.modal.(*stampDialog); ok {
-			d.tab = v
-			d.size = 0
-		}
-	case "stampuse": // v = stamp index
-		if v >= 0 && v < len(stampDefs) {
-			s := &stampDefs[v]
-			a.useBrush(s.brush(), false, "Stamp: "+s.name)
-		}
 	case "symmode":
 		a.set.Sym.Mode = v
 	case "panelscroll":

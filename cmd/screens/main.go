@@ -315,29 +315,5 @@ func main() {
 	shot(a, "18_mirrored_view")
 	char(a, 'M')
 
-	// 19/20 stamps
-	a.Debug("stamps", 1)
-	move(a, 1355, 855)
-	shot(a, "19_stamps_window")
-	key(a, app.KeyEsc, app.Mods{})
-	char(a, 'j')
-	for i := 0; i < 20; i++ {
-		char(a, 'u')
-	}
-	a.Debug("fg", 13)
-	for _, st := range []struct {
-		name    string
-		x, y, c int
-	}{
-		{"Pine tree", 12, 160, 5}, {"Tree", 34, 165, 13}, {"House", 60, 158, 10}, {"Deer", 100, 165, 9},
-		{"Moon", 130, 30, 7}, {"Bird flying", 70, 40, 15}, {"Walking man", 140, 160, 1}, {"Castle", 30, 60, 12},
-	} {
-		a.Debug("fg", st.c)
-		a.Debug("stampbyname:"+st.name, 0)
-		stroke(a, 0, [2]int{st.x, st.y})
-	}
-	hover(a, 150, 20)
-	shot(a, "20_stamps_used")
-	char(a, 'j')
 	fmt.Println("done")
 }

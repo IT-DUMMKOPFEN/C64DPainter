@@ -236,52 +236,25 @@ func TestQuickSaveNumbered(t *testing.T) {
 	_ = c64.W
 }
 
-func TestStampsAndBrushFiles(t *testing.T) {
+func TestBrushFilesAndMyBrushes(t *testing.T) {
 	a, h := setup(t)
-	if len(stampDefs) < 100 {
-		t.Fatalf("only %d stamps", len(stampDefs))
-	}
-	sizes := map[[2]int]bool{{16, 32}: true, {16, 64}: true, {32, 32}: true, {32, 64}: true}
-	for _, s := range stampDefs {
-		if !sizes[[2]int{s.w, s.h}] || len(s.rows) != s.h {
-			t.Fatalf("%s: size %d×%d", s.name, s.w, s.h)
-		}
-		n := 0
-		for _, r := range s.rows {
-			if len(r) != s.w {
-				t.Fatalf("%s: row length", s.name)
+	// a two-color brush from a selection
+	for y := 10; y < 20; y++ {
+		for x := 10; x < 18; x++ {
+			c := uint8(2)
+			if x >= 14 {
+				c = 7
 			}
-			n += strings.Count(r, "#")
-		}
-		if n < 20 {
-			t.Fatalf("%s: almost empty", s.name)
+			a.pic.Plot(x, y, c, 0, a.pal)
 		}
 	}
-	a.openStamps()
+	a.Char('b')
 	step(a)
-	d := a.modal.(*stampDialog)
-	d.tab, d.size, d.sel = 1, 0, 0 // first animal
+	x0, y0 := pc(a, 10, 10)
+	x1, y1 := pc(a, 17, 19)
+	tdrag(a, x0, y0, x1, y1, 0)
+	a.selToBrush()
 	step(a)
-	a.KeyDown(KeyEnter, Mods{})
-	step(a)
-	if a.modal != nil || a.brushShape != BrushCustom || a.customOwnColor || a.tool != ToolDots {
-		t.Fatal("stamp must become the brush")
-	}
-	a.fg = 2
-	x, y := pc(a, 80, 100)
-	tclick(a, x, y, 0)
-	red := 0
-	for yy := 60; yy < 140; yy++ {
-		for xx := 40; xx < 120; xx++ {
-			if a.pic.ColorAt(xx, yy) == 2 {
-				red++
-			}
-		}
-	}
-	if red < 20 {
-		t.Fatal("stamp paints in color 1")
-	}
-	// save and load the brush
 	dir := t.TempDir()
 	a.set.WorkDir = dir
 	h.save = filepath.Join(dir, "brushes", "mine.png")
@@ -291,21 +264,32 @@ func TestStampsAndBrushFiles(t *testing.T) {
 		t.Fatal("brush not saved")
 	}
 	img, _ := png.Decode(bytes.NewReader(data))
+	if img.Bounds().Dx() != a.custom.W*2 {
+		t.Fatal("brush PNG must have double-wide pixels")
+	}
 	b, err := decodeBrush(img, a.pal)
 	if err != nil || b.W != a.custom.W || b.H != a.custom.H {
 		t.Fatal("brush round trip")
 	}
 	for i, v := range b.Pix {
-		if (v < 0) != (a.custom.Pix[i] < 0) || (v >= 0 && v != 2) {
+		if v != a.custom.Pix[i] {
 			t.Fatal("brush pixels")
 		}
 	}
+	a.restoreBrush()
 	a.openStamps()
 	step(a)
-	if d := a.modal.(*stampDialog); len(d.mine) != 1 {
+	d := a.modal.(*myBrushesDialog)
+	if len(d.mine) != 1 || d.mine[0].name != "mine" {
 		t.Fatal("My brushes lists the saved brush")
 	}
-	a.closeModal(true)
+	d.sel = 0
+	a.KeyDown(KeyEnter, Mods{})
+	step(a)
+	if a.modal != nil || a.brushShape != BrushCustom || !a.customOwnColor || a.tool != ToolDots {
+		t.Fatal("my brush must become the brush")
+	}
+	_ = strings.Contains
 	// the gradient tabs
 	for g := range gradientGroups {
 		for i := range groupRamps(g) {
@@ -317,5 +301,51 @@ func TestStampsAndBrushFiles(t *testing.T) {
 	}
 	if len(gradientRamps4[0].cols) != 4 || len(gradientRamps5[0].cols) != 5 {
 		t.Fatal("4 and 5 color ramps")
+	}
+}
+
+func TestAutoBackupAndRecent(t *testing.T) {
+	a, h := setup(t)
+	dir := t.TempDir()
+	a.set.WorkDir = dir
+	if a.autoBackup {
+		t.Fatal("auto backup is off at the start")
+	}
+	a.toggleAutoBackup()
+	a.pic.Plot(5, 5, 2, 0, a.pal)
+	a.Tick(a.now + backupInterval + 1)
+	p := filepath.Join(dir, "Backup.c64dp")
+	data, err := os.ReadFile(p)
+	if err != nil || !isProject(data) {
+		t.Fatal("Backup.c64dp not written")
+	}
+	st, _ := os.Stat(p)
+	// no change: no new backup
+	os.Remove(p)
+	a.Tick(a.now + backupInterval + 1)
+	if _, err := os.Stat(p); err == nil {
+		t.Fatal("backup without changes")
+	}
+	_ = st
+	// recent files
+	h.save = filepath.Join(dir, "pic.kla")
+	a.cmdSaveAs()
+	if len(a.set.Recent) == 0 || filepath.Base(a.set.Recent[0]) != "pic.kla" {
+		t.Fatalf("recent after save: %v", a.set.Recent)
+	}
+	found := false
+	for _, it := range a.menus[0].Items {
+		if strings.HasPrefix(it.Label, "pic.kla") {
+			found = true
+		}
+	}
+	if !found {
+		t.Fatal("recent file in the File menu")
+	}
+	a.openRecent(filepath.Join(dir, "gone.kla"))
+	for _, r := range a.set.Recent {
+		if filepath.Base(r) == "gone.kla" {
+			t.Fatal("missing file stays in the list")
+		}
 	}
 }

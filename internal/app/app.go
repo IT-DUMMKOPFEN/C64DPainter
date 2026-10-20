@@ -12,7 +12,7 @@ import (
 )
 
 const AppName = "C64 DPainter"
-const AppVersion = "0.96 beta"
+const AppVersion = "0.99 beta"
 
 // AppAuthor and AppLicense appear on the About page.
 const AppAuthor = "IT-Dummköpfen"
@@ -205,7 +205,10 @@ type App struct {
 	shadeDone   []bool // pixels the shade brush already changed in this stroke
 	mirrorView  bool   // the view is mirrored horizontally (Shift+M)
 	crt         crtWindow
-	quickNum    int // last number used by quick save (F2)
+	quickNum    int       // last number used by quick save (F2)
+	autoBackup  bool      // Options → Auto backup (off at every start)
+	lastBackup  int64     // time of the last backup check
+	backupHash  [2]uint64 // pages as they were saved last
 }
 
 type dragState struct {
@@ -352,6 +355,7 @@ func (a *App) Char(r rune) {
 func (a *App) Tick(now int64) bool {
 	a.now = now
 	a.ui.now = now
+	a.checkBackup()
 	redraw := false
 	if a.drag.active && (a.tool == ToolSpray) && now-a.lastSpray >= 30 {
 		redraw = true

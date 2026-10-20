@@ -4,7 +4,7 @@
 
 A paint program for Windows, macOS and Linux for pictures in the **multicolor bitmap mode of the Commodore 64**. Its look and controls follow Deluxe Paint and PyDPainter.
 
-Version 0.96 beta · Created by IT-Dummköpfen · Free for private use.
+Version 0.99 beta · Created by IT-Dummköpfen · Free for private use.
 
 ## Download
 
@@ -26,7 +26,8 @@ Version 0.96 beta · Created by IT-Dummköpfen · Free for private use.
 - **Shade** brush: lightens or darkens one step per stroke, by brightness or along a color ramp.
 - **Mirrored view** (Shift+M) and a floating **CRT preview** window (100/200 %, scanlines and PAL color bleed).
 - **Working folder** and **quick save** (F2): numbered PNGs without a dialog.
-- **Stamps**: 156 silhouettes of people, animals and objects (32 × 32 to 64 × 64 screen pixels, multicolor-safe) to use as brush.
+- **My brushes**: your saved brushes in one window, ready to stamp.
+- **Auto backup** (Options menu, off at start) into the working folder and a list of **recent files**.
 - **Brushes** menu: load and save brushes as PNG with a transparent background.
 - Round, square or diamond brushes from 1 to 16 pixels, plus custom brushes made from a selection.
 - 42 patterns (density steps, dots, lines, diagonals, grids and textures).
@@ -40,7 +41,7 @@ Version 0.96 beta · Created by IT-Dummköpfen · Free for private use.
 - Layers: three paint layers (layer 2 in front, 4 at the back; layers 3 + 4 have an on/off switch; show/hide, eraser) on which the multicolor rules apply together – every combination of visible layers is a valid C64 picture – plus a template layer (PNG/BMP/JPG/GIF, above or below the picture, with opacity) and a spare page.
 - **Import & convert** for 320×200 images: live multicolor preview (multicolor / original / split view), brightness, contrast, saturation, hue and gamma, 13 dithering methods with adjustable strength, pixel-pair modes and background color choice.
 - Project files (.c64dp) keep all layers and the template.
-- Loading: C64 DPainter projects, KLA/KOA, PNG, BMP.
+- Loading: C64 DPainter projects, KLA/KOA, Advanced Art Studio (.ocp), Amica Paint (.ami), PNG, BMP.
 - Saving: KLA, PNG (320×200, 160×200, 384×272 with border) and PRG (a runnable C64 program with a viewer).
 - Detailed built-in help (F1), light and dark theme, interface size 100/200/300 %, movable dialog windows.
 
@@ -56,11 +57,11 @@ This needs Go, Python 3 with Pillow (`pip install pillow`, for the macOS icon), 
 
 ### Making a release
 
-Either on GitHub: **Actions → Build → Run workflow**, enter a tag such as `v0.96b` and start it. Or push a tag that starts with `v`:
+Either on GitHub: **Actions → Build → Run workflow**, enter a tag such as `v0.99b` and start it. Or push a tag that starts with `v`:
 
 ```
-git tag v0.96b
-git push origin v0.96b
+git tag v0.99b
+git push origin v0.99b
 ```
 
 GitHub then builds everything and publishes a release with all four files.
@@ -79,7 +80,7 @@ macOS (app for Apple silicon, can be built on any OS):
 
 ```
 CGO_ENABLED=0 GOOS=darwin GOARCH=arm64 go build -trimpath -ldflags "-s -w" -o build/C64DPainter_arm64 ./cmd/c64dpainter
-python3 tools/macbundle.py build/C64DPainter_arm64 res/c64dpainter.png build 0.96
+python3 tools/macbundle.py build/C64DPainter_arm64 res/c64dpainter.png build 0.99
 ```
 
 Linux (static binary, X11 or Wayland via XWayland, no libraries needed):

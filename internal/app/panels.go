@@ -45,7 +45,7 @@ func (a *App) toolButtons() []toolBtn {
 		{id: "t_sel", icon: "select", tool: ToolSelect, alt2: -1, tip: "Select (B)"},
 		{id: "t_pick", icon: "picker", tool: ToolPicker, alt2: -1, tip: "Color picker (,) – also Alt+click"},
 		{id: "t_hand", icon: "hand", tool: ToolHand, alt2: -1, tip: "Pan view (hold Space)"},
-		{id: "t_stamp", icon: "stamp", tool: -1, alt2: -1, tip: "Stamps: silhouettes of people, animals and objects as brush",
+		{id: "t_stamp", icon: "stamp", tool: -1, alt2: -1, tip: "My brushes: your saved brushes",
 			action: func() { a.later(a.openStamps) }},
 		{id: "t_sym", icon: "symmetry", tool: -1, alt2: -1, tip: "Symmetry on/off (Shift+X): paint mirrored",
 			action: a.toggleSymmetry, active: func() bool { return a.set.Sym.On }},

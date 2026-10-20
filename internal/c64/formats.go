@@ -197,3 +197,80 @@ func (p *Picture) SavePNG(pal *Palette, mode PNGMode) ([]byte, error) {
 	err := png.Encode(&buf, p.ToImage(pal, mode))
 	return buf.Bytes(), err
 }
+
+// Advanced Art Studio (.ocp, multicolor), 10018 bytes, load address $2000:
+//
+//	$0002 bitmap (8000), $1F42 screen RAM (1000), $232A border,
+//	$232B background, $233A color RAM (1000)
+//
+// Offsets as documented by RECOIL (Piotr Fusik).
+const ocpSize = 10018
+
+// LoadOCP reads an Advanced Art Studio multicolor picture.
+func LoadOCP(data []byte) (*Picture, error) {
+	if len(data) != ocpSize {
+		return nil, fmt.Errorf("not an Advanced Art Studio file: %d bytes (expected %d)", len(data), ocpSize)
+	}
+	p := &Picture{}
+	p.SetBitmap(data[2:8002])
+	copy(p.Screen[:], data[0x1f42:0x1f42+1000])
+	for i := 0; i < Cells; i++ {
+		p.ColorRAM[i] = data[0x233a+i] & 15
+	}
+	p.Border = data[0x232a] & 15
+	p.BG = data[0x232b] & 15
+	return p, nil
+}
+
+// Amica Paint (.ami): load address, then the Koala layout (10001 bytes)
+// packed with a simple RLE: $C2 count value = value repeated count times,
+// any other byte is a literal. (Format as documented by RECOIL.)
+const amiEscape = 0xc2
+
+// LoadAMI reads an Amica Paint picture.
+func LoadAMI(data []byte) (*Picture, error) {
+	if len(data) < 3 {
+		return nil, errors.New("not an Amica Paint file")
+	}
+	out := make([]byte, 0, klaSize)
+	for i := 2; i < len(data) && len(out) < klaSize; {
+		b := data[i]
+		if b != amiEscape {
+			out = append(out, b)
+			i++
+			continue
+		}
+		if i+2 >= len(data) {
+			break
+		}
+		n, v := int(data[i+1]), data[i+2]
+		for k := 0; k < n && len(out) < klaSize; k++ {
+			out = append(out, v)
+		}
+		i += 3
+	}
+	if len(out) < klaSize {
+		return nil, fmt.Errorf("not an Amica Paint file (only %d of %d bytes unpacked)", len(out), klaSize)
+	}
+	return LoadKLA(out)
+}
+
+// SaveAMI packs a picture as Amica Paint file (used by the tests).
+func (p *Picture) SaveAMI() []byte {
+	raw := p.KLABytes()
+	out := []byte{0x00, 0x40}
+	for i := 0; i < len(raw); {
+		j := i
+		for j < len(raw) && raw[j] == raw[i] && j-i < 255 {
+			j++
+		}
+		n := j - i
+		if n > 3 || raw[i] == amiEscape {
+			out = append(out, amiEscape, byte(n), raw[i])
+		} else {
+			out = append(out, raw[i:j]...)
+		}
+		i = j
+	}
+	return out
+}
