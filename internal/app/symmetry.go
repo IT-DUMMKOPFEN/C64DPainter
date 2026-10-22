@@ -114,6 +114,9 @@ func (a *App) panelSymmetry(x, y, w int) int {
 		a.toggleSymmetry()
 		return y
 	}
+	if a.collapsed["Symmetry"] {
+		return y
+	}
 	bw := (w - 8) / 3
 	for i, n := range symModes {
 		r := gfx.Rect{X: x + i*(bw+4), Y: y, W: bw, H: 22}
@@ -237,6 +240,9 @@ func (a *App) panelShade(x, y, w int) int {
 	u := &a.ui
 	m := a.img
 	y = a.section(x, y, w, "Shade")
+	if a.collapsed["Shade"] {
+		return y
+	}
 	m.Text(font.UI, x, y, "Steps (3, 4 or 5 colors)", a.th.Text)
 	y += 18
 	r := gfx.Rect{X: x, Y: y, W: w, H: 22}

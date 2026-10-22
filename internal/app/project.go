@@ -18,8 +18,9 @@ import (
 
 const projectFormat = "C64 DPainter project"
 
-// Version 2: layer 2 (index 0) is in front. In version 1 it was at the back.
-const projectVersion = 2
+// Version 3: layer 4 (index 2) is on top, as in version 1. In version 2
+// layer 2 (index 0) was on top.
+const projectVersion = 3
 
 type projectFile struct {
 	Format     string           `json:"format"`
@@ -128,8 +129,8 @@ func decodeProject(data []byte) (*c64.Picture, *projectTemplate, image.Image, er
 	if f.Active >= 0 && f.Active < c64.LayerCount {
 		p.Active = f.Active
 	}
-	if f.Version < 2 {
-		// version 1 stacked the layers the other way round: keep the look
+	if f.Version == 2 {
+		// version 2 stacked the layers the other way round: keep the look
 		p.L[0], p.L[2] = p.L[2], p.L[0]
 		p.Hide[0], p.Hide[2] = p.Hide[2], p.Hide[0]
 		p.Active = c64.LayerCount - 1 - p.Active

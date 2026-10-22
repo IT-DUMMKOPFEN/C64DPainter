@@ -205,10 +205,11 @@ type App struct {
 	shadeDone   []bool // pixels the shade brush already changed in this stroke
 	mirrorView  bool   // the view is mirrored horizontally (Shift+M)
 	crt         crtWindow
-	quickNum    int       // last number used by quick save (F2)
-	autoBackup  bool      // Options → Auto backup (off at every start)
-	lastBackup  int64     // time of the last backup check
-	backupHash  [2]uint64 // pages as they were saved last
+	quickNum    int             // last number used by quick save (F2)
+	autoBackup  bool            // Options → Auto backup (off at every start)
+	lastBackup  int64           // time of the last backup check
+	backupHash  [2]uint64       // pages as they were saved last
+	collapsed   map[string]bool // folded side panel sections (all open at start)
 }
 
 type dragState struct {

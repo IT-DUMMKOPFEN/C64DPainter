@@ -796,36 +796,38 @@ func TestLayersInTheApp(t *testing.T) {
 		t.Fatalf("key 3: active %d, switch %v", a.pic.Active, a.extraLayers)
 	}
 	a.fg = 7
-	tdrag(a, x0, y0, x1, y1, 0) // yellow line on layer 3 (behind layer 2)
+	tdrag(a, x0, y0, x1, y1, 0) // yellow line on layer 3 (above layer 2)
 	a.Char('2')
 	step(a)
 	a.fg = 2
-	tdrag(a, x0, y0, x1, y1, 0) // red line on layer 2, in front
-	if a.pic.ColorAt(20, 50) != 2 || a.pic.LayerPixels(0) == 0 || a.pic.LayerPixels(1) == 0 {
-		t.Fatal("layer 2 must be in front of layer 3")
+	tdrag(a, x0, y0, x1, y1, 0) // red line on layer 2, below
+	if a.pic.ColorAt(20, 50) != 7 || a.pic.LayerPixels(0) == 0 || a.pic.LayerPixels(1) == 0 {
+		t.Fatal("layer 3 must be above layer 2")
 	}
-	// hide layer 2: the yellow line of layer 3 shows
-	a.toggleLayer(0)
+	// hide layer 3: the red line of layer 2 shows
+	a.toggleLayer(1)
 	step(a)
-	if a.pic.ColorAt(20, 50) != 7 {
-		t.Fatal("hidden layer 2 must show layer 3")
+	if a.pic.ColorAt(20, 50) != 2 {
+		t.Fatal("hidden layer 3 must show layer 2")
 	}
 	// undo keeps the visibility
 	a.undo()
-	if !a.pic.Hide[0] {
+	if !a.pic.Hide[1] {
 		t.Fatal("undo must not change the visibility")
 	}
 	a.redo()
-	a.toggleLayer(0)
-	// eraser on layer 2 brings back the yellow line
+	a.toggleLayer(1)
+	// eraser on layer 3 brings back the red line of layer 2
+	a.Char('3')
+	step(a)
 	a.Char('w')
 	step(a)
 	if a.tool != ToolErase {
 		t.Fatalf("W should select the eraser: %d", a.tool)
 	}
 	tdrag(a, x0, y0, x1, y1, 0)
-	if a.pic.ColorAt(20, 50) != 7 {
-		t.Fatalf("after erasing layer 2 the yellow line must show, got %d", a.pic.ColorAt(20, 50))
+	if a.pic.ColorAt(20, 50) != 2 {
+		t.Fatalf("after erasing layer 3 the red line must show, got %d", a.pic.ColorAt(20, 50))
 	}
 	// switching 3 + 4 off hides them and selects layer 2; their colors still count
 	a.Char('4')

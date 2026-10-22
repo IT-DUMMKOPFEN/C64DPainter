@@ -3,13 +3,13 @@ package c64
 // Layers
 //
 // In the editor a picture has three paint layers. Index 0 (layer 2 in the
-// user interface) is in front, index 2 (layer 4) at the back. Every
+// user interface) is at the bottom, index 2 (layer 4) on top. Every
 // layer pixel is transparent, the background color or one of the 16 colors.
 // The multicolor rules apply to all three layers together, visible or not:
 // the colors of all layer pixels of a 4×8 cell are at most the background
 // plus three colors. So any combination of visible layers is a valid C64
 // picture. Bits, Screen and ColorRAM always hold the composite of the
-// visible layers (the frontmost visible opaque pixel wins), so rendering and
+// visible layers (the topmost visible opaque pixel wins), so rendering and
 // export work as before. A picture without layers (Layered == false) is a
 // plain C64 picture and behaves exactly as before.
 
@@ -135,7 +135,7 @@ func (p *Picture) rebuildCell(cell int) {
 		for x := cx; x < cx+4; x++ {
 			i := y*W + x
 			bits := uint8(0)
-			for l := 0; l < LayerCount; l++ { // index 0 is in front
+			for l := LayerCount - 1; l >= 0; l-- { // the highest index is on top
 				if p.Hide[l] {
 					continue
 				}

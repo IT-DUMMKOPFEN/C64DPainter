@@ -176,12 +176,25 @@ func (macHost) OpenFile(title string, fs []app.Filter, dir string) (string, bool
 
 func (macHost) SaveFile(title string, fs []app.Filter, dir, name, defExt string) (string, bool) {
 	panel := msg(cls("NSSavePanel"), "savePanel")
+	// The panel adds the extension of the file type itself; a name that
+	// already ends in it would get it twice ("picture.kla.kla").
+	if ext := filepath.Ext(name); ext != "" {
+		for _, f := range fs {
+			for _, pat := range strings.Split(f.Pattern, ";") {
+				if strings.EqualFold(strings.TrimPrefix(strings.TrimSpace(pat), "*"), ext) {
+					name = strings.TrimSuffix(name, ext)
+				}
+			}
+		}
+	}
 	msg(panel, "setNameFieldStringValue:", nsstr(name))
+	msg(panel, "setExtensionHidden:", false)
 	msg(panel, "setCanCreateDirectories:", true)
 	if !runPanel(panel, title, dir, fs) {
 		return "", false
 	}
 	p := gostr(msg(msg(panel, "URL"), "path"))
+	p = app.FixDoubleExt(p)
 	if p != "" && filepath.Ext(p) == "" && defExt != "" {
 		p += "." + defExt
 	}

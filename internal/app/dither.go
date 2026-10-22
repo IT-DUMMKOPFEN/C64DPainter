@@ -101,6 +101,24 @@ func (a *App) cellModeRow(id string, x, y, w int, mode *c64.CellColorMode) int {
 	return y + 30
 }
 
+// matchRow: how similar colors are measured (used when a color has to be
+// replaced in a full cell).
+func (a *App) matchRow(id string, x, y, w int, m *c64.ColorMatch) int {
+	u := &a.ui
+	a.img.Text(font.UI, x, y+3, "Color matching:", a.th.Text)
+	y += 20
+	n := len(c64.MatchNames)
+	bw := (w - 4*2) / 3
+	for i := 0; i < n; i++ {
+		br := gfx.Rect{X: x + (i%3)*(bw+4), Y: y + (i/3)*25, W: bw, H: 22}
+		if u.ButtonEx(id+"mt"+itoa(i), br, c64.MatchNames[i], int(*m) == i, true) {
+			*m = c64.ColorMatch(i)
+		}
+		u.Tip(id+"mt"+itoa(i), br, c64.MatchInfo[i]+" (used when a color must be replaced in a full cell)")
+	}
+	return y + ((n+2)/3)*25 + 6
+}
+
 // --- dither brush -----------------------------------------------------------------
 
 // ditherResult returns the auto-dithered version of the current picture with
@@ -150,6 +168,9 @@ func (a *App) panelDither(x, y, w int) int {
 	th := a.th
 	o := &a.set.DitherBrush
 	y = a.section(x, y, w, "Dither brush (experimental)")
+	if a.collapsed["Dither brush (experimental)"] {
+		return y
+	}
 	y = a.ditherStyleButtons("db", x, y, w, &o.Style)
 	for _, ln := range wrapText(font.UI, c64.StyleInfo[o.Style], w) {
 		m.Text(font.UI, x, y, ln, th.TextDim)
@@ -158,6 +179,7 @@ func (a *App) panelDither(x, y, w int) int {
 	y += 6
 	y = a.ditherSliders("db", x, y, w, o, true)
 	y = a.cellModeRow("db", x, y, w, &o.Colors)
+	y = a.matchRow("db", x, y, w, &o.Match)
 	if u.Button("db_auto", gfx.Rect{X: x, Y: y, W: w, H: 22}, "Auto dither whole picture …") {
 		a.later(a.openAutoDither)
 	}
@@ -361,6 +383,7 @@ func (d *autoDitherDialog) Draw(a *App, r gfx.Rect) {
 	hdr("Settings")
 	y = a.ditherSliders("ad", cx, y, w, &d.opts, false)
 	y = a.cellModeRow("ad", cx, y, w, &d.opts.Colors)
+	y = a.matchRow("ad", cx, y, w, &d.opts.Match)
 	if u.Button("ad_def", gfx.Rect{X: cx, Y: y, W: w, H: 22}, "Default settings") {
 		st := d.opts.Style
 		d.opts = c64.DefaultAutoDither()

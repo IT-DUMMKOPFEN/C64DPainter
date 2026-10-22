@@ -339,14 +339,41 @@ func (a *App) drawPanel() {
 	}
 }
 
+// sectionCtrl: width of controls on the right of a section header (they do
+// not fold the section).
+var sectionCtrl = map[string]int{"Layers": 150, "Symmetry": 56}
+
+// section draws a section header. A click on it folds the section in or out
+// (a.collapsed; at every start all sections are open).
 func (a *App) section(x, y, w int, title string) int {
-	a.ui.Header(gfx.Rect{X: a.rPanel.X, Y: y, W: a.rPanel.W - 1, H: 24}, title)
+	hr := gfx.Rect{X: a.rPanel.X, Y: y, W: a.rPanel.W - 1, H: 24}
+	arrow := "▾ "
+	if a.collapsed[title] {
+		arrow = "▸ "
+	}
+	a.ui.Header(hr, arrow+title)
+	cr := hr
+	cr.W -= sectionCtrl[title]
+	if c, _ := a.ui.press("sec_"+title, cr, 0); c {
+		if a.collapsed == nil {
+			a.collapsed = map[string]bool{}
+		}
+		a.collapsed[title] = !a.collapsed[title]
+	}
+	if a.collapsed[title] {
+		a.ui.Tip("sec_"+title, cr, "Click to show this section")
+		return y + 26
+	}
+	a.ui.Tip("sec_"+title, cr, "Click to fold this section in")
 	return y + 30
 }
 
 func (a *App) panelBrush(x, y, w int) int {
 	u := &a.ui
 	y = a.section(x, y, w, "Brush")
+	if a.collapsed["Brush"] {
+		return y
+	}
 	bw := (w - 4) / 2
 	shapes := []string{"Round", "Square", "Diamond", "Custom"}
 	shapeRect := func(i int) gfx.Rect {
@@ -426,6 +453,9 @@ func (a *App) panelPattern(x, y, w int) int {
 	u := &a.ui
 	m := a.img
 	y = a.section(x, y, w, "Patterns")
+	if a.collapsed["Patterns"] {
+		return y
+	}
 	cols := 7
 	cw := (w - (cols - 1)) / cols
 	ch := 20
@@ -462,6 +492,9 @@ func (a *App) panelColors(x, y, w int) int {
 	m := a.img
 	th := a.th
 	y = a.section(x, y, w, "Colors")
+	if a.collapsed["Colors"] {
+		return y
+	}
 	// Farbe 1/2
 	for k, c := range []uint8{a.fg, a.fg2} {
 		r := gfx.Rect{X: x, Y: y, W: 18, H: 16}
@@ -515,6 +548,9 @@ func (a *App) panelCell(x, y, w int) int {
 	m := a.img
 	th := a.th
 	y = a.section(x, y, w, "Cell under the mouse")
+	if a.collapsed["Cell under the mouse"] {
+		return y
+	}
 	if !a.mouseIn {
 		u.Label(gfx.Rect{X: x, Y: y, W: w, H: 18}, "Move the mouse over the picture", true)
 		y += 22
@@ -555,6 +591,9 @@ func (a *App) panelNavigator(x, y, w int) int {
 	m := a.img
 	th := a.th
 	y = a.section(x, y, w, "Navigator")
+	if a.collapsed["Navigator"] {
+		return y
+	}
 	nh := w * 200 / 320
 	nr := gfx.Rect{X: x, Y: y, W: w, H: nh}
 	for yy := 0; yy < nh; yy++ {
@@ -593,6 +632,9 @@ func (a *App) panelNavigator(x, y, w int) int {
 // panelSelection zeigt die Transformationsregler der Auswahl.
 func (a *App) panelSelection(x, y, w int) int {
 	y = a.section(x, y, w, "Selection")
+	if a.collapsed["Selection"] {
+		return y
+	}
 	return a.transformControls(x, y, w, "p") + 6
 }
 

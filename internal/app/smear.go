@@ -63,6 +63,9 @@ func (a *App) panelSmear(x, y, w int) int {
 	u := &a.ui
 	m := a.img
 	y = a.section(x, y, w, "Smear")
+	if a.collapsed["Smear"] {
+		return y
+	}
 	r := gfx.Rect{X: x, Y: y, W: w, H: 22}
 	a.set.SmearStrength = u.Slider("sm_str", r, "Strength", a.smearStrength(), 10, 100, " %")
 	u.Tip("sm_str", r, "How far the colors are dragged: high = long streaks, low = soft blending")

@@ -349,3 +349,39 @@ func TestAutoBackupAndRecent(t *testing.T) {
 		}
 	}
 }
+
+func TestFixDoubleExt(t *testing.T) {
+	for in, want := range map[string]string{
+		"/a/pic.kla.kla": "/a/pic.kla", "/a/pic.KLA.kla": "/a/pic.KLA", "/a/pic.kla": "/a/pic.kla",
+		"/a/pic.c64dp.kla": "/a/pic.c64dp.kla", "/a/pic": "/a/pic", "/a/x.png.png.png": "/a/x.png",
+	} {
+		if got := FixDoubleExt(in); got != want {
+			t.Fatalf("%s: %s", in, got)
+		}
+	}
+}
+
+func TestCollapsibleSections(t *testing.T) {
+	a, _ := setup(t)
+	before := a.panelContentH
+	// the header of "Patterns": find it by folding through the API path
+	a.collapsed = map[string]bool{"Patterns": true, "Colors": true, "Layers": true, "Cell under the mouse": true, "Navigator": true}
+	step(a)
+	if a.panelContentH >= before-300 {
+		t.Fatalf("folded sections must save space: %d → %d", before, a.panelContentH)
+	}
+	// a click on a header opens it again
+	a.collapsed = nil
+	step(a)
+	full := a.panelContentH
+	y := a.rPanel.Y
+	// Brush is the first section: click its header
+	tclick(a, a.rPanel.X+40, y+12, 0)
+	if !a.collapsed["Brush"] || a.panelContentH >= full {
+		t.Fatal("clicking the header folds the section")
+	}
+	tclick(a, a.rPanel.X+40, y+12, 0)
+	if a.collapsed["Brush"] {
+		t.Fatal("second click opens it again")
+	}
+}

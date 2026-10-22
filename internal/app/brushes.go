@@ -151,6 +151,7 @@ func (a *App) saveBrushDialog() {
 	if !ok {
 		return
 	}
+	p = FixDoubleExt(p)
 	b := a.custom
 	if !a.customOwnColor {
 		// stamps and one-color brushes are saved in color 1

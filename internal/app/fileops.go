@@ -300,6 +300,7 @@ func (a *App) cmdSaveAs() bool {
 	if !ok {
 		return false
 	}
+	p = FixDoubleExt(p)
 	if a.saveTo(p) {
 		a.filePath[a.page] = p
 		a.updateTitle()
@@ -309,6 +310,7 @@ func (a *App) cmdSaveAs() bool {
 }
 
 func (a *App) saveTo(p string) bool {
+	p = FixDoubleExt(p)
 	ext := strings.ToLower(filepath.Ext(p))
 	if ext == ".c64dp" {
 		data, err := a.encodeProject()
@@ -364,6 +366,7 @@ func (a *App) usesLayers() bool {
 }
 
 func (a *App) writeExport(p string, kind int) bool {
+	p = FixDoubleExt(p)
 	var data []byte
 	var err error
 	switch kind {
@@ -413,6 +416,7 @@ func (a *App) cmdExport(kind int) {
 	if !ok {
 		return
 	}
+	p = FixDoubleExt(p)
 	if a.writeExport(p, kind) {
 		a.rememberDir(p)
 		if kind == exportKLA {
@@ -437,3 +441,19 @@ func (a *App) pngOf() []byte {
 }
 
 func baseName(p string) string { return filepath.Base(p) }
+
+// FixDoubleExt removes a doubled file extension ("picture.kla.kla" →
+// "picture.kla"), which some system save dialogs produce.
+func FixDoubleExt(p string) string {
+	for {
+		ext := filepath.Ext(p)
+		if ext == "" {
+			return p
+		}
+		rest := strings.TrimSuffix(p, ext)
+		if !strings.EqualFold(filepath.Ext(rest), ext) {
+			return p
+		}
+		p = rest
+	}
+}

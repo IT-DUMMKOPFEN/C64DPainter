@@ -73,7 +73,22 @@ type ConvertOptions struct {
 	Serpentine bool
 	BG         int // -1 = automatic
 	Adjust     Adjust
+	Match      ColorMatch // how similar colors are measured
+	Cells      CellMethod // how the three colors of a cell are chosen
 }
+
+// CellMethod selects how the colors of the 4×8 cells are chosen.
+type CellMethod int
+
+const (
+	CellsBestFit  CellMethod = iota // the three colors that fit the cell best
+	CellsFrequent                   // the three most frequent colors (Retropixels)
+	CellsFixed                      // the same three colors in all cells
+	cellMethodCount
+)
+
+// CellMethodNames are the display names of the cell methods.
+var CellMethodNames = [cellMethodCount]string{"Best fit", "Most frequent", "Same in all cells"}
 
 // Resample maps any image onto 160×200 multicolor pixels (RGB, box filter).
 // The image is placed on a 320×200 screen like on the C64.
@@ -271,6 +286,7 @@ func Convert(src image.Image, pal *Palette, o ConvertOptions) *Picture {
 // selected dithering method. It returns palette indices.
 func ditherPass(px [][3]int, pr *[16][3]int, o ConvertOptions, allowed func(x, y int) []int) []uint8 {
 	out := make([]uint8, W*H)
+	dist := colorMetric(o.Match)
 	strength := float64(clamp100(o.Strength)) / 100
 	if o.Dither == DitherNone {
 		strength = 0
@@ -294,12 +310,12 @@ func ditherPass(px [][3]int, pr *[16][3]int, o ConvertOptions, allowed func(x, y
 			}
 			cr, cg, cb := clamp(int(c[0]+0.5)), clamp(int(c[1]+0.5)), clamp(int(c[2]+0.5))
 			if o.Dither.Ordered() && strength > 0 {
-				out[y*W+x] = uint8(mixPick(cr, cg, cb, pr, allowed(x, y), threshold(o.Dither, x, y)+0.5, strength))
+				out[y*W+x] = uint8(mixPick(cr, cg, cb, pr, allowed(x, y), threshold(o.Dither, x, y)+0.5, strength, dist))
 				continue
 			}
 			best, bd := 0, 1<<62
 			for _, kk := range allowed(x, y) {
-				d := ColorDist(cr, cg, cb, pr[kk][0], pr[kk][1], pr[kk][2])
+				d := dist(cr, cg, cb, pr[kk][0], pr[kk][1], pr[kk][2])
 				if d < bd {
 					bd, best = d, kk
 				}
@@ -336,7 +352,7 @@ func ditherPass(px [][3]int, pr *[16][3]int, o ConvertOptions, allowed func(x, y
 // pair of allowed colors whose blend comes closest to the target, then uses the
 // threshold t (0..1) of the dither pattern to choose one of the two. A higher
 // strength allows mixing colors that are further apart.
-func mixPick(r, g, b int, pr *[16][3]int, allowed []int, t, strength float64) int {
+func mixPick(r, g, b int, pr *[16][3]int, allowed []int, t, strength float64, dist func(r1, g1, b1, r2, g2, b2 int) int) int {
 	lambda := 0.02 + (1-strength)*0.8
 	if len(allowed) > 6 {
 		// only the six nearest colors are worth mixing
@@ -345,7 +361,7 @@ func mixPick(r, g, b int, pr *[16][3]int, allowed []int, t, strength float64) in
 		n := 0
 		for _, k := range allowed {
 			c := pr[k]
-			d := ColorDist(r, g, b, c[0], c[1], c[2])
+			d := dist(r, g, b, c[0], c[1], c[2])
 			j := n
 			for j > 0 && nd[j-1] > d {
 				near[j], nd[j] = near[j-1], nd[j-1]
@@ -374,8 +390,8 @@ func mixPick(r, g, b int, pr *[16][3]int, allowed []int, t, strength float64) in
 			mr := float64(A[0]) + ratio*dr
 			mg := float64(A[1]) + ratio*dg
 			mb := float64(A[2]) + ratio*db
-			e := float64(ColorDist(r, g, b, int(mr+0.5), int(mg+0.5), int(mb+0.5)))
-			e += lambda * float64(ColorDist(A[0], A[1], A[2], B[0], B[1], B[2])) * ratio * (1 - ratio)
+			e := float64(dist(r, g, b, int(mr+0.5), int(mg+0.5), int(mb+0.5)))
+			e += lambda * float64(dist(A[0], A[1], A[2], B[0], B[1], B[2])) * ratio * (1 - ratio)
 			if e < bestE {
 				bestE, best, bestB, bestR = e, ka, kb, ratio
 			}
@@ -410,18 +426,21 @@ func ConvertRGB(px [][3]int, pal *Palette, o ConvertOptions) *Picture {
 			ref[i] = pr[k]
 		}
 	}
+	metric := colorMetric(o.Match)
 	dist := make([][16]int, W*H)
+	near := make([]uint8, W*H)
 	hist := [16]int{}
 	for i, c := range ref {
 		best, bd := 0, 1<<62
 		for k := 0; k < 16; k++ {
-			d := ColorDist(c[0], c[1], c[2], pr[k][0], pr[k][1], pr[k][2])
+			d := metric(c[0], c[1], c[2], pr[k][0], pr[k][1], pr[k][2])
 			dist[i][k] = d
 			if d < bd {
 				bd, best = d, k
 			}
 		}
 		hist[best]++
+		near[i] = uint8(best)
 	}
 	// background color candidates
 	var bgCands []int
@@ -445,7 +464,20 @@ func ConvertRGB(px [][3]int, pal *Palette, o ConvertOptions) *Picture {
 	for _, bg := range bgCands {
 		total := 0
 		cells := make([][3]int, Cells)
-		for cell := 0; cell < Cells; cell++ {
+		if o.Cells == CellsFixed {
+			tri, e := fixedTriple(dist, hist, bg)
+			for i := range cells {
+				cells[i] = tri
+			}
+			total = e
+		}
+		for cell := 0; cell < Cells && o.Cells != CellsFixed; cell++ {
+			if o.Cells == CellsFrequent {
+				tri, e := frequentTriple(dist, near, cell, bg)
+				cells[cell] = tri
+				total += e
+				continue
+			}
 			cx, cy := (cell%Cols)*4, (cell/Cols)*8
 			// candidates: nearest and second nearest color of every pixel
 			var cand [16]bool
@@ -648,4 +680,80 @@ func MergePairs(screen [][3]int, pair PairMode) [][3]int {
 		}
 	}
 	return out
+}
+
+// tripleError sums, over the pixels of a cell, the distance to the nearest of
+// the background and the three cell colors.
+func tripleError(dist [][16]int, cell, bg int, tri [3]int) int {
+	cx, cy := (cell%Cols)*4, (cell/Cols)*8
+	e := 0
+	for y := cy; y < cy+8; y++ {
+		for x := cx; x < cx+4; x++ {
+			d := &dist[y*W+x]
+			m := d[bg]
+			for _, k := range tri {
+				if d[k] < m {
+					m = d[k]
+				}
+			}
+			e += m
+		}
+	}
+	return e
+}
+
+// frequentTriple: the three colors that occur most often in the cell (as
+// nearest colors), like Retropixels does it.
+func frequentTriple(dist [][16]int, near []uint8, cell, bg int) ([3]int, int) {
+	cx, cy := (cell%Cols)*4, (cell/Cols)*8
+	var cnt [16]int
+	for y := cy; y < cy+8; y++ {
+		for x := cx; x < cx+4; x++ {
+			cnt[near[y*W+x]]++
+		}
+	}
+	var tri [3]int
+	var used [16]bool
+	used[bg] = true
+	for s := 0; s < 3; s++ {
+		best := -1
+		for k := 0; k < 16; k++ {
+			if !used[k] && (best < 0 || cnt[k] > cnt[best]) {
+				best = k
+			}
+		}
+		used[best] = true
+		tri[s] = best
+	}
+	return tri, tripleError(dist, cell, bg, tri)
+}
+
+// fixedTriple: the same three colors for the whole picture.
+func fixedTriple(dist [][16]int, hist [16]int, bg int) ([3]int, int) {
+	idx := make([]int, 0, 16)
+	for k := 0; k < 16; k++ {
+		if k != bg {
+			idx = append(idx, k)
+		}
+	}
+	sort.SliceStable(idx, func(a, b int) bool { return hist[idx[a]] > hist[idx[b]] })
+	if len(idx) > 8 {
+		idx = idx[:8]
+	}
+	best, bestE := [3]int{idx[0], idx[1], idx[2]}, 1<<62
+	for a := 0; a < len(idx); a++ {
+		for b := a + 1; b < len(idx); b++ {
+			for c := b + 1; c < len(idx); c++ {
+				tri := [3]int{idx[a], idx[b], idx[c]}
+				e := 0
+				for cell := 0; cell < Cells && e < bestE; cell++ {
+					e += tripleError(dist, cell, bg, tri)
+				}
+				if e < bestE {
+					best, bestE = tri, e
+				}
+			}
+		}
+	}
+	return best, bestE
 }

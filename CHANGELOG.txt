@@ -34,10 +34,37 @@ My brushes
   with all brushes saved in the "brushes" folder of the working folder.
   The chosen brush becomes the brush and the tool switches to Dots.
 
+Import & convert (ideas from Retropixels by Michel de Bree)
+- Color matching: choose how "the most similar color" is measured -
+  RGB (as before), YUV, XYZ, Lab, OkLab or brightness only.
+- Cell colors: Best fit (as before), Most frequent (the three most
+  frequent colors of each cell) or Same in all cells (the background plus
+  the same three colors in the whole picture - good for game graphics).
+- New help page "Import & convert".
+
+Auto dither and Dither brush
+- Color matching can be chosen too; it decides which allowed color
+  replaces a color in a full cell.
+
+Layers
+- Changed stacking: layer 2 is now at the bottom, layer 3 above it and
+  layer 4 on top. The list stays 1 - 4 from top to bottom. Projects saved
+  with 0.96 are converted on loading so they look the same.
+
+Side panel
+- Click a section title (Brush, Patterns, Colors, Layers, Cell under the
+  mouse, Navigator and the tool sections) to fold it in and out. At every
+  start all sections are open.
+
+Fixes
+- Saving a Koala picture with the system save dialog could create a name
+  like "picture.kla.kla". Doubled extensions are now removed, and the
+  macOS save dialog no longer adds the extension twice.
+
 About
 - New section in the help page "About": "Why This Software Is Free for
   Personal Use".
-- RECOIL added to the sources.
+- RECOIL and Retropixels added to the sources.
 
 
 Version 0.96 beta

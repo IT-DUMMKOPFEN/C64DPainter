@@ -78,3 +78,48 @@ func TestAdjustIdentity(t *testing.T) {
 		t.Fatalf("saturation -100 must give grey: %v", out[1])
 	}
 }
+
+func TestColorMatchAndCellMethods(t *testing.T) {
+	pal := &Palettes[FindPalette(DefaultPalette)]
+	for m := ColorMatch(0); m < matchCount; m++ {
+		for c := CellMethod(0); c < cellMethodCount; c++ {
+			p := Convert(gradient(), pal, ConvertOptions{Fit: FitStretch, Dither: DitherBayer4, Strength: 50, BG: -1, Match: m, Cells: c})
+			cellColorsCheck(t, p)
+			if c == CellsFixed {
+				set := map[uint8]bool{}
+				for cell := 0; cell < Cells; cell++ {
+					u := p.Usage(cell, -1, -1)
+					for s := 1; s <= 3; s++ {
+						if u[s] > 0 {
+							set[p.SlotColor(cell, s)] = true
+						}
+					}
+				}
+				if len(set) > 3 {
+					t.Fatalf("%s: fixed colors use %d colors", MatchNames[m], len(set))
+				}
+			}
+		}
+	}
+	for m := ColorMatch(0); m < matchCount; m++ {
+		d := colorMetric(m)
+		if d(10, 20, 30, 10, 20, 30) != 0 || d(0, 0, 0, 255, 255, 255) <= 0 {
+			t.Fatalf("%s metric", MatchNames[m])
+		}
+	}
+}
+
+func cellColorsCheck(t *testing.T, p *Picture) {
+	for cell := 0; cell < Cells; cell++ {
+		seen := map[uint8]bool{}
+		cx, cy := (cell%Cols)*4, (cell/Cols)*8
+		for y := cy; y < cy+8; y++ {
+			for x := cx; x < cx+4; x++ {
+				seen[p.ColorAt(x, y)] = true
+			}
+		}
+		if len(seen) > 4 {
+			t.Fatalf("cell with %d colors", len(seen))
+		}
+	}
+}

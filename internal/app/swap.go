@@ -281,6 +281,9 @@ func (a *App) panelCellSwap(x, y, w int) int {
 	m := a.img
 	th := a.th
 	y = a.section(x, y, w, "Cell color swap brush")
+	if a.collapsed["Cell color swap brush"] {
+		return y
+	}
 	for i, c := range []uint8{a.swapFrom, a.swapTo} {
 		sr := gfx.Rect{X: x + i*70, Y: y, W: 40, H: 26}
 		m.Fill(sr, a.pal.Colors[c])

@@ -145,7 +145,12 @@ func (d *importDialog) Draw(a *App, r gfx.Rect) {
 		m.Text(font.UI, r.X, iy+18, fmt.Sprintf("Background: %s  ·  cells using all 4 colors: %d of 1000  ·  palette: %s",
 			c64.ColorNames[d.preview.BG], d.preview.FullCells(), a.pal.Name), th.TextDim)
 	}
-	m.Text(font.UI, r.X, iy+40, "Every 4×8 cell gets the background color plus the three colors that fit best.", th.TextDim)
+	cellText := []string{
+		"Every 4×8 cell gets the background color plus the three colors that fit best.",
+		"Every 4×8 cell gets the background color plus its three most frequent colors.",
+		"The whole picture uses the background color plus the same three colors.",
+	}[clampI(int(d.opts.Cells), 0, 2)]
+	m.Text(font.UI, r.X, iy+40, cellText, th.TextDim)
 	m.Text(font.UI, r.X, iy+56, "The result always follows the multicolor rules.", th.TextDim)
 
 	// ---- settings (right, scrollable) ----
@@ -220,6 +225,30 @@ func (d *importDialog) Draw(a *App, r gfx.Rect) {
 	if d.opts.Dither >= c64.DitherFloyd {
 		d.opts.Serpentine = u.Checkbox("im_serp", gfx.Rect{X: cx, Y: y, W: w, H: 20}, "Serpentine scanning (fewer streaks)", d.opts.Serpentine)
 		y += 24
+	}
+	y += 4
+	hdr("Color matching")
+	mw := (w - 8) / 3
+	for i := 0; i < len(c64.MatchNames); i++ {
+		br := gfx.Rect{X: cx + (i%3)*(mw+4), Y: y + (i/3)*25, W: mw, H: 22}
+		if u.ButtonEx("im_m"+itoa(i), br, c64.MatchNames[i], int(d.opts.Match) == i, d.target != 1) {
+			d.opts.Match = c64.ColorMatch(i)
+		}
+		u.Tip("im_m"+itoa(i), br, c64.MatchInfo[i])
+	}
+	y += ((len(c64.MatchNames)+2)/3)*25 + 6
+	hdr("Cell colors")
+	if v := row3("im_c", c64.CellMethodNames[:], int(d.opts.Cells), d.target != 1); v >= 0 {
+		d.opts.Cells = c64.CellMethod(v)
+	}
+	cellTips := []string{
+		"Every cell gets the three colors that fit it best (default)",
+		"Every cell gets its three most frequent colors – often calmer (as in Retropixels)",
+		"The whole picture uses the background plus the same three colors – good for game graphics",
+	}
+	for i, tip := range cellTips {
+		bw := (w - 8) / 3
+		u.Tip("im_c"+itoa(i), gfx.Rect{X: cx + i*(bw+4), Y: y - 30, W: bw, H: 24}, tip)
 	}
 	y += 4
 	hdr("Background color ($D021)")

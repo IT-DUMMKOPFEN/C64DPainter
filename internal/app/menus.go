@@ -103,9 +103,9 @@ func (a *App) buildMenus() {
 			check("Use layers 3 + 4", "", func() bool { return a.extraLayers }, func() { a.setExtraLayers(!a.extraLayers) }),
 			sep(),
 			head("Paint on"),
-			check("Layer 2 (front)", "2", func() bool { return a.pic.Active == 0 }, func() { a.setActiveLayer(0) }),
+			check("Layer 2 (bottom)", "2", func() bool { return a.pic.Active == 0 }, func() { a.setActiveLayer(0) }),
 			check("Layer 3", "3", func() bool { return a.pic.Active == 1 }, func() { a.setActiveLayer(1) }),
-			check("Layer 4 (back)", "4", func() bool { return a.pic.Active == 2 }, func() { a.setActiveLayer(2) }),
+			check("Layer 4 (top)", "4", func() bool { return a.pic.Active == 2 }, func() { a.setActiveLayer(2) }),
 			sep(),
 			head("Show"),
 			check("Layer 1 (template)", "T", func() bool { return a.tpl.src != nil && a.tpl.visible }, func() {

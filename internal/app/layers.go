@@ -161,6 +161,9 @@ func (a *App) panelLayers(x, y, w int) int {
 	if on := a.drawSwitch("ly_extra", sw, a.extraLayers, "Switch layers 3 and 4 on or off"); on != a.extraLayers {
 		a.setExtraLayers(on)
 	}
+	if a.collapsed["Layers"] {
+		return y
+	}
 	row := func(id, name, sub string, visible, active, enabled bool, toggle, choose func()) {
 		r := gfx.Rect{X: x, Y: y, W: w, H: 34}
 		fill := th.PanelAlt
@@ -219,9 +222,9 @@ func (a *App) panelLayers(x, y, w int) int {
 			sub = fmt.Sprintf("%d pixels", n)
 		}
 		if l == 0 {
-			sub += " · front"
+			sub += " · bottom"
 		} else if l == c64.LayerCount-1 {
-			sub += " · back"
+			sub += " · top"
 		}
 		if a.pic.Active == l {
 			sub = "active · " + sub

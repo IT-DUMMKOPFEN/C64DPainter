@@ -62,6 +62,9 @@ type AutoDitherOptions struct {
 	// from the artists' color ramps (good for gradients, bad for silhouettes).
 	Between bool
 	Colors  CellColorMode
+	// Match: how similar colors are measured when a color has to be replaced
+	// in a full cell (idea from Retropixels).
+	Match ColorMatch `json:"match"`
 	// Fill (Color style only): darken every pixel, not only near borders.
 	// Used by the dither brush; Steps then means 25 / 50 / 75 % darker color.
 	Fill bool `json:"-"`
@@ -77,7 +80,7 @@ func (o AutoDitherOptions) Valid() bool {
 	return o.Style >= 0 && o.Style < StyleCount && o.Width >= 2 && o.Width <= 16 &&
 		o.Steps >= 1 && o.Steps <= 3 && o.Edges >= 0 && o.Edges <= 100 &&
 		o.Detail >= 0 && o.Detail <= 8 && o.Ramps >= 0 && o.Ramps <= 100 &&
-		o.Colors >= CellKeep && o.Colors <= CellRechoose
+		o.Colors >= CellKeep && o.Colors <= CellRechoose && o.Match >= 0 && o.Match < matchCount
 }
 
 // lumaLevel is the brightness level (0..8) of the 16 VIC-II colors. Colors on
@@ -437,6 +440,7 @@ func (p *ditherPlan) desired(mask []bool) []uint8 {
 // pixels with mask[i] == true may change (nil = whole picture). The result
 // always follows the multicolor rules and keeps the background color.
 func AutoDither(src *Picture, pal *Palette, o AutoDitherOptions, mask []bool) *Picture {
+	metric := colorMetric(o.Match)
 	p := newPlan(src, o)
 	want := p.desired(mask)
 	bg := src.BG
@@ -491,7 +495,7 @@ func AutoDither(src *Picture, pal *Palette, o AutoDitherOptions, mask []bool) *P
 				case f == bg || contains(allowed, int(f)):
 					// keep the original color
 				default:
-					f = nearestOf(pal, f, append(allowed, int(bg)))
+					f = nearestOf(pal, f, append(allowed, int(bg)), metric)
 				}
 				final[i] = f
 				if f != bg && !contains(cellCols[cell], int(f)) {
@@ -522,12 +526,12 @@ func rankColors(want []uint8, cx, cy int, bg uint8, skip []int) []int {
 	return r
 }
 
-func nearestOf(pal *Palette, c uint8, set []int) uint8 {
+func nearestOf(pal *Palette, c uint8, set []int, dist func(r1, g1, b1, r2, g2, b2 int) int) uint8 {
 	a := pal.Colors[c]
 	best, bd := uint8(set[0]), 1<<62
 	for _, k := range set {
 		b := pal.Colors[k]
-		d := ColorDist(int(a>>16&255), int(a>>8&255), int(a&255), int(b>>16&255), int(b>>8&255), int(b&255))
+		d := dist(int(a>>16&255), int(a>>8&255), int(a&255), int(b>>16&255), int(b>>8&255), int(b&255))
 		if d < bd {
 			best, bd = uint8(k), d
 		}

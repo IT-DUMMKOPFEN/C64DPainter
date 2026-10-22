@@ -47,6 +47,7 @@ File, edit, selection, layer and view commands, options (palette, color conflict
 - **Selection** (only with the select tool): rotate, scale, shear.
 - **Symmetry** (while it is on): axes and mirror mode.
 - **Dither brush** / **Smear** / **Shade** / **Gradient fill** (only with these tools): their settings.
+- **Click a section title** (Brush, Patterns, Colors, Layers, Cell under the mouse, Navigator …) to fold the section in and out. That saves space and brings calm; at every start all sections are open.
 - **Brush**: shape (round, square, diamond, custom), size 1–16, preview, airbrush settings.
 - **Patterns**: fill patterns for all tools (hidden for the dither brush).
 - **Colors**: background ($D021), border ($D020) and the behavior for color conflicts.
@@ -420,6 +421,10 @@ Each 4 × 8 cell can only show four colors, so the program has to decide which c
 
 > The background color ($D021) is never changed.
 
+## Color matching
+
+Where a color has to be replaced because a cell is full, **Color matching** decides which of the allowed colors comes closest: RGB, YUV, XYZ, Lab, OkLab or only the brightness (see "Import & convert").
+
 ## Tips
 
 - Paint big shapes with clean flat colors and outlines, then use **Auto dither** once, and refine single spots with the **Dither brush**.
@@ -522,9 +527,9 @@ A separate window shows the picture with its border like on a TV. It does not bl
 A picture has **four layers** (side panel **Layers** or the **Layer** menu). They are listed from 1 at the top to 4 at the bottom, in the order they lie on top of each other:
 
 = Layer 1 | the **template**: any image for tracing, its colors do not matter
-= Layer 2 | paint layer **in front** – loaded and imported pictures go here
-= Layer 3 | paint layer behind layer 2
-= Layer 4 | paint layer **at the back**
+= Layer 2 | paint layer **at the bottom** – loaded and imported pictures go here
+= Layer 3 | paint layer above layer 2
+= Layer 4 | paint layer **on top**
 
 ## Paint layers 2–4
 
@@ -606,6 +611,54 @@ The **File** menu lists the last 8 files you opened or saved. A click opens the 
 
 -> prg | Running the C64 program
 -> import | Import & convert
+`},
+	{id: "import", title: "Import & convert", body: `
+# Import & convert
+
+**File → Import image …** (` + "`Ctrl+I`" + `) turns any PNG, BMP, JPG or GIF image into a C64 multicolor picture. A live preview shows the result while you change the settings: **Multicolor**, **Original** or **Split** (left original, right result). Hold the mouse button on the preview to see the original.
+
+## Use as
+
+**C64 picture** replaces the picture (layer 2), **Template** puts the image into layer 1 for tracing, **Both** does both.
+
+## Size and pixel pairs
+
+- **Stretch / Fit / Fill** map the image to 320 × 200. Images of exactly 320 × 200 or 160 × 200 pixels are taken 1:1.
+- **Average / Left pixel / Right pixel** – two screen pixels become one wide multicolor pixel.
+
+## Adjustments
+
+Brightness, contrast, saturation, hue and gamma – often a little more contrast and saturation helps a lot with the 16 C64 colors.
+
+## Dithering
+
+13 methods: ordered patterns (Bayer 2 × 2, 4 × 4, 8 × 8, clustered dot, line pattern, noise) and error diffusion (Floyd–Steinberg, Atkinson, Jarvis-Judice-Ninke, Stucki, Burkes, Sierra, Sierra Lite). **Strength** sets how much is dithered.
+
+## Color matching
+
+How "the most similar C64 color" is measured. Each method suits other images – just try them in the preview:
+
+= RGB | weighted RGB distance – quick and good for most images (default)
+= YUV | brightness and color difference as on a TV – keeps brightness steps
+= XYZ | CIE XYZ – physical light, good for photos
+= Lab | CIE Lab – close to how the eye sees differences
+= OkLab | modern, even perception of hue and brightness
+= Brightness | only the brightness counts – the colors follow the light and dark parts, a colorful, poster-like look
+
+## Cell colors
+
+= Best fit | every 4 × 8 cell gets the three colors that fit it best (default)
+= Most frequent | every cell gets its three most frequent colors – often calmer, as in Retropixels
+= Same in all cells | the whole picture uses the background color plus the same three colors – good for game graphics and charsets
+
+## Background color ($D021)
+
+**A** chooses it automatically (the program tries the most frequent colors), or pick one of the 16 colors.
+
+> The result always follows the multicolor rules. The ideas for color matching and cell colors come from **Retropixels** by Michel de Bree.
+
+-> dither | Dithering (Auto dither and Dither brush)
+-> formats | Saving & file formats
 `},
 	{id: "prg", title: "Running the C64 program", body: `
 # The C64 program (.prg)
@@ -804,6 +857,7 @@ Thank you all for making your work available and letting us use it:
 - **Language:** Go and its standard library (BSD), The Go Authors.
 - **Dithering:** articles and guides on pixelparmesan.com, pixel-editor.com, pixnote.net, divoom.com and pixie.haus.
 - **File formats:** the details of Advanced Art Studio and Amica Paint files from RECOIL by Piotr Fusik.
+- **Import:** the ideas for color matching and cell colors from Retropixels by Michel de Bree (MIT license).
 - **Dither styles:** 16 hand-pixelled C64 scene pictures, analyzed pattern by pattern.
 - **Gradients:** color ramp table by IT-Dummköpfen, extended with more C64 ramps.
 - **Inspiration:** Deluxe Paint (Electronic Arts, 1985), PyDPainter and Multipaint (Marq/Kameli).

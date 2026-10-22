@@ -593,6 +593,9 @@ func (a *App) panelGradient(x, y, w int) int {
 	g := &a.set.Gradient
 	g.clamp()
 	y = a.section(x, y, w, "Gradient fill")
+	if a.collapsed["Gradient fill"] {
+		return y
+	}
 	m.Text(font.UIB, x, y, gradientName(g.Group, g.Ramp), a.th.Text)
 	m.Text(font.UI, x, y+16, gradientGroups[g.Group], a.th.TextDim)
 	y += 36
