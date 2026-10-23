@@ -175,6 +175,20 @@ func (a *App) openPath(p string) {
 	}
 	a.rememberDir(p)
 	ext := strings.ToLower(filepath.Ext(p))
+	switch ext {
+	case ".petmate":
+		a.openPetscii()
+		a.petLoad(p, data)
+		return
+	case ".c64sprites":
+		a.openSprites()
+		a.sprLoad(p, data)
+		return
+	case ".c64font":
+		a.openFontEditor()
+		a.fntLoad(p, data)
+		return
+	}
 	if ext == ".c64dp" || isProject(data) {
 		if a.loadProject(data, p) {
 			a.filePath[a.page] = p

@@ -804,18 +804,24 @@ func (a *App) petOpen() {
 		return
 	}
 	data, err := a.host.ReadFile(p)
-	if err == nil {
-		var s *c64.PetsciiScreen
-		if s, err = c64.LoadPetmate(data); err == nil {
-			a.pet.push()
-			a.pet.scr = *s
-			a.pet.path = p
-			a.pet.dirty = false
-			a.addRecent(p)
-			return
-		}
+	if err != nil {
+		a.host.Info(AppName, "Cannot open the file:\n"+err.Error())
+		return
 	}
-	a.host.Info(AppName, "Cannot open the file:\n"+err.Error())
+	a.petLoad(p, data)
+}
+
+func (a *App) petLoad(p string, data []byte) {
+	s, err := c64.LoadPetmate(data)
+	if err != nil {
+		a.host.Info(AppName, "Cannot open the file:\n"+err.Error())
+		return
+	}
+	a.pet.push()
+	a.pet.scr = *s
+	a.pet.path = p
+	a.pet.dirty = false
+	a.addRecent(p)
 }
 
 func (a *App) petSave() {

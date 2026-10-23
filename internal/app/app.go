@@ -211,6 +211,8 @@ type App struct {
 	backupHash  [2]uint64       // pages as they were saved last
 	collapsed   map[string]bool // folded side panel sections (all open at start)
 	pet         *petEditor      // the PETSCII editor (kept while the program runs)
+	spr         *sprEditor      // the sprite editor
+	fnt         *fntEditor      // the font editor
 }
 
 type dragState struct {
@@ -391,6 +393,28 @@ func (a *App) CanClose() bool {
 		case 0:
 			a.petSave()
 			if a.pet.dirty {
+				return false
+			}
+		case 2:
+			return false
+		}
+	}
+	if a.spr != nil && a.spr.dirty {
+		switch a.host.Ask(AppName, "The sprites have been changed.\n\nSave them first?") {
+		case 0:
+			a.sprSave()
+			if a.spr.dirty {
+				return false
+			}
+		case 2:
+			return false
+		}
+	}
+	if a.fnt != nil && a.fnt.dirty {
+		switch a.host.Ask(AppName, "The character set has been changed.\n\nSave it first?") {
+		case 0:
+			a.fntSave()
+			if a.fnt.dirty {
 				return false
 			}
 		case 2:
@@ -718,9 +742,8 @@ func (a *App) frameOnce() *gfx.Image {
 	}
 	a.img.ResetClip()
 
-	if a.pet != nil && a.pet.open {
-		// the PETSCII editor uses the whole window
-		a.petFrame()
+	if a.fullEditorFrame() {
+		// the PETSCII, sprite and font editors use the whole window
 		a.img.ResetClip()
 		a.ui.drawTooltip()
 		if !a.in.Down[0] && !a.in.Down[1] && !a.in.Down[2] {

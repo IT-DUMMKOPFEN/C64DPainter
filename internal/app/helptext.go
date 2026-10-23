@@ -520,7 +520,9 @@ With **View → Grid settings …** (` + "`Shift+G`" + ` or right-click the grid
 
 - **Width and height in screen pixels** (320 × 200 grid). A multicolor pixel is 2 screen pixels wide, so the width changes in steps of 2.
 - **Offset**, **opacity** and **color** (automatic = inverted, so it is visible on every color).
-- Presets: 8×8 (cell), 16×16, 32×32, 2×1 (one pixel), 4×4.
+- Presets: 8×8 (cell), 16×16, 32×32, 2×1 (one pixel), 4×4 and **Sprite 24×21** (one multicolor sprite of 12 × 21 pixels).
+
+**View → Sprite grid (24×21)** switches directly between the sprite grid and the cell grid. Draw sprites in it and take them into the **sprite editor** with Import (as a raster).
 
 {MACNOTE}
 
@@ -707,7 +709,7 @@ The viewer disables interrupts (` + "`SEI`" + `), sets border ($D020) and backgr
 = $D018 = $18 | screen at $0400, bitmap at $2000
 = $DD00 | VIC bank 0 ($0000–$3FFF)
 `},
-	{id: "petscii", group: "PETSCII", title: "PETSCII editor", body: `
+	{id: "petscii", group: "C64 tools", title: "PETSCII editor", body: `
 # PETSCII editor
 
 **Tools → PETSCII editor …** opens an editor for **PETSCII** pictures: the normal text mode of the C64 with 40 × 25 characters from the character ROM. Every character has its own color, the background ($D021) is shared. PETSCII is independent of the multicolor rules. The editor fills the whole window; **Close PETSCII editor** brings back the multicolor editor. Your PETSCII picture stays in the editor until you quit the program.
@@ -762,6 +764,116 @@ The viewer disables interrupts (` + "`SEI`" + `), sets border ($D020) and backgr
 - **Export PNG**: 384 × 272 pixels with border.
 
 > Ideas from **Petmate** (nurpax, MIT license – also the "sorted by shape" order), **petsciirender** (gnacu), **PETSCII editor** (Marq, ventti/petscii, WTFPL) and **Image-to-PETSCII** (amb; only the idea, no code). The characters are the original C64 character ROM © Commodore.
+`},
+	{id: "sprites", title: "Sprite editor", body: `
+# Sprite editor
+
+**Tools → Sprite editor …** opens an editor for up to **64 C64 sprites**. It fills the whole window like the PETSCII editor; **Close sprite editor** brings back the multicolor editor. The sprites stay in the editor until you quit the program.
+
+## Sprites on the C64
+
+A sprite is 24 × 21 pixels (63 bytes). Every sprite is either
+
+- **Hires**: 24 × 21 pixels in the sprite color, or
+- **Multicolor**: 12 × 21 double wide pixels in three colors: the **sprite color** (own for every sprite, $D027+n) and **multicolor 1 and 2** ($D025, $D026), which all sprites share.
+
+Transparent pixels show the background ($D021). Switching between hires and multicolor keeps the bits, exactly as on the C64 – the sprite looks different afterwards.
+
+## Drawing
+
+- Tools: **Pencil** (` + "`D`" + `), **Line** (` + "`L`" + `), **Rectangle** (` + "`R`" + `), **Filled box** (` + "`B`" + `), **Fill** (` + "`F`" + `).
+- The **left** button paints with the chosen color, the **right** button paints transparent. **Alt+click** picks the color under the mouse, **Shift** draws a straight line with the pencil.
+- Choose the color with ` + "`0`" + ` – ` + "`3`" + ` or on the right: 0 transparent, 1 sprite color, 2 multicolor 1, 3 multicolor 2. Click a color of the palette to change the chosen color (0 changes the background).
+- **Mirror left/right** (` + "`M`" + `) paints both halves at once.
+- **Overlay sprite** (` + "`O`" + `) shows a second sprite faded behind the one you draw – for example a hires outline over a multicolor sprite. The previews show both as on the C64 (the lower sprite number is in front).
+- **Edit**: flip, shift (also ` + "`Alt+arrows`" + `), invert, clear, copy and paste.
+- **Expand X / Y** doubles width or height (only in the preview and the export).
+- **Use as brush** hands a multicolor sprite to the multicolor editor as brush.
+
+## Sprite list and animation
+
+On the right are all sprites. **Add**, **Duplicate**, **Delete** and **Move** change the list; the arrow keys, ` + "`Page Up`" + ` / ` + "`Page Down`" + ` or ` + "`,`" + ` / ` + "`.`" + ` choose the sprite.
+
+Below the drawing area: a preview at 1× and 2×, and the **animation**: from sprite, to sprite, speed in frames per second and **Ping-pong** (forward and back). **Play** (` + "`Space`" + `) starts and stops it.
+
+## Import from a picture
+
+**Import …** takes sprites from the **multicolor picture** or from an **image of 320 × 200 pixels**:
+
+- Click or drag on the picture to place the frame (it snaps to the sprite grid; the arrow keys move it pixel by pixel).
+- **Columns / Rows** take a whole raster of sprites at once, **Gap** is the space between them.
+- **Hires** or **Multicolor**, the **background** (transparent, A = the most frequent color), and the shared multicolors: found automatically (the two colors used in the most sprites) or kept.
+- **Target**: replace from the current sprite on, or append.
+
+Tip: in the multicolor editor, **View → Sprite grid (24×21)** shows a grid of exactly one multicolor sprite (12 × 21 pixels). Draw your sprites in the grid and import them here as a raster.
+
+## Files and export
+
+- **Save / Open**: sprite project (` + "`.c64sprites`" + `) with all sprites, colors and animation settings.
+- **Export ASM**: source code for the **ACME** assembler: constants for the background, multicolor 1 and 2 and the animation, every sprite as 21 lines of ` + "`!byte`" + ` (hires drawn with ` + "`.`" + ` and ` + "`#`" + `), the 64th byte with multicolor flag and color (as in SpritePad), and tables of colors, multicolor and expand flags. ` + "`acme --cpu 6510 sprites.asm`" + ` writes ` + "`sprites.prg`" + `. The data starts at $2000; change ` + "`*`" + ` to place it elsewhere (a multiple of 64).
+- **Export BIN**: 64 bytes per sprite, raw. **Export PNG**: all sprites as a sheet.
+
+## Keys
+
+= D L R B F | pencil, line, rectangle, filled box, fill
+= 0 – 3 | color: transparent, sprite color, multicolor 1, multicolor 2
+= C | hires ↔ multicolor
+= X / Y | flip horizontally / vertically
+= I | invert
+= M / O / G | mirror, overlay, grid
+= Alt+arrows | shift the sprite
+= ← → / Page Up / Page Down | previous / next sprite
+= Space | play / stop the animation
+= Ctrl+C / Ctrl+V | copy / paste the sprite
+= Ctrl+Z / Ctrl+Y | undo / redo
+= Ctrl+S / Ctrl+O | save / open
+
+> Ideas from **Spritemate** (Ingo Hinterding, MIT), **MagSpriteEd** (Magnar Harestad, MIT) and **Sprite Studio 64** (Tobiasz Stamborski, MIT).
+`},
+	{id: "fonts", title: "Font editor", body: `
+# Font editor
+
+**Tools → Font editor …** opens an editor for **C64 character sets**: 256 characters of 8 × 8 hires pixels (2048 bytes). It starts with the C64 font; **Close font editor** brings back the multicolor editor.
+
+## Drawing
+
+- Tools: **Pencil** (` + "`D`" + `), **Line** (` + "`L`" + `), **Rectangle** (` + "`R`" + `), **Fill** (` + "`F`" + `).
+- The **left** button sets pixels – starting on a set pixel it clears them. The **right** button clears. **Shift** draws a straight line with the pencil.
+- Choose the character on the right or with the **arrow keys**.
+- **Tile size** 1×1, 2×1, 1×2 or 2×2 edits several characters as one big character. **Neighbors**: the next character to the right (+1) and below (+16, as in the grid). **Quarters**: right +64, below +128 – the classic layout of 2×2 fonts.
+- **Edit**: flip, rotate (square tiles), invert, shift (` + "`Alt+arrows`" + `), copy and paste, clear and **Original** (back to the character of the C64 ROM).
+- **Compare with ROM** (` + "`B`" + `) shows new pixels green and removed ones red.
+- **Inverse half** fills the characters 128–255 with the inverted characters 0–127, as in the C64 ROM.
+- **Reference ROM**: upper or lower case – used by Original, Compare and the test text.
+- **Test text**: click the field and type; the text is shown in your font (as tiles when a tile size is chosen).
+- The character and background colors are only for the display.
+
+## New and import
+
+- **New …**: the C64 font (upper or lower case) or an empty set.
+- **Import …** reads characters from the **multicolor picture**, an **image of 320 × 200 pixels**, or the **C64 font** (upper or lower case). The picture is cut into 8 × 8 cells, read row by row: choose the **first cell** (or click it), the **number** and the **first character** to fill. Every pixel that is not the background color becomes a set pixel (hires; multicolor pixels count as two).
+
+## Files and export
+
+- **Save / Open**: font project (` + "`.c64font`" + `). **Open** also reads raw character sets (` + "`.bin`" + `, ` + "`.64c`" + `, 2048 or 4096 bytes, with or without load address).
+- **Export ASM**: source code for the **ACME** assembler: all 256 characters as ` + "`!byte`" + ` lines drawn with ` + "`.`" + ` and ` + "`#`" + `, with comments and the value for $D018. ` + "`acme --cpu 6510 font.asm`" + ` writes ` + "`font.prg`" + ` (data at $3000, a multiple of $800).
+- **Export BIN**: the raw 2048 bytes. **Export PNG**: all characters as 128 × 128 pixels.
+
+## Keys
+
+= D L R F | pencil, line, rectangle, fill
+= arrows | choose the character
+= Alt+arrows | shift the tile
+= X / Y / T | flip / rotate
+= I | invert
+= B | compare with the ROM
+= G | grid
+= Del | clear
+= Ctrl+C / Ctrl+V | copy / paste
+= Ctrl+Z / Ctrl+Y | undo / redo
+= Ctrl+S / Ctrl+O | save / open
+
+> Ideas from **KANJI** (AMID64, MIT) and the **C64 BDF font editor** (garymeg, MIT). The start font is the original C64 character ROM © Commodore.
 `},
 	{id: "keys", group: "Reference", title: "Keyboard shortcuts", body: `
 # Keyboard shortcuts
@@ -935,7 +1047,9 @@ Thank you all for making your work available and letting us use it:
 - **File formats:** the details of Advanced Art Studio and Amica Paint files from RECOIL by Piotr Fusik.
 - **Import:** the ideas for color matching and cell colors from Retropixels by Michel de Bree (MIT license).
 - **PETSCII editor:** ideas and the "sorted by shape" character order from Petmate by nurpax (MIT license); ideas from petsciirender by gnacu, PETSCII editor by Marq (ventti/petscii, WTFPL) and Image-to-PETSCII by amb (GPL-3, only the idea, no code).
-- **C64 character ROM** © Commodore – used by the PETSCII editor and the text tool, as in Petmate and most PETSCII editors.
+- **Sprite editor:** ideas from Spritemate by Ingo Hinterding, MagSpriteEd by Magnar Harestad and Sprite Studio 64 by Tobiasz Stamborski (all MIT license).
+- **Font editor:** ideas from KANJI by AMID64 and the C64 BDF font editor by garymeg (both MIT license).
+- **C64 character ROM** © Commodore – used by the PETSCII editor, the font editor and the text tool, as in Petmate and most PETSCII editors.
 - **Dither styles:** 16 hand-pixelled C64 scene pictures, analyzed pattern by pattern.
 - **Gradients:** color ramp table by IT-Dummköpfen, extended with more C64 ramps.
 - **Inspiration:** Deluxe Paint (Electronic Arts, 1985), PyDPainter and Multipaint (Marq/Kameli).

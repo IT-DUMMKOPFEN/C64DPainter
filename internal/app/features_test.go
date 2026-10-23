@@ -564,3 +564,163 @@ func TestPetsciiEditor(t *testing.T) {
 		t.Fatal("close")
 	}
 }
+
+func TestSpriteEditor(t *testing.T) {
+	a, h := setup(t)
+	// two "sprites" side by side in the picture: yellow blocks with a red line
+	for y := 0; y < 21; y++ {
+		for x := 0; x < 12; x++ {
+			a.pic.Plot(x, y, 7, 0, a.pal)
+			a.pic.Plot(x+12, y, 7, 0, a.pal)
+		}
+	}
+	for x := 0; x < 24; x++ {
+		a.pic.Plot(x, 5, 2, 0, a.pal)
+	}
+	a.toggleSpriteGrid()
+	if a.set.GridW != 24 || a.set.GridH != 21 {
+		t.Fatal("sprite grid")
+	}
+	a.openSprites()
+	step(a)
+	e := a.spr
+	if !e.open {
+		t.Fatal("editor must be open")
+	}
+	a.sprOpenImport()
+	step(a)
+	d := a.modal.(*sprImportDialog)
+	d.o.Cols = 2
+	step(a)
+	d.apply(a)
+	if len(e.bank.Sprites) != 2 || !e.bank.Sprites[0].Multi {
+		t.Fatalf("import: %d sprites", len(e.bank.Sprites))
+	}
+	if c := e.bank.ColorAt(&e.bank.Sprites[1], 0, 0); c != 7 {
+		t.Fatalf("imported color %d", c)
+	}
+	if c := e.bank.ColorAt(&e.bank.Sprites[1], 0, 5); c != 2 {
+		t.Fatalf("imported line color %d", c)
+	}
+	// draw with the mouse: slot 0 (transparent) with the right button
+	e.cur = 0
+	e.tool = sprPencil
+	step(a)
+	sz := e.z * 2
+	tclick(a, e.canvas.X+3*sz+1, e.canvas.Y+10*e.z+1, 1)
+	if e.sp().Get(3, 10) != 0 {
+		t.Fatal("erase with the right button")
+	}
+	e.doUndo()
+	if e.sp().Get(3, 10) == 0 {
+		t.Fatal("undo")
+	}
+	// hires and operations
+	a.Char('c')
+	step(a)
+	if e.sp().Multi {
+		t.Fatal("C switches to hires")
+	}
+	a.Char('x')
+	step(a)
+	e.addSprite(true)
+	if len(e.bank.Sprites) != 3 || e.cur != 1 {
+		t.Fatal("duplicate")
+	}
+	// files
+	dir := t.TempDir()
+	a.set.WorkDir = dir
+	for _, k := range []string{"asm", "bin", "png"} {
+		h.save = filepath.Join(dir, "spr."+k)
+		a.sprExport(k)
+		if b, err := os.ReadFile(h.save); err != nil || len(b) < 100 {
+			t.Fatalf("export %s", k)
+		}
+	}
+	h.save = filepath.Join(dir, "spr.c64sprites")
+	a.sprSave()
+	e.bank.Sprites = e.bank.Sprites[:1]
+	a.openPath(h.save)
+	if len(e.bank.Sprites) != 3 || e.path == "" || !e.open {
+		t.Fatal("open sprite project")
+	}
+	// use a multicolor sprite as brush
+	e.cur = 2
+	e.sp().Multi = true
+	a.sprUseAsBrush()
+	if e.open || a.custom == nil || a.custom.W != 12 {
+		t.Fatal("use as brush")
+	}
+}
+
+func TestFontEditor(t *testing.T) {
+	a, h := setup(t)
+	a.openFontEditor()
+	step(a)
+	e := a.fnt
+	if !e.open || e.f.Data[8] != c64.CharsetUpper[8] {
+		t.Fatal("editor must start with the C64 font")
+	}
+	// draw: clicking a set pixel clears it
+	e.cur = 1 // A
+	step(a)
+	z := e.z
+	set := e.f.Pixel(1, 3, 1)
+	tclick(a, e.canvas.X+3*z+1, e.canvas.Y+1*z+1, 0)
+	if e.f.Pixel(1, 3, 1) == set {
+		t.Fatal("pencil")
+	}
+	e.doUndo()
+	if e.f.Pixel(1, 3, 1) != set {
+		t.Fatal("undo")
+	}
+	// typing in the test text does not trigger shortcuts
+	e.textFocus = true
+	a.Char('x')
+	step(a)
+	if !strings.HasSuffix(e.text, "x") {
+		t.Fatal("test text")
+	}
+	e.textFocus = false
+	// 2×2 tile and import from the picture
+	e.f.Tile = 3
+	step(a)
+	for x := 0; x < 4; x++ {
+		a.pic.Plot(x, 0, 1, 0, a.pal)
+	}
+	a.fntOpenImport()
+	step(a)
+	d := a.modal.(*fntImportDialog)
+	d.o.Count, d.o.Target = 1, 200
+	d.apply(a)
+	if e.f.Data[200*8] != 0xFF || e.cur != 200 {
+		t.Fatalf("import: %02x", e.f.Data[200*8])
+	}
+	dir := t.TempDir()
+	a.set.WorkDir = dir
+	for _, k := range []string{"asm", "bin", "png"} {
+		h.save = filepath.Join(dir, "font."+k)
+		a.fntExport(k)
+		if b, err := os.ReadFile(h.save); err != nil || len(b) < 100 {
+			t.Fatalf("export %s", k)
+		}
+	}
+	h.save = filepath.Join(dir, "font.c64font")
+	a.fntSave()
+	e.f.Data[200*8] = 0
+	h.open = h.save
+	a.fntOpen()
+	if e.f.Data[200*8] != 0xFF || e.f.Tile != 3 {
+		t.Fatal("open font project")
+	}
+	h.open = filepath.Join(dir, "font.bin")
+	a.fntOpen()
+	if e.f.Data[200*8] != 0xFF || e.path != "" {
+		t.Fatal("open raw font")
+	}
+	a.closeFontEditor()
+	step(a)
+	if e.open {
+		t.Fatal("close")
+	}
+}

@@ -118,7 +118,7 @@ type gridDialog struct{}
 func (a *App) openGridDialog() { a.modal = &gridDialog{} }
 
 func (d *gridDialog) Title() string          { return "Grid settings" }
-func (d *gridDialog) Size(a *App) (int, int) { return 460, 470 }
+func (d *gridDialog) Size(a *App) (int, int) { return 460, 500 }
 func (d *gridDialog) Draw(a *App, r gfx.Rect) {
 	u := &a.ui
 	m := a.img
@@ -170,10 +170,15 @@ func (d *gridDialog) Draw(a *App, r gfx.Rect) {
 	pre := []struct {
 		n    string
 		w, h int
-	}{{"8×8 cell", 8, 8}, {"16×16", 16, 16}, {"32×32", 32, 32}, {"2×1 pixel", 2, 1}, {"4×4", 4, 4}}
+	}{{"8×8 cell", 8, 8}, {"16×16", 16, 16}, {"32×32", 32, 32}, {"2×1 pixel", 2, 1}, {"4×4", 4, 4},
+		{"Sprite 24×21 (multicolor 12×21)", 24, 21}}
 	pw := (w - 4*4) / 5
 	for i, p := range pre {
-		if u.Button("g_p"+itoa(i), gfx.Rect{X: x + i*(pw+4), Y: y, W: pw, H: 24}, p.n) {
+		br := gfx.Rect{X: x + i*(pw+4), Y: y, W: pw, H: 24}
+		if i >= 5 {
+			br = gfx.Rect{X: x, Y: y + 28, W: w, H: 24}
+		}
+		if u.Button("g_p"+itoa(i), br, p.n) {
 			a.set.GridW, a.set.GridH, a.set.GridOX, a.set.GridOY = p.w, p.h, 0, 0
 			a.set.GridOn = true
 		}
@@ -182,6 +187,18 @@ func (d *gridDialog) Draw(a *App, r gfx.Rect) {
 		a.saveSettings()
 		a.closeModal(false)
 	}
+}
+
+// toggleSpriteGrid switches between the sprite grid (24×21 screen pixels =
+// 12×21 multicolor pixels) and the cell grid.
+func (a *App) toggleSpriteGrid() {
+	if a.set.GridOn && a.set.GridW == 24 && a.set.GridH == 21 {
+		a.set.GridW, a.set.GridH = 8, 8
+	} else {
+		a.set.GridW, a.set.GridH, a.set.GridOn = 24, 21, true
+	}
+	a.set.GridOX, a.set.GridOY = 0, 0
+	a.saveSettings()
 }
 
 // --- Palette ----------------------------------------------------------------------
@@ -310,7 +327,7 @@ func (a *App) openAbout() {
 }
 
 func (d *aboutDialog) Title() string          { return "About " + AppName }
-func (d *aboutDialog) Size(a *App) (int, int) { return 640, min(690, a.H-40) }
+func (d *aboutDialog) Size(a *App) (int, int) { return 640, min(760, a.H-20) }
 func (d *aboutDialog) Key(a *App, k KeyEvent) {
 	if k.Key == KeyEnter {
 		a.closeModal(false)
@@ -331,7 +348,8 @@ var aboutSources = [][2]string{
 	{"Gradients", "color ramp table by IT-Dummköpfen, extended"},
 	{"File formats", "OCP and AMI details from RECOIL by Piotr Fusik"},
 	{"Import", "color matching ideas from Retropixels by Michel de Bree (MIT)"},
-	{"PETSCII", "Petmate by nurpax (MIT), petsciirender, PETSCII editor (WTFPL), Image-to-PETSCII"},
+	{"PETSCII", "Petmate (MIT), petsciirender, ventti/petscii (WTFPL), Image-to-PETSCII"},
+	{"Sprites & fonts", "Spritemate, MagSpriteEd, Sprite Studio 64, KANJI, C64 BDF font editor (MIT)"},
 	{"Characters", "C64 character ROM © Commodore"},
 	{"Inspiration", "Deluxe Paint (Electronic Arts, 1985), PyDPainter and Multipaint (Marq/Kameli)"},
 }

@@ -34,6 +34,39 @@ My brushes
   with all brushes saved in the "brushes" folder of the working folder.
   The chosen brush becomes the brush and the tool switches to Dots.
 
+Sprite editor (new, menu Tools)
+- A full-window editor for up to 64 sprites in the look of the PETSCII
+  editor. Every sprite is hires (24 x 21) or multicolor (12 x 21) with its
+  own color; multicolor 1 and 2 and the background are shared.
+- Tools: pencil, line, rectangle, filled box, fill; mirror left/right,
+  overlay of a second sprite, flip, shift, invert, copy/paste, expand X/Y,
+  undo/redo. Alt+click picks, right button paints transparent.
+- Sprite list with add, duplicate, delete and move; preview at 1x/2x and
+  an animation preview (range, speed, ping-pong).
+- Import from the multicolor picture or a 320 x 200 image: place the
+  frame, or take a whole raster of sprites (columns, rows, gap), hires or
+  multicolor, background and shared colors automatic or chosen.
+- Project files (.c64sprites); export ACME assembler source with all
+  colors, flags and animation settings, raw BIN (64 bytes per sprite)
+  and PNG. "Use as brush" hands a multicolor sprite to the painter.
+- View > Sprite grid (24x21) and a Sprite 24x21 preset in the grid
+  settings for drawing sprites in the multicolor editor.
+- Ideas from Spritemate, MagSpriteEd and Sprite Studio 64 (all MIT).
+
+Font editor (new, menu Tools)
+- A full-window editor for C64 character sets (256 hires characters),
+  starting with the C64 font.
+- Tools: pencil, line, rectangle, fill; tiles 1x1, 2x1, 1x2, 2x2
+  (neighbors or quarters layout), flip, rotate, invert, shift, copy/paste,
+  back to the original ROM character, compare with the ROM, inverse half
+  (128-255), test text.
+- Import from the multicolor picture, a 320 x 200 image or the C64 font
+  (upper/lower case): cells are read row by row into the chosen
+  characters.
+- Project files (.c64font); open raw character sets (.bin/.64c); export
+  ACME assembler source, raw BIN and PNG.
+- Ideas from KANJI and the C64 BDF font editor (both MIT).
+
 PETSCII editor (new, menu Tools)
 - A full-window editor for PETSCII pictures (C64 text mode: 40 x 25
   characters from the character ROM, one color per character, a common

@@ -142,6 +142,8 @@ func (a *App) buildMenus() {
 		}},
 		{Title: "Tools", Items: []MenuItem{
 			item("PETSCII editor …", "", func() { a.later(a.openPetscii) }),
+			item("Sprite editor …", "", func() { a.later(a.openSprites) }),
+			item("Font editor …", "", func() { a.later(a.openFontEditor) }),
 		}},
 		{Title: "View", Items: []MenuItem{
 			item("Zoom in", ">", func() { a.zoomStep(1, -1, -1) }),
@@ -151,6 +153,7 @@ func (a *App) buildMenus() {
 			sep(),
 			check("Grid", "G", func() bool { return a.set.GridOn }, func() { a.set.GridOn = !a.set.GridOn; a.saveSettings() }),
 			item("Grid settings …", "Shift+G", a.openGridDialog),
+			check("Sprite grid (24×21)", "", func() bool { return a.set.GridOn && a.set.GridW == 24 && a.set.GridH == 21 }, a.toggleSpriteGrid),
 			check("Pixel grid (from zoom 4×)", "M", func() bool { return a.set.PixelGrid }, func() { a.set.PixelGrid = !a.set.PixelGrid; a.saveSettings() }),
 			check("Highlight cell under the mouse", "", func() bool { return a.set.CellHint }, func() { a.set.CellHint = !a.set.CellHint; a.saveSettings() }),
 			check("Show border ($D020)", "", func() bool { return a.set.ShowBorder }, func() { a.set.ShowBorder = !a.set.ShowBorder; a.saveSettings(); a.zoomFit() }),
@@ -191,6 +194,8 @@ func (a *App) buildMenus() {
 			item("Keyboard shortcuts", "?", func() { a.openHelp("keys") }),
 			item("Import & convert", "", func() { a.openHelp("import") }),
 			item("PETSCII editor", "", func() { a.openHelp("petscii") }),
+			item("Sprite editor", "", func() { a.openHelp("sprites") }),
+			item("Font editor", "", func() { a.openHelp("fonts") }),
 			item("File formats", "", func() { a.openHelp("formats") }),
 			sep(),
 			item("About C64 DPainter", "", a.openAbout),

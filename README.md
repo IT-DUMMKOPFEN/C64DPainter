@@ -29,6 +29,8 @@ Version 0.99 beta · Created by IT-Dummköpfen · Free for private use.
 - **My brushes**: your saved brushes in one window, ready to stamp.
 - **Text tool**: C64 wide, tall and narrow fonts in multicolor pixels, with shadow or outline, as brush.
 - **PETSCII editor** (Tools menu): convert pictures to PETSCII, edit them and export PRG, ACME assembler source, PNG or Petmate files.
+- **Sprite editor** (Tools menu): 64 hires or multicolor sprites, overlay, animation preview, import from the picture or a 320×200 image (single or as a raster), project files, ACME assembler export with all colors and settings. A sprite grid (24×21) in the View menu helps to draw sprites in the multicolor editor.
+- **Font editor** (Tools menu): C64 character sets with 1×1 to 2×2 tiles, compare with the ROM, test text, import from the picture, a 320×200 image or the C64 font, project files, raw .bin/.64c and ACME assembler export.
 - **Auto backup** (Options menu, off at start) into the working folder and a list of **recent files**.
 - **Brushes** menu: load and save brushes as PNG with a transparent background.
 - Round, square or diamond brushes from 1 to 16 pixels, plus custom brushes made from a selection.
@@ -130,7 +132,12 @@ Licenses and credits of ideas and data:
 
 | Source | License | Used for |
 |---|---|---|
-| C64 character ROM (`internal/c64/charset`) | © Commodore | PETSCII editor and text tool (as in Petmate and most PETSCII editors) |
+| C64 character ROM (`internal/c64/charset`) | © Commodore | PETSCII editor, font editor and text tool (as in Petmate and most PETSCII editors) |
+| [Spritemate](https://github.com/Esshahn/spritemate) by Ingo Hinterding | MIT | sprite editor ideas (overlay, tools, ACME export) |
+| [MagSpriteEd](https://github.com/MagnarHarestad/MagSpriteEd) by Magnar Harestad | MIT | sprite editor ideas (hires per sprite, color keys, animation) |
+| [Sprite Studio 64](https://github.com/tstamborski/sprite-studio-64) by Tobiasz Stamborski | MIT | sprite editor ideas (64 sprites, animation range, overlay) |
+| [KANJI](https://github.com/AMID64/KANJI) by AMID64 | MIT | font editor ideas (tiles, compare with the ROM, inverse half) |
+| [C64 BDF font editor](https://github.com/garymeg/C64_BDF_font_editor) by garymeg | MIT | font editor ideas (raw font import, test view) |
 | [Petmate](https://github.com/nurpax/petmate) by nurpax | MIT | ideas, the "sorted by shape" character order, the `.petmate` file format |
 | [petsciirender](https://github.com/gnacu/petsciirender) by gnacu | no license given | ideas only, no code |
 | [PETSCII editor](https://github.com/ventti/petscii) by Marq | WTFPL | ideas |

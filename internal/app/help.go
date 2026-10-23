@@ -13,6 +13,9 @@ type helpDialog struct {
 	scroll  int
 	history []string
 	height  int
+	// topic list
+	listScroll int
+	listShown  string // topic the list was last scrolled to
 }
 
 func (a *App) openHelp(topic string) {
@@ -78,7 +81,31 @@ func (h *helpDialog) Draw(a *App, r gfx.Rect) {
 	lr := gfx.Rect{X: r.X - 4, Y: r.Y - 4, W: lw, H: r.H - 36}
 	m.Fill(lr, th.PanelAlt)
 	m.Frame(lr, th.Border)
-	y := lr.Y + 6
+	// the list scrolls when it is longer than the window
+	listH, selY := 6, 0
+	for _, t := range helpTopics {
+		if t.group != "" {
+			listH += 24
+		}
+		if t.id == h.topic {
+			selY = listH
+		}
+		listH += 24
+	}
+	if h.listShown != h.topic {
+		// keep the chosen topic visible
+		h.listShown = h.topic
+		if selY < h.listScroll || selY+24 > h.listScroll+lr.H {
+			h.listScroll = selY - lr.H/2
+		}
+	}
+	if u.hover(lr) && a.in.Wheel != 0 && !u.wheelUsed {
+		h.listScroll -= a.in.Wheel * 48
+		u.wheelUsed = true
+	}
+	h.listScroll = clampI(h.listScroll, 0, max(0, listH-lr.H+6))
+	oldClip := m.SetClip(lr.Inset(1).Intersect(m.Clip))
+	y := lr.Y + 6 - h.listScroll
 	for _, t := range helpTopics {
 		if t.group != "" {
 			m.TextL(font.UIB, gfx.Rect{X: lr.X + 10, Y: y + 4, W: lw - 20, H: 20}, t.group, th.TextDim)
@@ -93,10 +120,20 @@ func (h *helpDialog) Draw(a *App, r gfx.Rect) {
 			m.Fill(ir, th.BtnHover)
 		}
 		m.TextL(font.UI, gfx.Rect{X: ir.X + 14, Y: ir.Y, W: ir.W - 16, H: ir.H}, t.title, tc)
-		if c, _ := u.press("ht_"+t.id, ir, 0); c {
-			h.go2(t.id)
+		if lr.Contains(a.in.MX, a.in.MY) {
+			if c, _ := u.press("ht_"+t.id, ir, 0); c {
+				h.go2(t.id)
+			}
 		}
 		y += 24
+	}
+	m.SetClip(oldClip)
+	if listH > lr.H {
+		tr := gfx.Rect{X: lr.Right() - 7, Y: lr.Y + 4, W: 4, H: lr.H - 8}
+		m.Fill(tr, th.Track)
+		thh := max(24, tr.H*lr.H/listH)
+		ty := tr.Y + (tr.H-thh)*h.listScroll/max(1, listH-lr.H+6)
+		m.Fill(gfx.Rect{X: tr.X, Y: ty, W: tr.W, H: thh}, th.Accent)
 	}
 	// Inhalt
 	cr := gfx.Rect{X: r.X + lw + 10, Y: r.Y - 4, W: r.W - lw - 10, H: r.H - 36}
