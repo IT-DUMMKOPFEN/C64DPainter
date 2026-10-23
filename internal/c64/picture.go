@@ -282,13 +282,27 @@ func (p *Picture) FullCells() int {
 func (p *Picture) ReplaceCellColor(cell int, from, to uint8, both bool) int {
 	from &= 15
 	to &= 15
-	if from == to || from == p.BG || to == p.BG || cell < 0 || cell >= Cells {
+	if from == to || from == p.BG || cell < 0 || cell >= Cells || (to == p.BG && both) {
 		return 0
 	}
 	if p.Layered {
 		return p.replaceCellColorLayers(cell, from, to, both)
 	}
 	u := p.Usage(cell, -1, -1)
+	if to == p.BG {
+		// the pixels become background pixels (%00)
+		changed := 0
+		cx, cy := (cell%Cols)*4, (cell/Cols)*8
+		for y := cy; y < cy+8; y++ {
+			for x := cx; x < cx+4; x++ {
+				if b := p.Bits[y*W+x]; b != 0 && p.SlotColor(cell, int(b)) == from {
+					p.Bits[y*W+x] = 0
+					changed++
+				}
+			}
+		}
+		return changed
+	}
 	var fromSlots, toSlots []int
 	for s := 1; s <= 3; s++ {
 		if u[s] == 0 {

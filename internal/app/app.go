@@ -210,6 +210,7 @@ type App struct {
 	lastBackup  int64           // time of the last backup check
 	backupHash  [2]uint64       // pages as they were saved last
 	collapsed   map[string]bool // folded side panel sections (all open at start)
+	pet         *petEditor      // the PETSCII editor (kept while the program runs)
 }
 
 type dragState struct {
@@ -238,6 +239,7 @@ type curveState struct {
 func New(host Host) *App {
 	a := &App{host: host, menuOpen: -1, flash: map[int]int64{}, rnd: 0x1234567}
 	a.set = loadSettings()
+	a.set.Gradient.loadCustomRamps()
 	a.applyTheme()
 	a.palIdx = c64.FindPalette(a.set.Palette)
 	a.pal = &c64.Palettes[a.palIdx]
@@ -383,6 +385,17 @@ func (a *App) DropFiles(paths []string) {
 func (a *App) CanClose() bool {
 	if !a.confirmDiscard() {
 		return false
+	}
+	if a.pet != nil && a.pet.dirty {
+		switch a.host.Ask(AppName, "The PETSCII picture has been changed.\n\nSave it first?") {
+		case 0:
+			a.petSave()
+			if a.pet.dirty {
+				return false
+			}
+		case 2:
+			return false
+		}
 	}
 	a.saveSettings()
 	return true
@@ -704,6 +717,18 @@ func (a *App) frameOnce() *gfx.Image {
 		a.fitPending = false
 	}
 	a.img.ResetClip()
+
+	if a.pet != nil && a.pet.open {
+		// the PETSCII editor uses the whole window
+		a.petFrame()
+		a.img.ResetClip()
+		a.ui.drawTooltip()
+		if !a.in.Down[0] && !a.in.Down[1] && !a.in.Down[2] {
+			a.ui.active = ""
+		}
+		a.in.endFrame()
+		return a.img
+	}
 
 	a.handleKeys()
 

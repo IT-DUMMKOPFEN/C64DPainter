@@ -123,6 +123,7 @@ func (a *App) buildMenus() {
 			item("Load template …", "", func() { a.later(a.loadTemplateDialog) }),
 		}},
 		{Title: "Brushes", Items: []MenuItem{
+			item("Text …", "", func() { a.later(a.openTextDialog) }),
 			item("My brushes …", "", func() { a.later(a.openStamps) }),
 			sep(),
 			item("Load brush …", "", func() { a.later(a.loadBrushDialog) }),
@@ -138,6 +139,9 @@ func (a *App) buildMenus() {
 			{Label: "Double size", Key: "Shift+H", Action: func() { a.transformQuick(qDouble) }, Enabled: selOrBrush},
 			sep(),
 			{Label: "Brush keeps its own colors", Check: func() bool { return a.customOwnColor }, Action: func() { a.customOwnColor = !a.customOwnColor }, Enabled: func() bool { return a.brushShape == BrushCustom && a.custom != nil }},
+		}},
+		{Title: "Tools", Items: []MenuItem{
+			item("PETSCII editor …", "", func() { a.later(a.openPetscii) }),
 		}},
 		{Title: "View", Items: []MenuItem{
 			item("Zoom in", ">", func() { a.zoomStep(1, -1, -1) }),
@@ -186,6 +190,7 @@ func (a *App) buildMenus() {
 			item("Tools", "", func() { a.openHelp("tools") }),
 			item("Keyboard shortcuts", "?", func() { a.openHelp("keys") }),
 			item("Import & convert", "", func() { a.openHelp("import") }),
+			item("PETSCII editor", "", func() { a.openHelp("petscii") }),
 			item("File formats", "", func() { a.openHelp("formats") }),
 			sep(),
 			item("About C64 DPainter", "", a.openAbout),

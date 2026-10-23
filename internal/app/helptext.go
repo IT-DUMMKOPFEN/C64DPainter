@@ -191,6 +191,8 @@ Fills the connected area of the same color with a **color gradient** (on the act
 
 > A C64 cell can only hold **3 colors plus the background color**. Gradients with 4 or 5 different colors work best with wide color bands: then only two colors meet in a cell. Narrow gradients or dithered transitions can put more colors into one cell – then the conflict mode decides. The background color does not count, so ramps that end in the background color (often black) are easier.
 
+The last ramp of the 3-, 4- and 5-color tabs is **Custom** – your own ramp: select it, click one of its color fields and then a palette color (the next field is selected automatically). Your custom ramps are saved and are there again after a restart. The custom 3-color ramp also appears in the two five-band tabs, and the Shade brush can use all custom ramps.
+
 In the window you also choose:
 
 - **Shape**: Linear, Circle or Diamond.
@@ -223,6 +225,10 @@ Makes pixels of the **active layer** transparent again, so the layers below (or 
 ## [shade] Shade (Shift+W)
 
 Lightens or darkens the colors under the brush by **one step**: left mouse button = lighter, right mouse button = darker. Each pixel changes only once per stroke, so you can paint over an area without it turning white or black – for the next step start a new stroke. In the side panel you choose the steps: **All colors by brightness** (the 16 C64 colors from black to white) or one of the **color ramps** of the gradient fill with 3, 4 or 5 colors (e.g. blue: blue → light blue → cyan) – ramps with more colors give finer steps; colors that are not in the chosen ramp stay as they are. In full cells the conflict mode decides.
+
+## [cellswap] Cell color swap brush
+
+Opens the swap window in brush mode: choose the color to replace and the new color, then paint over cells – in every 4 × 8 cell you touch, the first color becomes the second. A color can also become the **background** color (its pixels turn into ` + "`%00`" + `). Choose any tool or press ` + "`Esc`" + ` to stop. See "Swap colors".
 
 ## [rect|rectf] Rectangle (R / Shift+R)
 
@@ -301,6 +307,20 @@ Select an area with the select tool and click **"Use as brush"**. Now you paint 
 - **Load brush …** / **Save brush …** – brushes are PNG files with a transparent background. Every multicolor pixel is saved two pixels wide, as on screen, so the files can also be edited in other paint programs. Loading accepts both double-wide and single pixels; other colors become the nearest C64 color. The dialogs start in the folder ` + "`brushes`" + ` in the working folder. A one-color brush is saved in color 1.
 - **Selection as brush**, **Standard brush** (` + "`Shift+B`" + `), flip, rotate and resize the brush, and **Brush keeps its own colors**.
 
+## [text] Text
+
+The text button in the toolbox (or **Brushes → Text …**) writes text in multicolor pixels and turns it into the brush, so you place it like a stamp – and can flip and resize it with ` + "`X`" + `, ` + "`Y`" + `, ` + "`H`" + `.
+
+= C64 wide (8×8) | the C64 characters, every pixel a wide multicolor pixel: 16 × 8 screen pixels per letter – the classic look of C64 titles
+= C64 tall (8×16) | the same, twice as high
+= Narrow (4×8) | an own font of 3 × 7 pixels that fits one cell: about 40 letters per line (upper case, digits and signs)
+
+- **Letters**: upper case or lower case character set.
+- **Effect**: none, **shadow** (one pixel to the lower right) or **outline** – in a second color.
+- **Spacing** between the letters, **Shift+Enter** for a new line, **Enter** uses the text as brush.
+
+Text and shadow/outline use only two colors, so the text always fits the multicolor rules (in full cells the conflict mode decides).
+
 ## [stamp] My brushes
 
 The button in the toolbox (or **Brushes → My brushes …**) opens a window with all brushes you saved in the folder ` + "`brushes`" + ` of the working folder – your own little stamp collection. Click a brush and **Use as brush** (or double-click it): it becomes the brush and the tool switches to **Dots**, so every click stamps it once. **Reload** reads the folder again, e.g. after you copied PNG files into it.
@@ -333,7 +353,7 @@ The density patterns from 1/16 to 15/16 are ideal for gradients with only a few 
 
 Two functions in the **Edit** menu exchange colors without breaking the multicolor rules. Both only change where a cell takes its colors from (screen RAM and color RAM), so the number of colors per cell never grows.
 
-> The **background color** ($D021) is never changed by these functions. It is marked with "B" and cannot be chosen. To change it, use **Colors → Background** in the side panel.
+> The **background color** ($D021) is marked with "B". It can never be the color to **replace**, but it can be the **new** color: then the pixels become background pixels (` + "`%00`" + `) and follow later changes of $D021. "Exchange both colors" is not possible with the background. To change the background itself, use **Colors → Background** in the side panel.
 
 ## Swap color in picture
 
@@ -347,7 +367,7 @@ Two functions in the **Edit** menu exchange colors without breaking the multicol
 
 ## Swap color in cells (brush)
 
-**Edit → Swap color in cells (brush) …** asks for the two colors and then turns the mouse into a **cell brush**:
+**Edit → Swap color in cells (brush) …** or the **cell swap button** in the toolbox asks for the two colors and then turns the mouse into a **cell brush**:
 
 - Paint over the picture: in every **cell** (4 × 8 pixels) the brush touches, the first color becomes the second one. The whole cell changes, not only the pixels under the brush.
 - The cells under the brush are highlighted before you click.
@@ -687,6 +707,62 @@ The viewer disables interrupts (` + "`SEI`" + `), sets border ($D020) and backgr
 = $D018 = $18 | screen at $0400, bitmap at $2000
 = $DD00 | VIC bank 0 ($0000–$3FFF)
 `},
+	{id: "petscii", group: "PETSCII", title: "PETSCII editor", body: `
+# PETSCII editor
+
+**Tools → PETSCII editor …** opens an editor for **PETSCII** pictures: the normal text mode of the C64 with 40 × 25 characters from the character ROM. Every character has its own color, the background ($D021) is shared. PETSCII is independent of the multicolor rules. The editor fills the whole window; **Close PETSCII editor** brings back the multicolor editor. Your PETSCII picture stays in the editor until you quit the program.
+
+## Convert a picture
+
+**Convert …** turns the multicolor picture – or any image (**Load an image …**) – into PETSCII. For every 8 × 8 cell the character and color that match it best are chosen.
+
+- **Character set**: upper case (with graphics characters) or lower case.
+- **Characters**: all, no letters (only graphic characters), or only blocks and shades. **Also inverted characters** doubles the choice.
+- **Color matching**: RGB, YUV, XYZ, Lab, OkLab or brightness (see "Import & convert").
+- **Brightness / contrast** and the **background color** (A = automatic).
+
+**New** starts with an empty screen.
+
+## Tools
+
+= 1  Draw | sets the character in the chosen color – right mouse button: erase
+= 2  Colorize | only changes the color of the characters
+= 3  Character only | only changes the characters, their colors stay
+= 4  Eraser | sets spaces
+= 5  Brush | drag a rectangle to copy it, then click to stamp it; right-click or ` + "`Esc`" + ` drops it
+= 6  Text | click a cell and type; arrows move, Enter jumps to the next line
+
+- ` + "`Alt`" + `+click picks the character and color under the mouse.
+- Hold ` + "`Shift`" + ` while drawing for a straight horizontal or vertical line.
+- ` + "`Alt`" + `+arrow keys shift the whole screen by one character.
+
+## Characters and colors
+
+- On the right you see the 256 characters. The dropdown changes their **arrangement**: **Standard PETSCII** (the order of the character ROM, always the first), sorted by shape (as in Petmate), letters & digits, lines & frames, blocks & shades, curves & symbols.
+- ` + "`W A S D`" + ` move in the characters, ` + "`F`" + ` inverts the character, ` + "`Q`" + ` / ` + "`E`" + ` choose the previous / next color.
+- On the left: grid (` + "`G`" + `), upper or lower case set, background and border color.
+
+## Keys
+
+= 1 – 6 | tools
+= Ctrl+Z / Ctrl+Y | undo / redo (also U / Shift+U)
+= Ctrl+S / Ctrl+O | save / open a Petmate file
+= G | grid
+= F | invert the character
+= W A S D | move in the characters
+= Q / E | previous / next color
+= Alt+arrows | shift the screen
+= Esc | drop the brush or selection, end text input
+
+## Files and export
+
+- **Save / Open**: Petmate workspace files (` + "`.petmate`" + `) – you can go on working in Petmate.
+- **Export PRG**: a runnable C64 program. It shows the picture until you press a key, then resets the C64.
+- **Export ASM**: source code for the **ACME** cross assembler with the screen codes and colors as ` + "`!byte`" + ` lines and the display code. Assemble it with ` + "`acme --cpu 6510 --format cbm --outfile picture.prg picture.asm`" + `.
+- **Export PNG**: 384 × 272 pixels with border.
+
+> Ideas from **Petmate** (nurpax, MIT license – also the "sorted by shape" order), **petsciirender** (gnacu), **PETSCII editor** (Marq, ventti/petscii, WTFPL) and **Image-to-PETSCII** (amb; only the idea, no code). The characters are the original C64 character ROM © Commodore.
+`},
 	{id: "keys", group: "Reference", title: "Keyboard shortcuts", body: `
 # Keyboard shortcuts
 
@@ -858,6 +934,8 @@ Thank you all for making your work available and letting us use it:
 - **Dithering:** articles and guides on pixelparmesan.com, pixel-editor.com, pixnote.net, divoom.com and pixie.haus.
 - **File formats:** the details of Advanced Art Studio and Amica Paint files from RECOIL by Piotr Fusik.
 - **Import:** the ideas for color matching and cell colors from Retropixels by Michel de Bree (MIT license).
+- **PETSCII editor:** ideas and the "sorted by shape" character order from Petmate by nurpax (MIT license); ideas from petsciirender by gnacu, PETSCII editor by Marq (ventti/petscii, WTFPL) and Image-to-PETSCII by amb (GPL-3, only the idea, no code).
+- **C64 character ROM** © Commodore – used by the PETSCII editor and the text tool, as in Petmate and most PETSCII editors.
 - **Dither styles:** 16 hand-pixelled C64 scene pictures, analyzed pattern by pattern.
 - **Gradients:** color ramp table by IT-Dummköpfen, extended with more C64 ramps.
 - **Inspiration:** Deluxe Paint (Electronic Arts, 1985), PyDPainter and Multipaint (Marq/Kameli).

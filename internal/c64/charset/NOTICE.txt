@@ -1,0 +1,8 @@
+upper.bin, lower.bin: the character sets of the Commodore 64 character ROM
+(upper case/graphics and lower case/upper case), 256 characters of 8 x 8
+pixels each.
+
+C64 character ROM (c) Commodore Business Machines. Used here, as in many
+PETSCII editors (for example Petmate by Janne Hellsten, MIT license, from
+whose repository the files were taken), to show and export PETSCII
+pictures for the C64.

@@ -12,7 +12,8 @@ import (
 //
 // Mode "picture": replace one color by another in the whole picture.
 // Mode "brush":   choose the two colors for the cell color swap brush.
-// The background color ($D021) is never changed in either mode.
+// The background color ($D021) can never be replaced, but a color can be
+// replaced by the background (its pixels become %00).
 
 type swapDialog struct {
 	brush    bool
@@ -25,7 +26,7 @@ func (a *App) validSwapColors(from, to uint8) (uint8, uint8) {
 	if from == bg {
 		from = 255
 	}
-	if to == bg || to == from {
+	if to == from {
 		to = 255
 	}
 	for c := uint8(0); from == 255 && c < 16; c++ {
@@ -68,12 +69,15 @@ func (d *swapDialog) Key(a *App, k KeyEvent) {
 }
 
 func (d *swapDialog) ok(a *App) bool {
-	return d.from != d.to && d.from != a.pic.BG && d.to != a.pic.BG
+	return d.from != d.to && d.from != a.pic.BG
 }
 
 func (d *swapDialog) apply(a *App) {
 	if !d.ok(a) {
 		return
+	}
+	if d.to == a.pic.BG {
+		d.both = false // the background cannot become another color
 	}
 	a.swapFrom, a.swapTo, a.swapBoth, a.swapSet = d.from, d.to, d.both, true
 	a.closeModal(false)
@@ -129,7 +133,7 @@ func (d *swapDialog) Draw(a *App, r gfx.Rect) {
 		y += font.UI.Height + 3
 	}
 	y += 10
-	row := func(id, label string, cur *uint8, other uint8) {
+	row := func(id, label string, cur *uint8, other uint8, bgOK bool) {
 		m.Text(font.UIB, r.X, y, label, th.Text)
 		y += 22
 		sw := (r.W - 15) / 16
@@ -139,7 +143,14 @@ func (d *swapDialog) Draw(a *App, r gfx.Rect) {
 			m.Fill(sr, a.pal.Colors[i])
 			m.Frame(sr, th.BtnBorder)
 			isBG := c == a.pic.BG
-			if isBG {
+			if isBG && bgOK {
+				mc := uint32(0xFFFFFF)
+				if luma(a.pal.Colors[i]) > 140 {
+					mc = 0
+				}
+				m.TextC(font.MonoB, sr, "B", mc)
+			}
+			if isBG && !bgOK {
 				mc := uint32(0xFFFFFF)
 				if luma(a.pal.Colors[i]) > 140 {
 					mc = 0
@@ -157,12 +168,20 @@ func (d *swapDialog) Draw(a *App, r gfx.Rect) {
 			if cl, _ := u.press(id+itoa(i), sr, 0); cl {
 				*cur = c
 			}
-			u.Tip(id+itoa(i), sr, fmt.Sprintf("%d %s", i, c64.ColorNames[i]))
+			if isBG {
+				u.Tip(id+itoa(i), sr, c64.ColorNames[i]+" is the background color – the pixels become background pixels (%00)")
+			} else {
+				u.Tip(id+itoa(i), sr, fmt.Sprintf("%d %s", i, c64.ColorNames[i]))
+			}
 		}
 		y += 36
 	}
-	row("sw_f", "Replace this color:", &d.from, d.to)
-	row("sw_t", "with this color:", &d.to, d.from)
+	row("sw_f", "Replace this color:", &d.from, d.to, false)
+	row("sw_t", "with this color:", &d.to, d.from, true)
+	toBG := d.to == a.pic.BG
+	if toBG {
+		d.both = false
+	}
 	// summary line with both swatches
 	sr := gfx.Rect{X: r.X, Y: y, W: 30, H: 20}
 	m.Fill(sr, a.pal.Colors[d.from])
@@ -177,10 +196,14 @@ func (d *swapDialog) Draw(a *App, r gfx.Rect) {
 	m.Frame(tr, th.BtnBorder)
 	m.TextL(font.UI, gfx.Rect{X: r.X + 104, Y: y, W: r.W - 104, H: 20}, c64.ColorNames[d.from]+" "+arrow+" "+c64.ColorNames[d.to], th.Text)
 	y += 30
-	d.both = u.Checkbox("sw_both", gfx.Rect{X: r.X, Y: y, W: r.W, H: 20}, "Exchange both colors (A ↔ B)", d.both)
+	if toBG {
+		m.Text(font.UI, r.X+2, y+2, "Exchange both colors – not possible with the background", th.TextDim)
+	} else {
+		d.both = u.Checkbox("sw_both", gfx.Rect{X: r.X, Y: y, W: r.W, H: 20}, "Exchange both colors (A ↔ B)", d.both)
+	}
 	u.Tip("sw_both", gfx.Rect{X: r.X, Y: y, W: r.W, H: 20}, "Off: only A becomes B.  On: A becomes B and B becomes A.")
 	y += 28
-	info := "The background color ($D021) is never changed."
+	info := "The background color ($D021) itself is never changed, but a color can become background."
 	if !d.brush {
 		n, cells := countColor(a.pic, d.from)
 		info = fmt.Sprintf("%s is used by %d pixels in %d cells. ", c64.ColorNames[d.from], n, cells) + info

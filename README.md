@@ -27,12 +27,14 @@ Version 0.99 beta · Created by IT-Dummköpfen · Free for private use.
 - **Mirrored view** (Shift+M) and a floating **CRT preview** window (100/200 %, scanlines and PAL color bleed).
 - **Working folder** and **quick save** (F2): numbered PNGs without a dialog.
 - **My brushes**: your saved brushes in one window, ready to stamp.
+- **Text tool**: C64 wide, tall and narrow fonts in multicolor pixels, with shadow or outline, as brush.
+- **PETSCII editor** (Tools menu): convert pictures to PETSCII, edit them and export PRG, ACME assembler source, PNG or Petmate files.
 - **Auto backup** (Options menu, off at start) into the working folder and a list of **recent files**.
 - **Brushes** menu: load and save brushes as PNG with a transparent background.
 - Round, square or diamond brushes from 1 to 16 pixels, plus custom brushes made from a selection.
 - 42 patterns (density steps, dots, lines, diagonals, grids and textures).
 - **Auto dither** (Edit menu) and a **Dither brush**, both experimental: blend the borders between flat color areas in clean steps (two colors per transition, 25 %/50 % bands, outlines and silhouettes stay sharp) in the styles Artist, Scanlines, Checker and Stripes, reconstructed from hand-pixelled C64 pictures – or shade with **Color**, which darkens with the colors of the cell.
-- **Gradient fill**: 27 three-color, 14 four-color and 13 five-color C64 ramps, plus five-band versions (dark → light → dark, light → dark → light), linear, circle or diamond, single click or drag for direction and width, optional dithered transitions.
+- **Gradient fill**: 27 three-color, 14 four-color and 13 five-color C64 ramps plus your own custom ramps, plus five-band versions (dark → light → dark, light → dark → light), linear, circle or diamond, single click or drag for direction and width, optional dithered transitions.
 - **Smear** brush: drags colors along the stroke like a smudge tool.
 - Swap colors in the whole picture or with a cell brush (the background color is never touched).
 - Selections can be copied (default) or moved (Shift), flipped, rotated by 90° or freely, scaled and sheared in both directions.
@@ -123,3 +125,15 @@ go test ./internal/...
 C64 DPainter is free for private use. Created by IT-Dummköpfen.
 
 The included libraries keep their own licenses: purego (Apache 2.0, `third_party/purego/LICENSE`), xgb (BSD, `third_party/xgb/LICENSE`). The embedded font glyphs are rendered from the DejaVu fonts (Bitstream Vera / DejaVu license).
+
+Licenses and credits of ideas and data:
+
+| Source | License | Used for |
+|---|---|---|
+| C64 character ROM (`internal/c64/charset`) | © Commodore | PETSCII editor and text tool (as in Petmate and most PETSCII editors) |
+| [Petmate](https://github.com/nurpax/petmate) by nurpax | MIT | ideas, the "sorted by shape" character order, the `.petmate` file format |
+| [petsciirender](https://github.com/gnacu/petsciirender) by gnacu | no license given | ideas only, no code |
+| [PETSCII editor](https://github.com/ventti/petscii) by Marq | WTFPL | ideas |
+| [Image-to-PETSCII](https://github.com/amb/Image-to-PETSCII) by amb | GPL-3 | the idea of matching cells against characters, no code |
+| [Retropixels](https://github.com/micheldebree/retropixels) by Michel de Bree | MIT | ideas for color matching and cell colors |
+| [RECOIL](https://github.com/pfusik/recoil) by Piotr Fusik | MIT | format details of Advanced Art Studio and Amica Paint |

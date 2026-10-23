@@ -331,6 +331,8 @@ var aboutSources = [][2]string{
 	{"Gradients", "color ramp table by IT-Dummköpfen, extended"},
 	{"File formats", "OCP and AMI details from RECOIL by Piotr Fusik"},
 	{"Import", "color matching ideas from Retropixels by Michel de Bree (MIT)"},
+	{"PETSCII", "Petmate by nurpax (MIT), petsciirender, PETSCII editor (WTFPL), Image-to-PETSCII"},
+	{"Characters", "C64 character ROM © Commodore"},
 	{"Inspiration", "Deluxe Paint (Electronic Arts, 1985), PyDPainter and Multipaint (Marq/Kameli)"},
 }
 

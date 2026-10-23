@@ -335,7 +335,11 @@ func (p *Picture) replaceCellColorLayers(cell int, from, to uint8, both bool) in
 				i := y*W + x
 				switch p.L[l][i] {
 				case from + 1:
-					p.L[l][i] = to + 1
+					if to == p.BG {
+						p.L[l][i] = LayerBG
+					} else {
+						p.L[l][i] = to + 1
+					}
 					changed++
 				case to + 1:
 					if both {

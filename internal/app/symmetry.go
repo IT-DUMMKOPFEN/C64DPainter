@@ -254,7 +254,7 @@ func (a *App) panelShade(x, y, w int) int {
 	y += 14
 	cw := (w - 4) / 2
 	rs := shadeRamps()
-	n3, n4 := len(gradientRamps), len(gradientRamps4)
+	n3, n4 := len(groupRamps(0)), len(groupRamps(1))
 	for i, rp := range rs {
 		k := i
 		switch {
@@ -284,7 +284,7 @@ func (a *App) panelShade(x, y, w int) int {
 		a.drawRampSwatch(gfx.Rect{X: br.X + 4, Y: br.Y + 4, W: br.W - 8, H: br.H - 8}, rev)
 		u.Tip("sh_r"+itoa(i), br, rp.name)
 	}
-	y += ((len(gradientRamps5)+1)/2)*26 + 4
+	y += ((len(groupRamps(2))+1)/2)*26 + 4
 	for _, ln := range wrapText(font.UI, "Left button lightens, right button darkens by one step. Colors outside the chosen ramp stay as they are.", w) {
 		m.Text(font.UI, x, y, ln, a.th.TextDim)
 		y += font.UI.Height + 2

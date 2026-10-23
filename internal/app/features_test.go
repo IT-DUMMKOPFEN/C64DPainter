@@ -385,3 +385,182 @@ func TestCollapsibleSections(t *testing.T) {
 		t.Fatal("second click opens it again")
 	}
 }
+
+func TestSwapToBackground(t *testing.T) {
+	a, _ := setup(t)
+	for x := 0; x < 20; x++ {
+		a.pic.Plot(x, 10, 2, 0, a.pal)
+	}
+	a.openSwapDialog(false)
+	d := a.modal.(*swapDialog)
+	d.from, d.to, d.both = 2, a.pic.BG, true
+	d.apply(a)
+	if a.pic.ColorAt(5, 10) != a.pic.BG {
+		t.Fatal("red must become background")
+	}
+	a.setBG(6)
+	if a.pic.ColorAt(5, 10) != 6 {
+		t.Fatal("the swapped pixels follow the background color")
+	}
+	a.openSwapDialog(false)
+	d = a.modal.(*swapDialog)
+	d.from = a.pic.BG
+	if d.ok(a) {
+		t.Fatal("the background must not be replaced")
+	}
+}
+
+func TestCustomGradient(t *testing.T) {
+	a, _ := setup(t)
+	a.openGradientDialog()
+	d := a.modal.(*gradientDialog)
+	d.g.Group = 1 // 4 colors
+	d.g.Ramp = len(groupRamps(1)) - 1
+	step(a)
+	if _, ok := customIndex(1, d.g.Ramp); !ok {
+		t.Fatal("custom is the last ramp")
+	}
+	// set the custom 4-color ramp to 7, 3, 14, 6
+	for i, c := range []int{7, 3, 14, 6} {
+		d.cslot = i
+		customRamps[1][i] = uint8(c)
+	}
+	a.set.Gradient.storeCustomRamps()
+	a.saveSettings()
+	b := New(&recHost{dir: t.TempDir()})
+	_ = b
+	got := gradientColors(1, len(groupRamps(1))-1, false)
+	if len(got) != 4 || got[0] != 7 || got[3] != 6 {
+		t.Fatalf("custom ramp: %v", got)
+	}
+	s := loadSettings()
+	if len(s.Gradient.Custom4) != 4 || s.Gradient.Custom4[1] != 3 {
+		t.Fatal("custom ramp must be saved in the settings")
+	}
+	if len(groupRamps(0)) != len(gradientRamps)+1 || len(groupRamps(3)) != len(gradientRamps)+1 {
+		t.Fatal("custom 3-color ramp in the three-color based tabs")
+	}
+}
+
+func TestTextBrush(t *testing.T) {
+	a, _ := setup(t)
+	a.openTextDialog()
+	d := a.modal.(*textDialog)
+	d.text = ""
+	for _, r := range "Hi 64" {
+		a.Char(r)
+	}
+	step(a)
+	if d.text != "Hi 64" {
+		t.Fatalf("typed text: %q", d.text)
+	}
+	for f := 0; f < 3; f++ {
+		for e := 0; e < 3; e++ {
+			a.set.Text.Font, a.set.Text.Effect = f, e
+			b := d.brush(a)
+			if b == nil || b.W < 10 {
+				t.Fatalf("font %d effect %d: no brush", f, e)
+			}
+			colors := map[int8]bool{}
+			for _, v := range b.Pix {
+				if v >= 0 {
+					colors[v] = true
+				}
+			}
+			if e == 0 && len(colors) != 1 || e > 0 && len(colors) != 2 {
+				t.Fatalf("font %d effect %d: %d colors", f, e, len(colors))
+			}
+		}
+	}
+	a.set.Text.Font, a.set.Text.Effect = 0, 1
+	a.KeyDown(KeyEnter, Mods{})
+	step(a)
+	if a.modal != nil || a.brushShape != BrushCustom || a.set.Text.Last != "Hi 64" {
+		t.Fatal("Enter uses the text as brush")
+	}
+	if a.custom.W != 5*8+2 || a.custom.H != 10 {
+		t.Fatalf("wide font size: %d×%d", a.custom.W, a.custom.H)
+	}
+}
+
+func TestPetsciiEditor(t *testing.T) {
+	a, h := setup(t)
+	for x := 0; x < 80; x++ {
+		for y := 0; y < 100; y++ {
+			a.pic.Plot(x, y, 7, 0, a.pal)
+		}
+	}
+	a.openPetscii()
+	step(a)
+	e := a.pet
+	if !e.open {
+		t.Fatal("editor must be open")
+	}
+	// convert the picture
+	a.petOpenConvert()
+	step(a)
+	d := a.modal.(*petConvertDialog)
+	if d.preview == nil {
+		t.Fatal("no preview")
+	}
+	d.apply(a)
+	if e.scr.ColorAt(10, 10) != 7 || e.scr.ColorAt(300, 190) != a.pic.BG {
+		t.Fatalf("converted picture: %d %d", e.scr.ColorAt(10, 10), e.scr.ColorAt(300, 190))
+	}
+	// draw a character with the mouse
+	e.tool, e.ch, e.color = petDraw, 81, 2
+	step(a)
+	cx := e.canvas.X + 30*8*e.zoom + 4
+	cy := e.canvas.Y + 20*8*e.zoom + 4
+	tclick(a, cx, cy, 0)
+	if e.scr.Chars[20*40+30] != 81 || e.scr.Colors[20*40+30] != 2 {
+		t.Fatal("draw tool")
+	}
+	e.doUndo()
+	if e.scr.Chars[20*40+30] == 81 {
+		t.Fatal("undo")
+	}
+	e.doRedo()
+	// text tool
+	e.tool = petText
+	tclick(a, e.canvas.X+2, e.canvas.Y+24*8*e.zoom+2, 0)
+	for _, r := range "HI" {
+		a.Char(r)
+	}
+	step(a)
+	if e.scr.Chars[24*40] != 8 || e.scr.Chars[24*40+1] != 9 {
+		t.Fatalf("text tool: %d %d", e.scr.Chars[24*40], e.scr.Chars[24*40+1])
+	}
+	// keys do not reach the paint program while the editor is open
+	tool := a.tool
+	e.tool = petDraw
+	e.cursor = -1
+	a.Char('c')
+	step(a)
+	if a.tool != tool {
+		t.Fatal("paint shortcuts must not work in the PETSCII editor")
+	}
+	// exports
+	dir := t.TempDir()
+	a.set.WorkDir = dir
+	for _, k := range []string{"prg", "asm", "png"} {
+		h.save = filepath.Join(dir, "pic."+k)
+		a.petExport(k)
+		if b, err := os.ReadFile(h.save); err != nil || len(b) < 100 {
+			t.Fatalf("export %s", k)
+		}
+	}
+	h.save = filepath.Join(dir, "pic.petmate")
+	a.petSave()
+	h.open = h.save
+	e.scr.Chars[0] = 1
+	a.petOpen()
+	if e.scr.Chars[0] == 1 || e.path == "" {
+		t.Fatal("open petmate file")
+	}
+	a.closePetscii()
+	step(a)
+	if e.open {
+		t.Fatal("close")
+	}
+}

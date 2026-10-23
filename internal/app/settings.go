@@ -39,6 +39,8 @@ type Settings struct {
 	CRT           CRTSettings           `json:"crt"`
 	WorkDir       string                `json:"workDir"`
 	Recent        []string              `json:"recent"`
+	Text          TextSettings          `json:"text"`
+	Petscii       c64.PetsciiOptions    `json:"petscii"`
 }
 
 func defaultSettings() Settings {
@@ -58,6 +60,7 @@ func defaultSettings() Settings {
 		SmearStrength: 60,
 		DitherAuto:    c64.DefaultAutoDither(),
 		ShadeRamp:     -1,
+		Petscii:       c64.PetsciiOptions{BG: -1},
 		CRT:           CRTSettings{Scale: 2, On: true},
 	}
 }

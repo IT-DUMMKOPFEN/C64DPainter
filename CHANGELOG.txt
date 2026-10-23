@@ -34,6 +34,42 @@ My brushes
   with all brushes saved in the "brushes" folder of the working folder.
   The chosen brush becomes the brush and the tool switches to Dots.
 
+PETSCII editor (new, menu Tools)
+- A full-window editor for PETSCII pictures (C64 text mode: 40 x 25
+  characters from the character ROM, one color per character, a common
+  background). Close it to get back to the multicolor editor.
+- Convert the multicolor picture or any image into PETSCII: character set
+  upper/lower case, all characters / no letters / blocks only, inverted
+  characters, color matching, brightness, contrast and background.
+- Tools: draw, colorize, character only, eraser, brush (copy a rectangle
+  and stamp it), text input; Alt+click picks, Shift draws straight lines,
+  Alt+arrows shift the screen, undo/redo, grid.
+- Character selector with a dropdown for the arrangement: Standard PETSCII
+  (always first), sorted by shape (Petmate), letters & digits, lines &
+  frames, blocks & shades, curves & symbols.
+- Save and open Petmate files (.petmate); export PRG (runnable viewer),
+  ACME assembler source (.asm) and PNG.
+- Ideas from Petmate (nurpax, MIT), petsciirender (gnacu), PETSCII editor
+  (Marq / ventti, WTFPL) and Image-to-PETSCII (amb, idea only). The
+  characters are the original C64 character ROM (c) Commodore.
+
+Text tool (new, toolbox and Brushes > Text)
+- Writes text in multicolor pixels and turns it into the brush.
+- Fonts: C64 wide (8x8, the C64 characters with wide pixels), C64 tall
+  (8x16) and Narrow (an own 3x7 font that fits one cell).
+- Upper or lower case, letter spacing, several lines, shadow or outline
+  in a second color - never more than two colors per cell.
+
+Gradient fill
+- Custom ramps: the last ramp of the 3-, 4- and 5-color tabs is your own.
+  Click its color fields and choose the colors; they are saved and come
+  back after a restart. The Shade brush can use them too.
+
+Swap colors
+- A color can now be replaced by the background color (its pixels become
+  %00). The background itself still cannot be replaced.
+- New toolbox button with an icon for the cell color swap brush.
+
 Import & convert (ideas from Retropixels by Michel de Bree)
 - Color matching: choose how "the most similar color" is measured -
   RGB (as before), YUV, XYZ, Lab, OkLab or brightness only.

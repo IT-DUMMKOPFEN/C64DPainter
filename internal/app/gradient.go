@@ -1,6 +1,7 @@
 package app
 
 import (
+	"fmt"
 	"math"
 
 	"c64dpainter/internal/c64"
@@ -122,13 +123,16 @@ var gradientDirs = []struct {
 
 // GradientSettings are saved with the settings.
 type GradientSettings struct {
-	Version int  `json:"version"` // 2: five tabs
-	Group   int  `json:"group"`
-	Ramp    int  `json:"ramp"`
-	Shape   int  `json:"shape"`
-	Dir     int  `json:"dir"`
-	Reverse bool `json:"reverse"`
-	Dither  bool `json:"dither"`
+	Version int     `json:"version"` // 2: five tabs
+	Group   int     `json:"group"`
+	Ramp    int     `json:"ramp"`
+	Shape   int     `json:"shape"`
+	Dir     int     `json:"dir"`
+	Reverse bool    `json:"reverse"`
+	Dither  bool    `json:"dither"`
+	Custom3 []uint8 `json:"custom3"` // the user's own ramps, light → dark
+	Custom4 []uint8 `json:"custom4"`
+	Custom5 []uint8 `json:"custom5"`
 }
 
 func (g *GradientSettings) clamp() {
@@ -145,16 +149,35 @@ func (g *GradientSettings) clamp() {
 	g.Dir = clampI(g.Dir, 0, len(gradientDirs)-1)
 }
 
+// customRamps: the user's own ramps with 3, 4 and 5 colors (light → dark),
+// the last entry of the tabs. They are kept in the settings.
+var customRamps = [3][]uint8{{15, 12, 11}, {1, 15, 12, 11}, {1, 15, 12, 11, 0}}
+
+// customIndex returns which custom ramp (0 = 3, 1 = 4, 2 = 5 colors) a tab
+// uses, and whether ramp i of the tab is that custom ramp.
+func customIndex(group, i int) (int, bool) {
+	k := 0
+	switch group {
+	case 1:
+		k = 1
+	case 2:
+		k = 2
+	}
+	return k, i == len(groupRamps(group))-1
+}
+
 // groupRamps returns the ramps of a tab with their colors in fill order.
 func groupRamps(group int) []namedRamp {
 	switch group {
 	case 1:
-		return gradientRamps4
+		return append(append([]namedRamp(nil), gradientRamps4...), namedRamp{"Custom", append([]uint8(nil), customRamps[1]...)})
 	case 2:
-		return gradientRamps5
+		return append(append([]namedRamp(nil), gradientRamps5...), namedRamp{"Custom", append([]uint8(nil), customRamps[2]...)})
 	}
-	out := make([]namedRamp, len(gradientRamps))
-	for i, r := range gradientRamps {
+	c3 := customRamps[0]
+	all := append(append([]gradientRamp(nil), gradientRamps...), gradientRamp{"Custom", c3[0], c3[1], c3[2]})
+	out := make([]namedRamp, len(all))
+	for i, r := range all {
 		var c []uint8
 		switch group {
 		case 3:
@@ -171,7 +194,8 @@ func groupRamps(group int) []namedRamp {
 
 // rampExtended reports whether a ramp of a tab is an "extended" one.
 func rampExtended(group, i int) bool {
-	return (group == 0 || group >= 3) && i >= gradientBasic
+	_, custom := customIndex(group, i)
+	return (group == 0 || group >= 3) && i >= gradientBasic && !custom
 }
 
 // colors returns the ramp colors of a group, in fill order.
@@ -194,7 +218,31 @@ func gradientName(group, ramp int) string {
 
 // shadeRamps: the steps the shade brush can use (all ramps, light → dark).
 func shadeRamps() []namedRamp {
-	return append(append(groupRamps(0), gradientRamps4...), gradientRamps5...)
+	return append(append(groupRamps(0), groupRamps(1)...), groupRamps(2)...)
+}
+
+// loadCustomRamps takes the custom ramps from the settings (if valid).
+func (g *GradientSettings) loadCustomRamps() {
+	for k, c := range [][]uint8{g.Custom3, g.Custom4, g.Custom5} {
+		if len(c) != k+3 {
+			continue
+		}
+		ok := true
+		for _, v := range c {
+			if v > 15 {
+				ok = false
+			}
+		}
+		if ok {
+			customRamps[k] = append([]uint8(nil), c...)
+		}
+	}
+}
+
+func (g *GradientSettings) storeCustomRamps() {
+	g.Custom3 = append([]uint8(nil), customRamps[0]...)
+	g.Custom4 = append([]uint8(nil), customRamps[1]...)
+	g.Custom5 = append([]uint8(nil), customRamps[2]...)
 }
 
 var gradBayer = [16]float64{0, 8, 2, 10, 12, 4, 14, 6, 3, 11, 1, 9, 15, 7, 13, 5}
@@ -375,7 +423,54 @@ func (a *App) drawGradientLine() {
 // --- window ------------------------------------------------------------------------
 
 type gradientDialog struct {
-	g GradientSettings
+	g     GradientSettings
+	cslot int // edited color field of the custom ramp
+}
+
+// drawCustomEditor: the color fields of the custom ramp and the palette.
+// A click on a field selects it, a click on a palette color sets it.
+func (d *gradientDialog) drawCustomEditor(a *App, r gfx.Rect, y int) {
+	u := &a.ui
+	m := a.img
+	th := a.th
+	k, sel := customIndex(d.g.Group, d.g.Ramp)
+	if !sel {
+		m.Text(font.UI, r.X, y+6, "Tip: the last ramp, \"Custom\", is your own – select it to choose its colors.", th.TextDim)
+		return
+	}
+	cols := customRamps[k]
+	d.cslot = clampI(d.cslot, 0, len(cols)-1)
+	m.Text(font.UIB, r.X, y+6, "Custom colors", th.Text)
+	x := r.X + 110
+	for i, c := range cols {
+		br := gfx.Rect{X: x + i*36, Y: y + 2, W: 32, H: 24}
+		m.Fill(br, a.pal.Colors[c])
+		m.Frame(br, th.BtnBorder)
+		if i == d.cslot {
+			m.Frame(br.Inset(-2), th.Accent)
+			m.Frame(br.Inset(-3), th.Accent)
+		}
+		if cl, _ := u.press("gr_cs"+itoa(i), br, 0); cl {
+			d.cslot = i
+		}
+		u.Tip("gr_cs"+itoa(i), br, fmt.Sprintf("Color %d of %d (light → dark) – click, then choose a color on the right", i+1, len(cols)))
+	}
+	px := x + 5*36 + 20
+	for i := 0; i < 16; i++ {
+		br := gfx.Rect{X: px + i*24, Y: y + 2, W: 22, H: 24}
+		m.Fill(br, a.pal.Colors[i])
+		m.Frame(br, th.BtnBorder)
+		if cl, _ := u.press("gr_cp"+itoa(i), br, 0); cl {
+			customRamps[k][d.cslot] = uint8(i)
+			a.set.Gradient.storeCustomRamps()
+			d.g.Custom3, d.g.Custom4, d.g.Custom5 = a.set.Gradient.Custom3, a.set.Gradient.Custom4, a.set.Gradient.Custom5
+			a.saveSettings()
+			if d.cslot < len(cols)-1 {
+				d.cslot++
+			}
+		}
+		u.Tip("gr_cp"+itoa(i), br, c64.ColorNames[i])
+	}
 }
 
 func (a *App) openGradientDialog() {
@@ -386,7 +481,7 @@ func (a *App) openGradientDialog() {
 }
 
 func (d *gradientDialog) Title() string          { return "Gradient fill" }
-func (d *gradientDialog) Size(a *App) (int, int) { return 900, 640 }
+func (d *gradientDialog) Size(a *App) (int, int) { return 900, min(680, a.H-16) }
 
 func (d *gradientDialog) Key(a *App, k KeyEvent) {
 	if k.Key == KeyEnter {
@@ -433,7 +528,7 @@ func (d *gradientDialog) Draw(a *App, r gfx.Rect) {
 	y += 34
 	// ramps: four columns
 	const cols, rowH = 4, 38
-	gridRows := (len(gradientRamps) + cols - 1) / cols
+	gridRows := (len(groupRamps(0)) + cols - 1) / cols
 	cw := (r.W - (cols-1)*10) / cols
 	ramps := groupRamps(d.g.Group)
 	for i, rp := range ramps {
@@ -458,6 +553,9 @@ func (d *gradientDialog) Draw(a *App, r gfx.Rect) {
 		}
 	}
 	y += gridRows*rowH + 4
+	// editor for the custom ramp
+	d.drawCustomEditor(a, r, y)
+	y += 34
 	// the color rule note for the 4- and 5-color tabs
 	if d.g.Group == 1 || d.g.Group == 2 {
 		for _, ln := range wrapText(font.UI, gradientConflictNote, r.W) {
@@ -465,7 +563,7 @@ func (d *gradientDialog) Draw(a *App, r gfx.Rect) {
 			y += font.UI.Height + 2
 		}
 	}
-	y = r.Y + 34 + gridRows*rowH + 4 + 3*(font.UI.Height+2) + 8
+	y = r.Y + 34 + gridRows*rowH + 4 + 34 + 3*(font.UI.Height+2) + 8
 	top := y
 	// shape and options (left), preview (right)
 	lx := r.X

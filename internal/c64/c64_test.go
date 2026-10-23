@@ -309,8 +309,11 @@ func TestReplaceColor(t *testing.T) {
 	if n, _ := q3.ReplaceColor(0, 2, false); n != 0 || *q3 != *p {
 		t.Fatal("background must not be replaced")
 	}
-	if n, _ := q3.ReplaceColor(2, 0, false); n != 0 {
-		t.Fatal("must not replace with the background color")
+	if n, _ := q3.ReplaceColor(2, 0, true); n != 0 {
+		t.Fatal("must not exchange with the background color")
+	}
+	if n, _ := q3.ReplaceColor(2, 0, false); n != 4 || q3.ColorAt(8, 0) != 0 || q3.ColorAt(9, 0) != 1 {
+		t.Fatal("a color can become background")
 	}
 	// rules still hold
 	for cell := 0; cell < Cells; cell++ {
