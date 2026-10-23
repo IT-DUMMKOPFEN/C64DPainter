@@ -631,13 +631,21 @@ func (a *App) selToBrush() {
 	if a.sel.state == selFloating {
 		a.selCommit()
 	}
+	// as in Deluxe Paint: color 2 (chosen with the right mouse button) is
+	// transparent in the brush
+	b = b.clone()
+	for i, v := range b.Pix {
+		if v == int8(a.fg2) {
+			b.Pix[i] = -1
+		}
+	}
 	a.sel.state = selNone
 	a.custom = b
 	a.brushShape = BrushCustom
 	a.customOwnColor = true
 	a.stampCache = nil
 	a.setTool(ToolDraw)
-	a.setStatus("The selection is now the brush (Shift+B = standard brush)")
+	a.setStatus("The selection is now the brush – color 2 (" + c64.ColorNames[a.fg2&15] + ") is transparent  ·  Shift+B = standard brush")
 }
 
 func (a *App) restoreBrush() {

@@ -299,6 +299,7 @@ Select an area with the select tool and click **"Use as brush"**. Now you paint 
 - The **right** mouse button always paints the brush in color 2.
 - ` + "`X`" + `, ` + "`Y`" + `, ` + "`Z`" + `, ` + "`H`" + ` also flip, rotate and shrink the custom brush.
 - ` + "`Shift+B`" + ` returns to the standard brush.
+- As in Deluxe Paint, **color 2** (the color you choose with the **right** mouse button in the palette) becomes **transparent** in the brush. Choose the color around your motif as color 2 before you click "Use as brush".
 - With **"Background color transparent"** (Selection menu), background-colored pixels are skipped when stamping.
 
 ## Brushes menu

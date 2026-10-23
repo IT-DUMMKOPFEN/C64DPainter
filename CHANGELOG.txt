@@ -129,6 +129,9 @@ Fixes
 - Saving a Koala picture with the system save dialog could create a name
   like "picture.kla.kla". Doubled extensions are now removed, and the
   macOS save dialog no longer adds the extension twice.
+- "Use as brush" on a selection: color 2 (chosen with the right mouse
+  button in the palette) is now transparent in the brush, as in Deluxe
+  Paint.
 
 About
 - New section in the help page "About": "Why This Software Is Free for

@@ -724,3 +724,41 @@ func TestFontEditor(t *testing.T) {
 		t.Fatal("close")
 	}
 }
+
+func TestSelectionBrushColor2Transparent(t *testing.T) {
+	a, _ := setup(t)
+	// a red square on a yellow area
+	for y := 0; y < 20; y++ {
+		for x := 0; x < 10; x++ {
+			c := uint8(7)
+			if x >= 3 && x < 7 && y >= 5 && y < 15 {
+				c = 2
+			}
+			a.pic.Plot(x, y, c, 0, a.pal)
+		}
+	}
+	a.fg, a.fg2 = 1, 7 // color 2 = yellow
+	a.setTool(ToolSelect)
+	a.sel.state = selSelected
+	a.sel.x0, a.sel.y0, a.sel.x1, a.sel.y1 = 0, 0, 9, 19
+	a.selToBrush()
+	b := a.custom
+	if b == nil || b.W != 10 || b.H != 20 {
+		t.Fatal("brush")
+	}
+	if b.Pix[0] != -1 || b.Pix[10*10+4] != 2 {
+		t.Fatalf("color 2 must be transparent: %d %d", b.Pix[0], b.Pix[10*10+4])
+	}
+	// stamping keeps the picture around the motif
+	for y := 100; y < 130; y++ {
+		for x := 100; x < 120; x++ {
+			a.pic.Plot(x, y, 5, 0, a.pal)
+		}
+	}
+	step(a)
+	px, py := pc(a, 110, 115)
+	tclick(a, px, py, 0)
+	if a.pic.ColorAt(105, 105) != 5 || a.pic.ColorAt(110, 115) != 2 {
+		t.Fatalf("stamp: %d %d", a.pic.ColorAt(105, 105), a.pic.ColorAt(110, 115))
+	}
+}
