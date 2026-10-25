@@ -2,7 +2,7 @@
 
 [![Build](https://github.com/IT-DUMMKOPFEN/C64DPainter/actions/workflows/build.yml/badge.svg)](https://github.com/IT-DUMMKOPFEN/C64DPainter/actions/workflows/build.yml)
 
-A paint program for Windows, macOS and Linux for pictures in the **multicolor bitmap mode of the Commodore 64**. Its look and controls follow Deluxe Paint and PyDPainter.
+A paint program for Windows, macOS (Apple silicon and Intel) and Linux for pictures in the **multicolor bitmap mode of the Commodore 64**. Its look and controls follow Deluxe Paint and PyDPainter.
 
 Version 0.99 beta · Created by IT-Dummköpfen · Free for private use.
 
@@ -14,7 +14,8 @@ Version 0.99 beta · Created by IT-Dummköpfen · Free for private use.
 | File | System |
 |---|---|
 | `C64DPainter.exe` | Windows 11 (64 bit), just start it – Windows 10 may crash |
-| `C64DPainter-macOS.zip` | macOS 11 or newer, Apple silicon (M chips) only – read "How to open.txt" inside |
+| `C64DPainter-macOS-Silicon.zip` | macOS 11 or newer, Macs with Apple silicon (M chips) – read "How to open.txt" inside |
+| `C64DPainter-macOS-Intel.zip` | macOS 11 or newer, Macs with an Intel processor – read "How to open.txt" inside |
 | `c64dpainter-linux-x86_64.tar.gz` | Linux on PCs (64 bit) |
 | `c64dpainter-linux-arm64.tar.gz` | Linux on ARM (e.g. Raspberry Pi 4/5 with a 64-bit system) |
 
@@ -80,11 +81,12 @@ Windows:
 GOOS=windows GOARCH=amd64 go build -trimpath -ldflags "-H windowsgui -s -w" -o C64DPainter.exe ./cmd/c64dpainter
 ```
 
-macOS (app for Apple silicon, can be built on any OS):
+macOS (app for Apple silicon or Intel, can be built on any OS):
 
 ```
 CGO_ENABLED=0 GOOS=darwin GOARCH=arm64 go build -trimpath -ldflags "-s -w" -o build/C64DPainter_arm64 ./cmd/c64dpainter
 python3 tools/macbundle.py build/C64DPainter_arm64 res/c64dpainter.png build 0.99
+# Intel: GOARCH=amd64
 ```
 
 Linux (static binary, X11 or Wayland via XWayland, no libraries needed):

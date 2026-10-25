@@ -59,8 +59,13 @@ jobs:
 
       - uses: actions/upload-artifact@v6
         with:
-          name: C64DPainter-macOS
-          path: dist/C64DPainter-macOS.zip
+          name: C64DPainter-macOS-Silicon
+          path: dist/C64DPainter-macOS-Silicon.zip
+
+      - uses: actions/upload-artifact@v6
+        with:
+          name: C64DPainter-macOS-Intel
+          path: dist/C64DPainter-macOS-Intel.zip
 
       - uses: actions/upload-artifact@v6
         with:

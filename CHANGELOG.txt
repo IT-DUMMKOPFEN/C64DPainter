@@ -2,11 +2,16 @@ C64 DPainter - Changelog
 ========================
 
 A paint program for Commodore 64 multicolor bitmap pictures
-for Windows 11, macOS (Apple silicon) and Linux.
+for Windows 11, macOS (Apple silicon and Intel) and Linux.
 
 
 Version 0.99 beta
 -----------------
+
+macOS for Intel
+- There is now also a macOS version for Macs with an Intel processor.
+  The downloads are named C64DPainter-macOS-Silicon.zip (M chips) and
+  C64DPainter-macOS-Intel.zip.
 
 Auto backup
 - New option Options > Auto backup (every 3 minutes). It is off at every

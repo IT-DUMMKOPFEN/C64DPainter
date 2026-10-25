@@ -1,5 +1,5 @@
-# Builds "C64 DPainter.app" for Apple silicon (arm64 Mach-O binary) on any OS.
-# Usage: macbundle.py <arm64-binary> <icon-png> <out-dir> <version>
+# Builds "C64 DPainter.app" for Apple silicon (arm64) or Intel (x86_64) Macs on any OS.
+# Usage: macbundle.py <binary> <icon-png> <out-dir> <version>
 import os, shutil, struct, sys
 from PIL import Image
 
@@ -16,7 +16,7 @@ shutil.rmtree(app, ignore_errors=True)
 os.makedirs(os.path.join(app, 'Contents', 'MacOS'))
 os.makedirs(os.path.join(app, 'Contents', 'Resources'))
 cpu, _ = macho_cpu(arm)
-assert cpu == 0x0100000C, 'the macOS binary must be arm64 (Apple silicon)'
+assert cpu in (0x0100000C, 0x01000007), 'the macOS binary must be arm64 (Apple silicon) or x86_64 (Intel)'
 exe = os.path.join(app, 'Contents', 'MacOS', 'C64DPainter')
 shutil.copyfile(arm, exe)
 os.chmod(exe, 0o755)

@@ -1017,7 +1017,7 @@ When sprites are combined with the picture, bit pairs ` + "`%00`" + ` and ` + "`
 
 **Version 0.99 beta** – a paint program for C64 multicolor bitmaps.
 
-Runs on **Windows 11** (Windows 10 may crash), **macOS** (M chips only) and **Linux**.
+Runs on **Windows 11** (Windows 10 may crash), **macOS** (Apple silicon and Intel) and **Linux**.
 
 Created by **IT-Dummköpfen**. Free for private use.
 

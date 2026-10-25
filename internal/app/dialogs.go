@@ -370,7 +370,7 @@ func (d *aboutDialog) Draw(a *App, r gfx.Rect) {
 	center(font.Body, "Created by "+AppAuthor, th.Text, 4)
 	center(font.Body, AppLicense, th.Text, 12)
 	center(font.UI, "A paint program for the C64 multicolor bitmap mode for", th.TextDim, 4)
-	center(font.UI, "Windows 11 (Windows 10 may crash) · macOS (M chips only) · Linux", th.TextDim, 10)
+	center(font.UI, "Windows 11 (Windows 10 may crash) · macOS (Apple silicon and Intel) · Linux", th.TextDim, 10)
 	center(font.UI, "Inspired by Deluxe Paint (Electronic Arts, 1985), PyDPainter and Multipaint.", th.Text, 4)
 	center(font.UI, "I was also inspired by many comments from users. Thank you so much! \u2764", th.Text, 14)
 	// sources and thanks

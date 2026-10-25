@@ -32,11 +32,22 @@ for arch in x86_64:amd64 arm64:arm64; do
 	tar -C "$WORK" -czf "$DIST/c64dpainter-linux-$name.tar.gz" "c64dpainter-linux-$name"
 done
 
-echo "- macOS (Apple silicon)"
-GOOS=darwin GOARCH=arm64 go build -trimpath -ldflags "$LD" -o "$WORK/C64DPainter_arm64" ./cmd/c64dpainter
-python3 tools/macbundle.py "$WORK/C64DPainter_arm64" res/c64dpainter.png "$WORK/mac" "$VNUM" >/dev/null
-cp "packaging/macos/How to open.txt" "$WORK/mac/"
-(cd "$WORK/mac" && zip -qry ../../C64DPainter-macOS.zip .)
+for arch in Silicon:arm64 Intel:amd64; do
+	name=${arch%%:*}
+	goarch=${arch##*:}
+	if [ "$name" = Silicon ]; then
+		cpu="Apple silicon / M chips"
+		other="For Macs with an Intel processor, download C64DPainter-macOS-Intel.zip."
+	else
+		cpu="Intel processor"
+		other="For Macs with Apple silicon (M chips), download C64DPainter-macOS-Silicon.zip."
+	fi
+	echo "- macOS ($name)"
+	GOOS=darwin GOARCH=$goarch go build -trimpath -ldflags "$LD" -o "$WORK/C64DPainter_$goarch" ./cmd/c64dpainter
+	python3 tools/macbundle.py "$WORK/C64DPainter_$goarch" res/c64dpainter.png "$WORK/mac-$name" "$VNUM" >/dev/null
+	sed -e "s|{CPU}|$cpu|" -e "s|{OTHER}|$other|" "packaging/macos/How to open.txt" >"$WORK/mac-$name/How to open.txt"
+	(cd "$WORK/mac-$name" && zip -qry "../../C64DPainter-macOS-$name.zip" .)
+done
 
 rm -rf "$WORK"
 echo "Done:"
