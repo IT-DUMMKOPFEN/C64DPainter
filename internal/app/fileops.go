@@ -25,12 +25,16 @@ const (
 	exportPNG320
 	exportPNG160
 	exportPNGBorder
+	exportART
+	exportDD
 )
 
 var openFilters = []Filter{
-	{"All supported files", "*.c64dp;*.kla;*.koa;*.ocp;*.ami;*.png;*.bmp"},
+	{"All supported files", "*.c64dp;*.kla;*.koa;*.ocp;*.ami;*.art;*.aas;*.hpi;*.dd;*.ddl;*.png;*.bmp"},
 	{"C64 DPainter project with layers (*.c64dp)", "*.c64dp"},
 	{"Koala Painter (*.kla, *.koa)", "*.kla;*.koa"},
+	{"Art Studio hires (*.art, *.aas, *.hpi)", "*.art;*.aas;*.hpi"},
+	{"Doodle hires (*.dd, *.ddl)", "*.dd;*.ddl"},
 	{"Advanced Art Studio (*.ocp)", "*.ocp"},
 	{"Amica Paint (*.ami)", "*.ami"},
 	{"PNG image (*.png)", "*.png"},
@@ -146,15 +150,7 @@ func (a *App) cmdNew() {
 	if !a.confirmDiscard() {
 		return
 	}
-	a.sel.state = selNone
-	bg, border := a.pic.BG, a.pic.Border
-	a.setFlatPicture(c64.NewPicture(bg, border))
-	a.undos[a.page], a.redos[a.page] = nil, nil
-	a.dirty[a.page] = false
-	a.filePath[a.page] = ""
-	a.updateTitle()
-	a.setStatus("New picture")
-	a.askWorkDir(nil)
+	a.askMode(false, func() { a.askWorkDir(nil) })
 }
 
 func (a *App) cmdOpen() {
@@ -198,6 +194,33 @@ func (a *App) openPath(p string) {
 			a.setStatus("Project loaded: " + filepath.Base(p))
 			a.addRecent(p)
 		}
+		return
+	}
+	if ext == ".art" || ext == ".aas" || ext == ".hpi" || ext == ".dd" || ext == ".ddl" {
+		load, kind := c64.LoadART, "Art Studio hires"
+		if ext == ".dd" || ext == ".ddl" {
+			load, kind = c64.LoadDD, "Doodle"
+		}
+		pic, err := load(data)
+		if err != nil {
+			a.host.Info(AppName, err.Error())
+			return
+		}
+		if !a.confirmDiscard() {
+			return
+		}
+		if kind == "Doodle" {
+			pic.Border = a.pic.Border
+		}
+		a.pushUndo(a.pic.Clone())
+		a.setFlatPicture(pic)
+		a.syncMode()
+		a.filePath[a.page] = p
+		a.dirty[a.page] = false
+		a.sel.state = selNone
+		a.updateTitle()
+		a.setStatus("Loaded " + kind + " picture: " + filepath.Base(p))
+		a.addRecent(p)
 		return
 	}
 	if ext == ".ocp" || ext == ".ami" {
@@ -305,12 +328,27 @@ func (a *App) cmdSaveAs() bool {
 	if a.filePath[a.page] != "" {
 		name = filepath.Base(a.filePath[a.page])
 	}
-	p, ok := a.host.SaveFile("Save as", []Filter{
+	filters := []Filter{
 		{"C64 DPainter project with layers (*.c64dp)", "*.c64dp"},
 		{"Koala Painter (*.kla)", "*.kla"},
 		{"PNG image 320×200 (*.png)", "*.png"},
 		{"C64 program (*.prg)", "*.prg"},
-	}, a.set.LastDir, name, "c64dp")
+	}
+	if a.hires() {
+		filters = []Filter{
+			{"C64 DPainter project with layers (*.c64dp)", "*.c64dp"},
+			{"Art Studio hires (*.art)", "*.art"},
+			{"Doodle (*.dd)", "*.dd"},
+			{"PNG image 320×200 (*.png)", "*.png"},
+			{"C64 program (*.prg)", "*.prg"},
+		}
+		if ext := strings.ToLower(filepath.Ext(name)); ext == ".kla" || ext == ".koa" {
+			name = trimExt(name) + ".c64dp"
+		}
+	} else if ext := strings.ToLower(filepath.Ext(name)); ext == ".art" || ext == ".dd" {
+		name = trimExt(name) + ".c64dp"
+	}
+	p, ok := a.host.SaveFile("Save as", filters, a.set.LastDir, name, "c64dp")
 	if !ok {
 		return false
 	}
@@ -348,6 +386,18 @@ func (a *App) saveTo(p string) bool {
 		kind = exportPNG320
 	case ".prg":
 		kind = exportPRG
+	case ".art", ".aas", ".hpi":
+		kind = exportART
+	case ".dd", ".ddl":
+		kind = exportDD
+	}
+	if a.hires() && kind == exportKLA {
+		a.host.Info(AppName, "A hires picture cannot be saved as Koala (multicolor). Choose .c64dp, .art, .dd, .png or .prg.")
+		return false
+	}
+	if !a.hires() && (kind == exportART || kind == exportDD) {
+		a.host.Info(AppName, "A multicolor picture cannot be saved as a hires file. Choose .c64dp, .kla, .png or .prg.")
+		return false
 	}
 	if !a.writeExport(p, kind) {
 		return false
@@ -358,7 +408,7 @@ func (a *App) saveTo(p string) bool {
 	if a.usesLayers() {
 		a.setStatus("Saved " + filepath.Base(p) + " – visible layers merged. Save as .c64dp to keep the layers.")
 	}
-	if ext == ".kla" || ext == ".koa" || ext == ".c64dp" {
+	if ext == ".kla" || ext == ".koa" || ext == ".c64dp" || kind == exportART || kind == exportDD {
 		a.addRecent(p)
 	}
 	return true
@@ -387,7 +437,15 @@ func (a *App) writeExport(p string, kind int) bool {
 	case exportKLA:
 		data = a.pic.SaveKLA()
 	case exportPRG:
-		data = a.pic.PRG()
+		if a.hires() {
+			data = a.pic.HiresPRG(a.pal)
+		} else {
+			data = a.pic.PRG()
+		}
+	case exportART:
+		data = a.pic.SaveART(a.pal)
+	case exportDD:
+		data = a.pic.SaveDD(a.pal)
 	case exportPNG320:
 		data, err = a.pic.SavePNG(a.pal, c64.PNG320)
 	case exportPNG160:
@@ -425,6 +483,10 @@ func (a *App) cmdExport(kind int) {
 		f, name, ext, title = []Filter{{"PNG image (*.png)", "*.png"}}, base+"_160.png", "png", "Export PNG 160×200"
 	case exportPNGBorder:
 		f, name, ext, title = []Filter{{"PNG image (*.png)", "*.png"}}, base+"_border.png", "png", "Export PNG with border"
+	case exportART:
+		f, name, ext, title = []Filter{{"Art Studio hires (*.art)", "*.art"}}, base+".art", "art", "Export as Art Studio hires"
+	case exportDD:
+		f, name, ext, title = []Filter{{"Doodle (*.dd)", "*.dd"}}, base+".dd", "dd", "Export as Doodle"
 	}
 	p, ok := a.host.SaveFile(title, f, a.set.LastDir, name, ext)
 	if !ok {
@@ -433,7 +495,7 @@ func (a *App) cmdExport(kind int) {
 	p = FixDoubleExt(p)
 	if a.writeExport(p, kind) {
 		a.rememberDir(p)
-		if kind == exportKLA {
+		if kind == exportKLA || kind == exportART || kind == exportDD {
 			a.dirty[a.page] = false
 			a.updateTitle()
 		}

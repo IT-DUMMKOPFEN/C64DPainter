@@ -285,6 +285,11 @@ func Convert(src image.Image, pal *Palette, o ConvertOptions) *Picture {
 // ditherPass gives every pixel one of the allowed palette colors, using the
 // selected dithering method. It returns palette indices.
 func ditherPass(px [][3]int, pr *[16][3]int, o ConvertOptions, allowed func(x, y int) []int) []uint8 {
+	return ditherPassW(px, W, pr, o, allowed)
+}
+
+// ditherPassW is ditherPass for pictures of width W (160) or HW (320).
+func ditherPassW(px [][3]int, W int, pr *[16][3]int, o ConvertOptions, allowed func(x, y int) []int) []uint8 {
 	out := make([]uint8, W*H)
 	dist := colorMetric(o.Match)
 	strength := float64(clamp100(o.Strength)) / 100

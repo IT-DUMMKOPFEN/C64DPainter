@@ -86,7 +86,7 @@ func (a *App) closePetscii() {
 	a.pet.open = false
 	a.pet.dropOpen = false
 	a.modal = nil
-	a.setStatus("Back to the multicolor editor")
+	a.setStatus("Back to the picture")
 }
 
 func (e *petEditor) push() {
@@ -895,7 +895,7 @@ func (a *App) pictureRGB() [][3]int {
 	out := make([][3]int, 320*200)
 	for y := 0; y < 200; y++ {
 		for x := 0; x < 320; x++ {
-			c := a.pal.Colors[a.pic.ColorAt(x/2, y)]
+			c := a.pal.Colors[a.pic.ColorAt(x/asp, y)]
 			out[y*320+x] = [3]int{int(c >> 16 & 255), int(c >> 8 & 255), int(c & 255)}
 		}
 	}

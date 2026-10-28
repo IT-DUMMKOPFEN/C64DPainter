@@ -80,7 +80,7 @@ func (a *App) openSprites() {
 func (a *App) closeSprites() {
 	a.spr.open = false
 	a.modal = nil
-	a.setStatus("Back to the multicolor editor")
+	a.setStatus("Back to the picture")
 }
 
 func (e *sprEditor) sp() *c64.Sprite { return &e.bank.Sprites[e.cur] }
@@ -688,10 +688,10 @@ func (a *App) sprDrawLeft(r gfx.Rect) {
 	}
 	y += (len(ops)+1)/2*26 + 4
 	br := gfx.Rect{X: x, Y: y, W: w, H: 24}
-	if u.ButtonEx("sp_brush", br, "Use as brush", false, s.Multi) {
+	if u.ButtonEx("sp_brush", br, "Use as brush", false, s.Multi || a.hires()) {
 		a.later(a.sprUseAsBrush)
 	}
-	u.Tip("sp_brush", br, "Paint with this multicolor sprite in the multicolor editor")
+	u.Tip("sp_brush", br, "Paint with this sprite in the picture (hires sprites only in hires pictures)")
 	y += 32
 	if e.path != "" {
 		for _, ln := range wrapText(font.UI, filepath.Base(e.path), w) {
@@ -830,13 +830,15 @@ func (a *App) sprDrawRight(r gfx.Rect) {
 func (a *App) sprUseAsBrush() {
 	e := a.spr
 	s := e.sp()
-	if !s.Multi {
+	if !s.Multi && !a.hires() {
 		return
 	}
-	br := &CustomBrush{W: 12, H: c64.SpriteH, Pix: make([]int8, 12*c64.SpriteH)}
+	// multicolor picture: 12 wide pixels; hires picture: 24 pixels
+	w := 24 / asp
+	br := &CustomBrush{W: w, H: c64.SpriteH, Pix: make([]int8, w*c64.SpriteH)}
 	for y := 0; y < c64.SpriteH; y++ {
-		for x := 0; x < 12; x++ {
-			br.Pix[y*12+x] = int8(e.bank.SlotColor(s, s.Get(x, y)))
+		for x := 0; x < w; x++ {
+			br.Pix[y*w+x] = int8(e.bank.ColorAt(s, x*asp, y))
 		}
 	}
 	a.closeSprites()

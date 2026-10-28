@@ -374,3 +374,49 @@ func TestLoadOCPAndAMI(t *testing.T) {
 		t.Fatal("short AMI must fail")
 	}
 }
+
+func TestProtectLayers(t *testing.T) {
+	p := NewPicture(0, 0)
+	p.ToLayers()
+	// layer 2 (index 0): three colors in cell 0
+	p.Active = 0
+	for i, c := range []uint8{2, 5, 7} {
+		p.Plot(i, 0, c, ConflictBlock, nil)
+	}
+	// layer 3: a fourth color replaces the rarest – normally in layer 2 too
+	p.Active = 1
+	q := *p
+	if r := q.Plot(3, 1, 1, ConflictReplace, nil); r != PlotReplaced {
+		t.Fatal("replace without protection")
+	}
+	if c, _ := q.LayerColorAt(0, 0, 0); c != 1 {
+		t.Fatalf("without protection layer 2 changes: %d", c)
+	}
+	// with protection every color belongs to layer 2: blocked
+	q = *p
+	if r := q.Plot(3, 1, 1, ConflictReplace|ConflictProtect, nil); r != PlotBlocked {
+		t.Fatal("protected: blocked")
+	}
+	if c, _ := q.LayerColorAt(0, 0, 0); c != 2 {
+		t.Fatal("layer 2 must stay")
+	}
+	// layer 2 has red and green, layer 3 yellow (more pixels): with protection
+	// yellow of the active layer is replaced, not the rarer colors of layer 2
+	p = NewPicture(0, 0)
+	p.ToLayers()
+	p.Plot(0, 0, 2, ConflictBlock, nil)
+	p.Plot(1, 0, 5, ConflictBlock, nil)
+	p.Active = 1
+	for y := 1; y < 5; y++ {
+		p.Plot(2, y, 7, ConflictBlock, nil)
+	}
+	if r := p.Plot(3, 7, 1, ConflictReplace|ConflictProtect, nil); r != PlotReplaced {
+		t.Fatal("protected: own color replaced")
+	}
+	if c, _ := p.LayerColorAt(1, 2, 2); c != 1 {
+		t.Fatalf("own pixel replaced: %d", c)
+	}
+	if c, _ := p.LayerColorAt(0, 0, 0); c != 2 {
+		t.Fatal("other layer unchanged")
+	}
+}

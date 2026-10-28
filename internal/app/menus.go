@@ -34,7 +34,7 @@ func (a *App) buildMenus() {
 	a.menus = []*Menu{
 		{Title: "File", Items: append(append([]MenuItem{
 			item("New", "Ctrl+N", func() { a.later(a.cmdNew) }),
-			item("Open … (C64DP, KLA, OCP, AMI, PNG, BMP)", "Ctrl+O", func() { a.later(a.cmdOpen) }),
+			item("Open … (C64DP, KLA, OCP, AMI, ART, DD, PNG, BMP)", "Ctrl+O", func() { a.later(a.cmdOpen) }),
 			item("Import image (320×200) …", "Ctrl+I", func() { a.later(a.cmdImport) }),
 			item("Save", "Ctrl+S", func() { a.later(func() { a.cmdSave() }) }),
 			item("Save as …", "Ctrl+Shift+S", func() { a.later(func() { a.cmdSaveAs() }) }),
@@ -45,10 +45,12 @@ func (a *App) buildMenus() {
 		}, a.recentItems()...), []MenuItem{
 			sep(),
 			head("Export"),
-			item("Koala Painter (.kla) …", "", func() { a.later(func() { a.cmdExport(exportKLA) }) }),
+			{Label: "Koala Painter (.kla) …", Action: func() { a.later(func() { a.cmdExport(exportKLA) }) }, Enabled: func() bool { return !a.hires() }},
+			{Label: "Art Studio hires (.art) …", Action: func() { a.later(func() { a.cmdExport(exportART) }) }, Enabled: a.hires},
+			{Label: "Doodle hires (.dd) …", Action: func() { a.later(func() { a.cmdExport(exportDD) }) }, Enabled: a.hires},
 			item("C64 program (.prg) …", "Ctrl+E", func() { a.later(func() { a.cmdExport(exportPRG) }) }),
 			item("PNG 320×200 …", "", func() { a.later(func() { a.cmdExport(exportPNG320) }) }),
-			item("PNG 160×200 (native pixels) …", "", func() { a.later(func() { a.cmdExport(exportPNG160) }) }),
+			{Label: "PNG 160×200 (native pixels) …", Action: func() { a.later(func() { a.cmdExport(exportPNG160) }) }, Enabled: func() bool { return !a.hires() }},
 			item("PNG 384×272 with border …", "", func() { a.later(func() { a.cmdExport(exportPNGBorder) }) }),
 			sep(),
 			item("Load template …", "", func() { a.later(a.loadTemplateDialog) }),
@@ -69,8 +71,8 @@ func (a *App) buildMenus() {
 			item("Swap page (spare page)", "J", a.swapPage),
 			item("Copy picture to other page", "", a.copyToSpare),
 			sep(),
-			item("Auto dither … (experimental)", "Shift+A", func() { a.later(a.openAutoDither) }),
-			check("Dither brush (experimental)", "Shift+D", func() bool { return a.tool == ToolDither }, func() { a.setTool(ToolDither) }),
+			{Label: "Auto dither … (experimental)", Key: "Shift+A", Action: func() { a.later(a.openAutoDither) }, Enabled: func() bool { return !a.hires() }},
+			{Label: "Dither brush (experimental)", Key: "Shift+D", Check: func() bool { return a.tool == ToolDither }, Action: func() { a.setTool(ToolDither) }, Enabled: func() bool { return !a.hires() }},
 			sep(),
 			item("Swap color in picture …", "", func() { a.openSwapDialog(false) }),
 			check("Swap color in cells (brush) …", "", func() bool { return a.tool == ToolCellSwap }, func() { a.openSwapDialog(true) }),
@@ -89,7 +91,13 @@ func (a *App) buildMenus() {
 			{Label: "Half size", Key: "H", Action: func() { a.transformQuick(qHalf) }, Enabled: selOrBrush},
 			{Label: "Double size", Key: "Shift+H", Action: func() { a.transformQuick(qDouble) }, Enabled: selOrBrush},
 			sep(),
-			{Label: "Rotate, scale, shear …", Key: "", Action: a.openTransformDialog, Enabled: hasSel},
+			{Label: "Rotate, scale, shear, perspective …", Key: "", Action: a.openTransformDialog, Enabled: hasSel},
+			check("Perspective handles", "", func() bool { return a.sel.persp.on }, func() {
+				a.sel.persp.on = !a.sel.persp.on
+				if a.sel.persp.on {
+					a.selEnsureFloating()
+				}
+			}),
 			{Label: "Reset transformation", Key: "", Action: func() { a.transformQuick(qReset) }, Enabled: func() bool { return a.sel.state == selFloating }},
 			sep(),
 			{Label: "Apply", Key: "Enter", Action: a.selCommit, Enabled: func() bool { return a.sel.state == selFloating }},
@@ -119,6 +127,7 @@ func (a *App) buildMenus() {
 			{Label: "Layer 3", Action: func() { a.toggleLayer(1) }, Check: func() bool { return !a.pic.Hide[1] }, Enabled: func() bool { return a.extraLayers }},
 			{Label: "Layer 4", Action: func() { a.toggleLayer(2) }, Check: func() bool { return !a.pic.Hide[2] }, Enabled: func() bool { return a.extraLayers }},
 			sep(),
+			check("Protect other layers on clashes", "", func() bool { return a.set.ProtectLayers }, func() { a.set.ProtectLayers = !a.set.ProtectLayers; a.saveSettings() }),
 			item("Clear active layer", "", a.clearActiveLayer),
 			item("Load template …", "", func() { a.later(a.loadTemplateDialog) }),
 		}},
@@ -130,6 +139,7 @@ func (a *App) buildMenus() {
 			{Label: "Save brush …", Action: func() { a.later(a.saveBrushDialog) }, Enabled: func() bool { return a.brushShape == BrushCustom && a.custom != nil }},
 			sep(),
 			{Label: "Selection as brush", Action: a.selToBrush, Enabled: hasSel},
+			{Label: "Brush as selection (to transform it)", Action: a.brushToSelection, Enabled: func() bool { return a.brushShape == BrushCustom && a.custom != nil }},
 			item("Standard brush", "Shift+B", a.restoreBrush),
 			sep(),
 			{Label: "Flip horizontally", Key: "X", Action: func() { a.transformQuick(qFlipX) }, Enabled: selOrBrush},
@@ -190,6 +200,7 @@ func (a *App) buildMenus() {
 			item("Help contents", "F1", func() { a.openHelp("") }),
 			item("Getting started", "", func() { a.openHelp("start") }),
 			item("Multicolor rules", "", func() { a.openHelp("rules") }),
+			item("Graphics modes (hires)", "", func() { a.openHelp("modes") }),
 			item("Tools", "", func() { a.openHelp("tools") }),
 			item("Keyboard shortcuts", "?", func() { a.openHelp("keys") }),
 			item("Import & convert", "", func() { a.openHelp("import") }),

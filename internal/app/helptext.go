@@ -4,7 +4,9 @@ var helpTopics = []helpTopic{
 	{id: "start", group: "Getting started", title: "First steps", body: `
 # Welcome to C64 DPainter
 
-C64 DPainter is a paint program for pictures in the **multicolor bitmap mode** of the Commodore 64. Everything you paint automatically follows the rules of the C64's VIC-II graphics chip. What you see on screen is exactly what a real C64 can display.
+C64 DPainter is a paint program for pictures in the **bitmap modes** of the Commodore 64: **multicolor**, **hires** and **hires free**. Everything you paint automatically follows the rules of the C64's VIC-II graphics chip. What you see on screen is exactly what a real C64 can display.
+
+At the start and with **File → New** you choose the mode (see "Graphics modes").
 
 ## Your first picture in five steps
 
@@ -19,6 +21,7 @@ C64 DPainter is a paint program for pictures in the **multicolor bitmap mode** o
 {MACNOTE}
 
 -> rules | Understand the multicolor rules
+-> modes | Multicolor, hires and hires free
 -> import | Import and convert a 320×200 picture
 -> ui | The user interface at a glance
 -> keys | All keyboard shortcuts
@@ -59,6 +62,8 @@ File, edit, selection, layer and view commands, options (palette, color conflict
 
 All dialog windows (help, about, palette, grid, import, transform …) can be moved inside the program window: drag them by their **title bar**. A **double-click** on the title bar centers the window again. Each window remembers its place until you quit the program.
 
+**Text fields** (text tool, test text of the font editor, the built-in file window): click to place the cursor, drag or ` + "`Shift+arrows`" + ` to select, double-click selects everything; ` + "`Home`" + ` / ` + "`End`" + `, ` + "`Backspace`" + `, ` + "`Del`" + ` and ` + "`Ctrl+A`" + ` work as usual.
+
 The **Rotate, scale and shear** window does not darken the picture, so you can move it aside and watch the selection change.
 
 ## Status bar (bottom)
@@ -98,6 +103,41 @@ Set the background color on the left under **Colors** (or ` + "`Ctrl`" + `+click
 
 -> conflict | Color conflict settings
 -> tech | Technical background (memory, registers)
+`},
+	{id: "modes", title: "Graphics modes: hires", body: `
+# Graphics modes: multicolor, hires and hires free
+
+At the start of the program and with **File → New** a window asks for the mode of the new picture. Press **1**, **2** or **3** or click a card. Every page keeps its own mode; opening a file sets the mode of the file.
+
+= Multicolor | 160 × 200 pixels, twice as wide; 4 × 8 cells with the background plus 3 colors (see "Multicolor rules")
+= Hires | 320 × 200 pixels; 8 × 8 cells with **2 colors** each
+= Hires free | 320 × 200 pixels with **all 16 colors everywhere**
+
+## Hires (standard bitmap mode)
+
+In the standard bitmap mode of the C64 every pixel is one bit. Each 8 × 8 cell takes its two colors from the screen RAM: the high nibble for the set bits, the low nibble for the clear bits. There is no common background color.
+
+- The **paper** color (in the side panel where multicolor shows the background) is the color of empty pixels – where no layer has painted. It counts as one of the two colors of a cell as long as the cell still has empty pixels.
+- When a cell already has two colors, a third one is handled as in multicolor: **block**, **replace the rarest color** or **use the nearest color** (side panel or Options). The paper is never replaced; **Protect other layers** works here too.
+- The eraser only removes a pixel when the paper color still fits into the cell.
+- The rules count all layers together, as if all were visible.
+- All tools, patterns, the selection with all transformations and the perspective, text, gradients, smear, shade, symmetry, templates and the import work in hires. **Auto dither** and the **dither brush** are only for multicolor pictures.
+
+## Hires free
+
+Paint with all 16 colors without any cell rules – handy for sketches and for pictures you keep editing. Cells with more than two colors get a **red frame** (from zoom 2×); the cell info in the side panel shows the colors of the cell under the mouse and the number of such cells.
+
+When you export for the C64 (Art Studio, Doodle, PRG), every cell keeps its two most frequent colors; the other pixels get the nearer of the two. PNG and the project file keep all colors.
+
+## Files
+
+- **Project (.c64dp)** keeps the mode, the layers and the template.
+- **Art Studio hires (.art, .aas, .hpi)**: 9009 bytes, load address $2000: bitmap, screen RAM and border color.
+- **Doodle (.dd, .ddl)**: 9218 bytes, load address $5C00: screen RAM at $5C00, bitmap at $6000.
+- **PNG** 320 × 200 or 384 × 272 with border.
+- **C64 program (.prg)**: a viewer for the hires picture (bitmap at $2000, screen RAM at $0400, $D016 = $08). **Space** resets the C64.
+
+Koala and the 160 × 200 PNG are for multicolor pictures only.
 `},
 	{id: "conflict", title: "Color conflicts", body: `
 # Color conflicts
@@ -487,10 +527,26 @@ On the left in the side panel (with the select tool active) or with **Selection 
 - **Rotate** by any angle (−180° to 180°)
 - **Width / height** from 5 % to 400 %
 - **Shear ↔ / ↕** – slant in both directions
+- **Perspective (handles)** – see below
 
 All values always refer to the **original** content, so trying things out never loses quality. Rotations are calculated on screen and take the wide multicolor pixels into account.
 
 > The result of a transformation also follows the multicolor rules. In full cells the conflict mode decides.
+
+## Perspective
+
+Switch on **Perspective (handles)** in the side panel, in the transform window or with **Selection → Perspective handles**. The selection gets six handles: the four corners and one in the middle of two edges.
+
+- **↔ Top / bottom**: the corners of the top and bottom edge move **left and right**.
+- **↕ Left / right**: the corners of the left and right edge move **up and down**.
+- **Opposite**: when you drag a corner, the other corner of the same edge moves the other way – the selection stays a symmetric trapezoid.
+- **Free**: every corner moves on its own.
+- The handle in the **middle** of an edge moves the whole edge (a slanted perspective).
+- **Reset** removes the perspective; rotation, size and shear stay usable together with it.
+
+The distortion is a real perspective: the far side becomes narrower and its rows come closer together.
+
+To distort a **brush**, use **Brushes → Brush as selection**, transform it and click **Use as brush** again.
 
 ## Clipboard
 
@@ -561,6 +617,7 @@ A picture has **four layers** (side panel **Layers** or the **Layer** menu). The
 - Pixels you have not painted on a layer are **transparent**: the layers behind show through. Where no layer has a pixel, you see the background color.
 - The **Eraser** (` + "`W`" + `) makes pixels of the active layer transparent again. **Clear layer** empties the whole active layer.
 - The **eye icon** shows or hides a layer. Switched-off layers 3 and 4 are hidden, but their colors still count for the cell rules.
+- **Protect other layers on clashes** (in the Layers panel or the **Layer** menu): when a cell is full, only colors that are used by the **active** layer alone may be replaced. The other layers stay exactly as they are; if every color of the cell belongs to another layer, the pixel is blocked. This is useful with the conflict mode "Replace rarest color" while you edit one layer.
 
 > **The multicolor rules apply to layers 2–4 together.** In every 4 × 8 cell, all three layers together may use the background color plus at most three colors – **also when a layer is hidden**. So every combination of visible layers is always a valid C64 picture. The cell info marks colors that only come from hidden layers.
 
@@ -622,7 +679,7 @@ A **runnable program** with a built-in viewer. See "Running the C64 program".
 
 ## Loading
 
-**C64 DPainter projects (.c64dp)**, **PNG**, **BMP** (1/4/8/16/24/32 bit, also RLE compressed), **KLA/KOA**, **Advanced Art Studio (.ocp)** and **Amica Paint (.ami)**. KLA, OCP, AMI, PNG and BMP go into layer 2. OCP and AMI files are only read: save the picture as project, KLA, PNG or PRG.
+**C64 DPainter projects (.c64dp)**, **PNG**, **BMP** (1/4/8/16/24/32 bit, also RLE compressed), **KLA/KOA**, **Advanced Art Studio (.ocp)**, **Amica Paint (.ami)** and the hires formats **Art Studio hires (.art)** and **Doodle (.dd)** (see "Graphics modes"). KLA, OCP, AMI, PNG and BMP go into layer 2. OCP and AMI files are only read: save the picture as project, KLA, PNG or PRG.
 
 ## Recent files
 
@@ -834,7 +891,16 @@ Tip: in the multicolor editor, **View → Sprite grid (24×21)** shows a grid of
 	{id: "fonts", title: "Font editor", body: `
 # Font editor
 
-**Tools → Font editor …** opens an editor for **C64 character sets**: 256 characters of 8 × 8 hires pixels (2048 bytes). It starts with the C64 font; **Close font editor** brings back the multicolor editor.
+**Tools → Font editor …** opens an editor for **C64 character sets**: 256 characters of 8 × 8 pixels (2048 bytes), in **hires** or **multicolor**. It starts with the C64 font; **Close font editor** brings back the multicolor editor.
+
+## Hires or multicolor
+
+**Mode** on the left (or ` + "`C`" + `) switches the whole character set. The bits stay, as on the C64 – the characters look different afterwards.
+
+- **Hires**: 8 × 8 pixels in the character color on the background.
+- **Multicolor**: 4 × 8 double wide pixels in four colors: background ($D021, bit pair %00), **multicolor 1** ($D022, %01), **multicolor 2** ($D023, %10) and the **character color** (%11, color RAM). The character color can only be 0–7 – on the C64 bit 3 of the color RAM switches a character to multicolor.
+- On the right choose the drawing color with ` + "`0`" + ` – ` + "`3`" + ` (hires: 0 and 1) and set its C64 color with the palette.
+- In multicolor the left button paints the chosen color, the right button the background. Rotate and Compare with ROM are for hires only.
 
 ## Drawing
 
@@ -847,17 +913,17 @@ Tip: in the multicolor editor, **View → Sprite grid (24×21)** shows a grid of
 - **Inverse half** fills the characters 128–255 with the inverted characters 0–127, as in the C64 ROM.
 - **Reference ROM**: upper or lower case – used by Original, Compare and the test text.
 - **Test text**: click the field and type; the text is shown in your font (as tiles when a tile size is chosen).
-- The character and background colors are only for the display.
+- The colors are saved with the project and written into the ACME source.
 
 ## New and import
 
 - **New …**: the C64 font (upper or lower case) or an empty set.
-- **Import …** reads characters from the **multicolor picture**, an **image of 320 × 200 pixels**, or the **C64 font** (upper or lower case). The picture is cut into 8 × 8 cells, read row by row: choose the **first cell** (or click it), the **number** and the **first character** to fill. Every pixel that is not the background color becomes a set pixel (hires; multicolor pixels count as two).
+- **Import …** reads characters from the **multicolor picture**, an **image of 320 × 200 pixels**, or the **C64 font** (upper or lower case). The picture is cut into 8 × 8 cells, read row by row: choose the **first cell** (or click it), the **number** and the **first character** to fill. Hires: every pixel that is not the background color becomes a set pixel (multicolor pixels count as two). **Multicolor**: every pixel pair gets the nearest of the four colors; **Find colors** takes the most frequent colors of the cells (the character color from 0–7), **Keep colors** uses the colors of the set.
 
 ## Files and export
 
 - **Save / Open**: font project (` + "`.c64font`" + `). **Open** also reads raw character sets (` + "`.bin`" + `, ` + "`.64c`" + `, 2048 or 4096 bytes, with or without load address).
-- **Export ASM**: source code for the **ACME** assembler: all 256 characters as ` + "`!byte`" + ` lines drawn with ` + "`.`" + ` and ` + "`#`" + `, with comments and the value for $D018. ` + "`acme --cpu 6510 font.asm`" + ` writes ` + "`font.prg`" + ` (data at $3000, a multiple of $800).
+- **Export ASM**: source code for the **ACME** assembler: all 256 characters as ` + "`!byte`" + ` lines (hires drawn with ` + "`.`" + ` and ` + "`#`" + `, multicolor as bit pairs), with comments, the mode, all colors ($D021, $D022, $D023, the color RAM value) and the value for $D018. ` + "`acme --cpu 6510 font.asm`" + ` writes ` + "`font.prg`" + ` (data at $3000, a multiple of $800).
 - **Export BIN**: the raw 2048 bytes. **Export PNG**: all characters as 128 × 128 pixels.
 
 ## Keys

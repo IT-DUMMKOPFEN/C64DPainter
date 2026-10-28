@@ -36,6 +36,8 @@ type Selection struct {
 	startBox  [4]float64
 	stampCopy bool
 	transpBG  bool
+	persp     perspective
+	perspFrom [4]float64 // offsets at the start of a perspective drag
 }
 
 // xform ist die Transformation der schwebenden Auswahl (in Hires-Einheiten).
@@ -46,9 +48,20 @@ type xform struct {
 	shx, shy float64
 	flipX    bool
 	flipY    bool
+	asp      float64 // screen pixels per picture pixel across (0 = 2, multicolor)
 }
 
-func identity(cx, cy float64) xform { return xform{cx: cx, cy: cy, sx: 1, sy: 1} }
+// aspect returns the pixel aspect of the transformation.
+func (t xform) aspect() float64 {
+	if t.asp == 0 {
+		return 2
+	}
+	return t.asp
+}
+
+func identity(cx, cy float64) xform {
+	return xform{cx: cx, cy: cy, sx: 1, sy: 1, asp: float64(asp)}
+}
 
 func (t xform) matrix() (m00, m01, m10, m11 float64) {
 	fx, fy := t.sx, t.sy
@@ -73,7 +86,7 @@ func (t xform) matrix() (m00, m01, m10, m11 float64) {
 // bounds liefert den umschließenden Rahmen relativ zum Mittelpunkt (Hires-Einheiten).
 func (t xform) bounds(w, h int) (minU, minV, maxU, maxV float64) {
 	m00, m01, m10, m11 := t.matrix()
-	hw, hh := float64(w), float64(h)/2
+	hw, hh := float64(w)*t.aspect()/2, float64(h)/2
 	minU, minV = math.Inf(1), math.Inf(1)
 	maxU, maxV = math.Inf(-1), math.Inf(-1)
 	for _, c := range [4][2]float64{{-hw, -hh}, {hw, -hh}, {hw, hh}, {-hw, hh}} {
@@ -94,8 +107,9 @@ func renderXform(src *CustomBrush, t xform) (*CustomBrush, int, int) {
 	}
 	i00, i01, i10, i11 := m11/det, -m01/det, -m10/det, m00/det
 	minU, minV, maxU, maxV := t.bounds(src.W, src.H)
-	X0 := int(math.Floor(t.cx + minU/2 + 1e-6))
-	X1 := int(math.Ceil(t.cx + maxU/2 - 1e-6))
+	ap := t.aspect()
+	X0 := int(math.Floor(t.cx + minU/ap + 1e-6))
+	X1 := int(math.Ceil(t.cx + maxU/ap - 1e-6))
 	Y0 := int(math.Floor(t.cy + minV + 1e-6))
 	Y1 := int(math.Ceil(t.cy + maxV - 1e-6))
 	w, h := X1-X0, Y1-Y0
@@ -113,10 +127,10 @@ func renderXform(src *CustomBrush, t xform) (*CustomBrush, int, int) {
 	for y := 0; y < h; y++ {
 		V := float64(Y0+y) + 0.5 - t.cy
 		for x := 0; x < w; x++ {
-			U := (float64(X0+x) + 0.5 - t.cx) * 2
+			U := (float64(X0+x) + 0.5 - t.cx) * ap
 			u := i00*U + i01*V
 			v := i10*U + i11*V
-			si := int(math.Floor(u/2 + hw + 1e-9))
+			si := int(math.Floor(u/ap + hw + 1e-9))
 			sj := int(math.Floor(v + hh + 1e-9))
 			c := int8(-1)
 			if si >= 0 && sj >= 0 && si < src.W && sj < src.H {
@@ -175,6 +189,7 @@ func (a *App) selLift(copy bool) {
 	}
 	w, h := x1-x0+1, y1-y0+1
 	s.xf = identity(float64(x0)+float64(w)/2, float64(y0)+float64(h)/2)
+	s.persp.off = [4]float64{}
 	s.state = selFloating
 	a.selRender()
 }
@@ -186,6 +201,12 @@ func (a *App) selRender() {
 		return
 	}
 	s.out, s.ox, s.oy = renderXform(s.src, s.xf)
+	if s.persp.active() {
+		var dx, dy int
+		s.out, dx, dy = warpPerspective(s.out, &s.persp)
+		s.ox += dx
+		s.oy += dy
+	}
 	*a.pic = *s.under
 	a.noSym = true
 	defer func() { a.noSym = false }()
@@ -227,20 +248,28 @@ func (a *App) selBox() (x0, y0, x1, y1 float64, ok bool) {
 		ix0, iy0, ix1, iy1 := a.selRect()
 		return float64(ix0), float64(iy0), float64(ix1 + 1), float64(iy1 + 1), true
 	case selFloating:
-		minU, minV, maxU, maxV := s.xf.bounds(s.src.W, s.src.H)
-		return s.xf.cx + minU/2, s.xf.cy + minV, s.xf.cx + maxU/2, s.xf.cy + maxV, true
+		x0, y0, x1, y1 := a.perspBase()
+		if s.persp.active() {
+			q := s.persp.quad(x0, y0, x1, y1)
+			x0, y0, x1, y1 = q[0][0], q[0][1], q[0][0], q[0][1]
+			for _, c := range q {
+				x0, x1 = math.Min(x0, c[0]), math.Max(x1, c[0])
+				y0, y1 = math.Min(y0, c[1]), math.Max(y1, c[1])
+			}
+		}
+		return x0, y0, x1, y1, true
 	}
 	return 0, 0, 0, 0, false
 }
 
 func (a *App) picFToScreen(x, y float64) (int, int) {
 	ox, oy := a.origin()
-	return ox + int(math.Round(x*2*float64(a.zoom))), oy + int(math.Round(y*float64(a.zoom)))
+	return ox + int(math.Round(x*float64(asp*a.zoom))), oy + int(math.Round(y*float64(a.zoom)))
 }
 
 func (a *App) screenToPicF(sx, sy int) (float64, float64) {
 	ox, oy := a.origin()
-	return float64(sx-ox) / float64(2*a.zoom), float64(sy-oy) / float64(a.zoom)
+	return float64(sx-ox) / float64(asp*a.zoom), float64(sy-oy) / float64(a.zoom)
 }
 
 func (a *App) selScreenBox() (gfx.Rect, bool) {
@@ -272,6 +301,9 @@ func (a *App) handleRects() [9]gfx.Rect {
 func (a *App) selHandleAt(sx, sy int) int {
 	if a.sel.state != selFloating && a.sel.state != selSelected {
 		return -1
+	}
+	if a.sel.persp.on && a.sel.state == selFloating {
+		return a.perspHandleAt(sx, sy)
 	}
 	hs := a.handleRects()
 	if hs[handleRotate].Inset(-2).Contains(sx, sy) {
@@ -308,7 +340,7 @@ func (a *App) selContainsScreen(sx, sy int) bool {
 func (a *App) selectInput(px, py int, over bool) {
 	in := &a.in
 	s := &a.sel
-	clampP := func(x, y int) (int, int) { return clampI(x, 0, c64.W-1), clampI(y, 0, c64.H-1) }
+	clampP := func(x, y int) (int, int) { return clampI(x, 0, picW-1), clampI(y, 0, c64.H-1) }
 	if over && in.Pressed[1] && s.dragMode == 0 {
 		// rechte Taste: Auswahl verwerfen
 		if s.state == selFloating {
@@ -320,6 +352,11 @@ func (a *App) selectInput(px, py int, over bool) {
 	if over && in.Pressed[0] && s.dragMode == 0 {
 		h := a.selHandleAt(in.MX, in.MY)
 		switch {
+		case h >= hpTL:
+			s.dragMode = 4
+			s.handle = h
+			s.perspFrom = s.persp.off
+			s.dpx, s.dpy = a.screenToPicF(in.MX, in.MY)
 		case h >= 0:
 			if s.state == selSelected {
 				a.selLift(!in.Mods.Shift)
@@ -368,6 +405,17 @@ func (a *App) selectInput(px, py int, over bool) {
 			}
 		case 3:
 			a.selHandleDrag()
+		case 4:
+			mx, my := a.screenToPicF(in.MX, in.MY)
+			d := math.Round(mx - s.dpx)
+			if s.persp.vert {
+				d = math.Round(my - s.dpy)
+			}
+			old := s.persp.off
+			s.persp.drag(s.handle, s.perspFrom, d)
+			if s.persp.off != old {
+				a.selRender()
+			}
 		}
 		return
 	}
@@ -377,6 +425,9 @@ func (a *App) selectInput(px, py int, over bool) {
 			s.state = selNone
 		} else {
 			s.state = selSelected
+			if s.persp.on {
+				a.selLift(false) // perspective handles need a floating selection
+			}
 		}
 	}
 	s.dragMode = 0
@@ -387,8 +438,8 @@ func (a *App) selHandleDrag() {
 	mx, my := a.screenToPicF(a.in.MX, a.in.MY)
 	if s.handle == handleRotate {
 		cx, cy := s.start.cx, s.start.cy
-		a0 := math.Atan2(s.dpy-cy, (s.dpx-cx)*2)
-		a1 := math.Atan2(my-cy, (mx-cx)*2)
+		a0 := math.Atan2(s.dpy-cy, (s.dpx-cx)*float64(asp))
+		a1 := math.Atan2(my-cy, (mx-cx)*float64(asp))
 		ang := s.start.angle + (a1-a0)*180/math.Pi
 		if a.in.Mods.Shift {
 			ang = math.Round(ang/15) * 15
@@ -500,6 +551,9 @@ func (a *App) transformQuick(op int) {
 	}
 	if s.state == selFloating {
 		applyQuick(&s.xf, op)
+		if op == qReset {
+			s.persp.off = [4]float64{}
+		}
 		a.selRender()
 		a.setStatus("Selection: " + quickNames[op])
 		return
@@ -604,21 +658,35 @@ func (a *App) selPaste() {
 	s.src = a.clip.clone()
 	s.before = a.pic.Clone()
 	s.under = a.pic.Clone()
-	cx, cy := float64(c64.W)/2, float64(c64.H)/2
+	cx, cy := float64(picW)/2, float64(c64.H)/2
 	if a.mouseIn {
 		cx, cy = float64(a.mpx), float64(a.mpy)
 	}
 	s.xf = identity(math.Floor(cx-float64(s.src.W)/2)+float64(s.src.W)/2, math.Floor(cy-float64(s.src.H)/2)+float64(s.src.H)/2)
+	s.persp.off = [4]float64{}
 	s.state = selFloating
 	a.selRender()
 	a.setStatus("Pasted – drag to place, Enter applies")
+}
+
+// brushToSelection puts the custom brush into the picture as floating
+// selection, so it can be rotated, distorted … and taken back as brush.
+func (a *App) brushToSelection() {
+	if a.brushShape != BrushCustom || a.custom == nil {
+		return
+	}
+	clip := a.clip
+	a.clip = a.custom
+	a.selPaste()
+	a.clip = clip
+	a.setStatus("The brush is now a floating selection – transform it, then \"Use as brush\"")
 }
 
 func (a *App) selectAll() {
 	a.commitOrCancelForHistory()
 	a.setTool(ToolSelect)
 	a.sel.state = selSelected
-	a.sel.x0, a.sel.y0, a.sel.x1, a.sel.y1 = 0, 0, c64.W-1, c64.H-1
+	a.sel.x0, a.sel.y0, a.sel.x1, a.sel.y1 = 0, 0, picW-1, c64.H-1
 }
 
 // selToBrush macht aus der Auswahl einen Pinsel.
@@ -673,6 +741,12 @@ func (a *App) drawSelection() {
 		h := absI(s.y1-s.y0) + 1
 		lbl := itoa(w) + " × " + itoa(h)
 		a.drawCanvasLabel(r.Right()+6, r.Bottom()+4, lbl)
+		return
+	}
+	if s.state == selFloating && s.persp.on {
+		a.drawPerspective()
+		lbl := itoa(s.out.W) + " × " + itoa(s.out.H) + "  perspective"
+		a.drawCanvasLabel(r.Right()+8, r.Bottom()+6, lbl)
 		return
 	}
 	hs := a.handleRects()

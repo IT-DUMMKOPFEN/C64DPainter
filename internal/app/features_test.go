@@ -2,6 +2,8 @@ package app
 
 import (
 	"bytes"
+	"image"
+	"image/color"
 	"image/png"
 	"os"
 	"path/filepath"
@@ -446,14 +448,23 @@ func TestTextBrush(t *testing.T) {
 	a, _ := setup(t)
 	a.openTextDialog()
 	d := a.modal.(*textDialog)
-	d.text = ""
+	d.tf.Set("")
 	for _, r := range "Hi 64" {
 		a.Char(r)
 	}
 	step(a)
-	if d.text != "Hi 64" {
-		t.Fatalf("typed text: %q", d.text)
+	if d.tf.String() != "Hi 64" {
+		t.Fatalf("typed text: %q", d.tf.String())
 	}
+	// cursor editing: Home, then type at the start
+	a.KeyDown(KeyHome, Mods{})
+	a.Char('X')
+	step(a)
+	if d.tf.String() != "XHi 64" {
+		t.Fatalf("insert at the start: %q", d.tf.String())
+	}
+	a.KeyDown(KeyBackspace, Mods{})
+	step(a)
 	for f := 0; f < 3; f++ {
 		for e := 0; e < 3; e++ {
 			a.set.Text.Font, a.set.Text.Effect = f, e
@@ -675,13 +686,14 @@ func TestFontEditor(t *testing.T) {
 		t.Fatal("undo")
 	}
 	// typing in the test text does not trigger shortcuts
-	e.textFocus = true
+	e.tf.focus = true
+	e.tf.cur = len(e.tf.text)
 	a.Char('x')
 	step(a)
-	if !strings.HasSuffix(e.text, "x") {
+	if !strings.HasSuffix(e.tf.String(), "x") {
 		t.Fatal("test text")
 	}
-	e.textFocus = false
+	e.tf.focus = false
 	// 2×2 tile and import from the picture
 	e.f.Tile = 3
 	step(a)
@@ -760,5 +772,236 @@ func TestSelectionBrushColor2Transparent(t *testing.T) {
 	tclick(a, px, py, 0)
 	if a.pic.ColorAt(105, 105) != 5 || a.pic.ColorAt(110, 115) != 2 {
 		t.Fatalf("stamp: %d %d", a.pic.ColorAt(105, 105), a.pic.ColorAt(110, 115))
+	}
+}
+
+func TestPerspective(t *testing.T) {
+	src := &CustomBrush{W: 20, H: 10, Pix: make([]int8, 200)}
+	for i := range src.Pix {
+		src.Pix[i] = 2
+	}
+	p := &perspective{}
+	p.drag(hpTL, p.off, 5) // opposite: TR moves 5 to the left
+	if p.off != [4]float64{5, -5, 0, 0} {
+		t.Fatalf("opposite drag: %v", p.off)
+	}
+	out, dx, dy := warpPerspective(src, p)
+	if dx != 0 || dy != 0 || out.W != 20 || out.H != 10 {
+		t.Fatalf("warp size %d×%d at %d,%d", out.W, out.H, dx, dy)
+	}
+	row := func(y int) (int, int) {
+		x0, x1 := -1, -1
+		for x := 0; x < out.W; x++ {
+			if out.Pix[y*out.W+x] >= 0 {
+				if x0 < 0 {
+					x0 = x
+				}
+				x1 = x
+			}
+		}
+		return x0, x1
+	}
+	if x0, x1 := row(0); x0 < 4 || x0 > 6 || x1 < 13 || x1 > 15 {
+		t.Fatalf("top row %d..%d", x0, x1)
+	}
+	if x0, x1 := row(9); x0 != 0 || x1 != 19 {
+		t.Fatalf("bottom row %d..%d", x0, x1)
+	}
+	// free + middle handle; vertical mode
+	p = &perspective{free: true}
+	p.drag(hpBR, p.off, 3)
+	p.drag(hpMidA, p.off, -2)
+	if p.off != [4]float64{-2, -2, 3, 0} {
+		t.Fatalf("free drag: %v", p.off)
+	}
+	p = &perspective{vert: true}
+	p.drag(hpTR, p.off, 4)
+	if p.off != [4]float64{0, 4, -4, 0} {
+		t.Fatalf("vertical opposite: %v", p.off)
+	}
+
+	// in the program: selection, perspective handles, drag
+	a, _ := setup(t)
+	for y := 20; y < 60; y++ {
+		for x := 20; x < 60; x++ {
+			a.pic.Plot(x, y, 7, 0, a.pal)
+		}
+	}
+	a.setTool(ToolSelect)
+	a.sel.state = selSelected
+	a.sel.x0, a.sel.y0, a.sel.x1, a.sel.y1 = 20, 20, 59, 59
+	a.sel.persp.on = true
+	a.selEnsureFloating()
+	step(a)
+	hs := a.perspHandles()
+	if a.selHandleAt(hs[0][0], hs[0][1]) != hpTL {
+		t.Fatal("perspective handle")
+	}
+	tx, ty := hs[0][0], hs[0][1]
+	tdrag(a, tx, ty, tx+10*2*a.zoom, ty, 0)
+	if a.sel.persp.off[0] != 10 || a.sel.persp.off[1] != -10 {
+		t.Fatalf("drag in the program: %v", a.sel.persp.off)
+	}
+	a.selCommit()
+	if a.pic.ColorAt(22, 20) == 7 || a.pic.ColorAt(40, 20) != 7 || a.pic.ColorAt(21, 59) != 7 {
+		t.Fatalf("result: %d %d %d", a.pic.ColorAt(22, 20), a.pic.ColorAt(40, 20), a.pic.ColorAt(21, 59))
+	}
+}
+
+func TestFontEditorMulticolor(t *testing.T) {
+	a, _ := setup(t)
+	a.openFontEditor()
+	step(a)
+	e := a.fnt
+	e.cur = 0
+	a.Char('c') // multicolor
+	step(a)
+	if !e.f.Multi || e.f.FG > 7 {
+		t.Fatal("C switches to multicolor")
+	}
+	e.f.Data = [c64.CharsetSize]byte{}
+	a.Char('2')
+	step(a)
+	if e.slot != 2 {
+		t.Fatal("color key")
+	}
+	tclick(a, e.canvas.X+1*e.zx+1, e.canvas.Y+3*e.z+1, 0)
+	if e.f.Get(0, 1, 3) != 2 {
+		t.Fatalf("draw multicolor pixel: %d", e.f.Get(0, 1, 3))
+	}
+	tclick(a, e.canvas.X+1*e.zx+1, e.canvas.Y+3*e.z+1, 1)
+	if e.f.Get(0, 1, 3) != 0 {
+		t.Fatal("right button: background")
+	}
+	if e.canRotate() {
+		t.Fatal("no rotation in multicolor")
+	}
+}
+
+func TestHiresMode(t *testing.T) {
+	a, h := setup(t)
+	a.cmdNew()
+	step(a)
+	d, ok := a.modal.(*modeDialog)
+	if !ok {
+		t.Fatal("New asks for the mode")
+	}
+	d.choose(a, c64.ModeHires)
+	step(a)
+	if a.pic.Mode != c64.ModeHires || picW != 320 || asp != 1 {
+		t.Fatal("hires picture")
+	}
+	if a.modal != nil {
+		a.closeModal(false) // working folder (not shown with this host)
+	}
+	// draw a line with the mouse at hires pixels
+	a.fg = 2
+	a.setTool(ToolLine)
+	step(a)
+	x0, y0 := pc(a, 100, 50)
+	x1, y1 := pc(a, 140, 50)
+	tdrag(a, x0, y0, x1, y1, 0)
+	if a.pic.ColorAt(100, 50) != 2 || a.pic.ColorAt(140, 50) != 2 || a.pic.ColorAt(141, 50) == 2 {
+		t.Fatalf("hires line: %d %d %d", a.pic.ColorAt(100, 50), a.pic.ColorAt(140, 50), a.pic.ColorAt(141, 50))
+	}
+	// a third color in a cell is blocked (cell 12,6: paper + red)
+	a.fg = 5
+	a.setTool(ToolDraw)
+	step(a)
+	px, py := pc(a, 101, 51)
+	tclick(a, px, py, 0)
+	if a.pic.ColorAt(101, 51) == 5 {
+		t.Fatal("hires rule: third color must be blocked")
+	}
+	// fill, selection and perspective work in hires coordinates
+	a.fg = 7
+	a.setTool(ToolFill)
+	step(a)
+	px, py = pc(a, 300, 190)
+	tclick(a, px, py, 0)
+	if a.pic.ColorAt(319, 199) != 7 {
+		t.Fatal("hires fill")
+	}
+	// files
+	dir := t.TempDir()
+	a.set.WorkDir = dir
+	for _, k := range []struct {
+		kind int
+		ext  string
+		size int
+	}{{exportART, "art", 9009}, {exportDD, "dd", 9218}, {exportPRG, "prg", 2 + 0x2000 - 0x0801 + 9000}} {
+		p := filepath.Join(dir, "h."+k.ext)
+		if !a.writeExport(p, k.kind) {
+			t.Fatal("export", k.ext)
+		}
+		if b, _ := os.ReadFile(p); len(b) != k.size {
+			t.Fatalf("%s: %d bytes", k.ext, len(b))
+		}
+	}
+	a.openPath(filepath.Join(dir, "h.art"))
+	if a.pic.Mode != c64.ModeHires || a.pic.ColorAt(120, 50) != 2 {
+		t.Fatal("open art")
+	}
+	h.save = filepath.Join(dir, "h.c64dp")
+	if !a.saveTo(h.save) {
+		t.Fatal("save project")
+	}
+	a.newPicture(c64.ModeMulti)
+	if picW != 160 {
+		t.Fatal("back to multicolor")
+	}
+	a.openPath(h.save)
+	step(a)
+	if a.pic.Mode != c64.ModeHires || a.pic.ColorAt(120, 50) != 2 || picW != 320 {
+		t.Fatal("hires project")
+	}
+	// a hires picture cannot be saved as Koala
+	if a.saveTo(filepath.Join(dir, "x.kla")) {
+		t.Fatal("hires as Koala")
+	}
+}
+
+func TestHiresFreeMode(t *testing.T) {
+	a, _ := setup(t)
+	a.newPicture(c64.ModeFree)
+	step(a)
+	a.setTool(ToolDraw)
+	for i, c := range []uint8{1, 2, 3, 4} {
+		a.fg = c
+		step(a)
+		px, py := pc(a, i, 0)
+		tclick(a, px, py, 0)
+	}
+	for i, c := range []uint8{1, 2, 3, 4} {
+		if a.pic.ColorAt(i, 0) != c {
+			t.Fatal("free mode allows all colors")
+		}
+	}
+	if a.pic.HiresClashes() != 1 {
+		t.Fatal("clash")
+	}
+	// import converts to the mode of the picture
+	img := image.NewRGBA(image.Rect(0, 0, 320, 200))
+	for y := 0; y < 200; y++ {
+		for x := 0; x < 320; x++ {
+			c := a.pal.Colors[(x/7+y/9)%16]
+			img.Set(x, y, color.RGBA{uint8(c >> 16), uint8(c >> 8), uint8(c), 255})
+		}
+	}
+	d := newImportDialog(a, img, "test")
+	d.opts.Dither = c64.DitherNone
+	d.update(a)
+	if d.preview.Mode != c64.ModeFree || d.preview.ColorAt(0, 0) != 0 || d.preview.ColorAt(7, 0) != 1 {
+		t.Fatalf("free import: %d %d", d.preview.ColorAt(0, 0), d.preview.ColorAt(7, 0))
+	}
+	a.newPicture(c64.ModeHires)
+	d = newImportDialog(a, img, "test")
+	d.update(a)
+	if d.preview.Mode != c64.ModeHires {
+		t.Fatal("hires import")
+	}
+	d.preview.ToLayers()
+	if d.preview.HiresClashes() != 0 {
+		t.Fatal("hires import must follow the rules")
 	}
 }

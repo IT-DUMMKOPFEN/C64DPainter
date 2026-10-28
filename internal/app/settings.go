@@ -11,24 +11,25 @@ import (
 
 // Settings werden in %APPDATA%\C64DPainter\settings.json gespeichert.
 type Settings struct {
-	Theme       string `json:"theme"`
-	Palette     string `json:"palette"`
-	GridOn      bool   `json:"gridOn"`
-	GridW       int    `json:"gridW"`
-	GridH       int    `json:"gridH"`
-	GridOX      int    `json:"gridOffsetX"`
-	GridOY      int    `json:"gridOffsetY"`
-	GridAlpha   int    `json:"gridAlpha"`
-	GridColor   int    `json:"gridColor"` // 0 = automatisch, sonst C64-Farbe+1
-	PixelGrid   bool   `json:"pixelGrid"`
-	ShowBorder  bool   `json:"showBorder"`
-	Conflict    int    `json:"conflict"`
-	AspectBrush bool   `json:"aspectBrush"`
-	ShowPanel   bool   `json:"showPanel"`
-	UIScale     int    `json:"uiScale"` // 1, 2 or 3 (0 = not chosen yet)
-	LastDir     string `json:"lastDir"`
-	HelpSeen    bool   `json:"helpSeen"`
-	CellHint    bool   `json:"cellHint"`
+	Theme         string `json:"theme"`
+	Palette       string `json:"palette"`
+	GridOn        bool   `json:"gridOn"`
+	GridW         int    `json:"gridW"`
+	GridH         int    `json:"gridH"`
+	GridOX        int    `json:"gridOffsetX"`
+	GridOY        int    `json:"gridOffsetY"`
+	GridAlpha     int    `json:"gridAlpha"`
+	GridColor     int    `json:"gridColor"` // 0 = automatisch, sonst C64-Farbe+1
+	PixelGrid     bool   `json:"pixelGrid"`
+	ShowBorder    bool   `json:"showBorder"`
+	Conflict      int    `json:"conflict"`
+	ProtectLayers bool   `json:"protectLayers"`
+	AspectBrush   bool   `json:"aspectBrush"`
+	ShowPanel     bool   `json:"showPanel"`
+	UIScale       int    `json:"uiScale"` // 1, 2 or 3 (0 = not chosen yet)
+	LastDir       string `json:"lastDir"`
+	HelpSeen      bool   `json:"helpSeen"`
+	CellHint      bool   `json:"cellHint"`
 
 	DitherBrush   c64.AutoDitherOptions `json:"ditherBrush"`
 	SmearStrength int                   `json:"smearStrength"`

@@ -29,8 +29,9 @@ func shapeFilled(t int) bool {
 // (x0, y0), with its first corner pointing to (x1, y1). upright keeps it
 // standing straight.
 func shapeVertices(tool, x0, y0, x1, y1 int, upright bool) []fpt {
-	cx, cy := float64(x0)*2+1, float64(y0)+0.5
-	dx, dy := float64(x1-x0)*2, float64(y1-y0)
+	ap := float64(asp)
+	cx, cy := float64(x0)*ap+ap/2, float64(y0)+0.5
+	dx, dy := float64(x1-x0)*ap, float64(y1-y0)
 	r := math.Hypot(dx, dy)
 	ang := math.Atan2(dy, dx)
 	if upright {
@@ -67,7 +68,7 @@ func shapeVertices(tool, x0, y0, x1, y1 int, upright bool) []fpt {
 
 // toPixel converts screen units to the pixel that contains the point.
 func toPixel(p fpt) (int, int) {
-	return int(math.Floor(p.x / 2)), int(math.Floor(p.y))
+	return int(math.Floor(p.x / float64(asp))), int(math.Floor(p.y))
 }
 
 // drawPolygon draws the outline (brush) or the filled area (pattern).
@@ -102,7 +103,8 @@ func (a *App) drawPolygon(v []fpt, filled bool, btn int) {
 		}
 		sortFloats(xs)
 		for k := 0; k+1 < len(xs); k += 2 {
-			for px := int(math.Ceil((xs[k] - 1) / 2)); float64(px)*2+1 <= xs[k+1]; px++ {
+			ap := float64(asp)
+			for px := int(math.Ceil((xs[k] - ap/2) / ap)); float64(px)*ap+ap/2 <= xs[k+1]; px++ {
 				a.plotPat(a.pic, px, py, btn)
 			}
 		}

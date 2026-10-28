@@ -27,7 +27,7 @@ type TextSettings struct {
 var textEffects = []string{"None", "Shadow", "Outline"}
 
 type textDialog struct {
-	text          string
+	tf            *textField
 	color, color2 uint8
 }
 
@@ -38,33 +38,26 @@ func (a *App) openTextDialog() {
 	if t == "" {
 		t = "C64 DPAINTER"
 	}
-	a.modal = &textDialog{text: t, color: a.fg, color2: a.fg2}
+	a.modal = &textDialog{tf: newTextField(t, 200), color: a.fg, color2: a.fg2}
 }
 
 func (d *textDialog) Title() string          { return "Text" }
 func (d *textDialog) Size(a *App) (int, int) { return 760, min(600, a.H-20) }
 
-func (d *textDialog) Char(a *App, r rune) {
-	if r >= 32 && len([]rune(d.text)) < 200 {
-		d.text += string(r)
-	}
-}
+func (d *textDialog) Char(a *App, r rune) { d.tf.Char(r) }
 
 func (d *textDialog) Key(a *App, k KeyEvent) {
-	switch k.Key {
-	case KeyBackspace:
-		if rs := []rune(d.text); len(rs) > 0 {
-			d.text = string(rs[:len(rs)-1])
-		}
-	case KeyEnter:
+	if k.Key == KeyEnter {
 		if k.Mods.Shift {
-			if strings.Count(d.text, "\n") < 7 {
-				d.text += "\n"
+			if strings.Count(d.tf.String(), "\n") < 7 {
+				d.tf.Insert("\n")
 			}
 			return
 		}
 		d.use(a)
+		return
 	}
+	d.tf.Key(k)
 }
 
 // brush renders the text with the current settings.
@@ -74,7 +67,7 @@ func (d *textDialog) brush(a *App) *CustomBrush {
 	if s.Effect != 0 {
 		gap = 2 // room for the shadow or outline between lines
 	}
-	mask, w, h := c64.RenderText(d.text, c64.TextFont(clampI(s.Font, 0, 2)), s.Lower, clampI(s.Spacing, 0, 4), gap)
+	mask, w, h := c64.RenderText(d.tf.String(), c64.TextFont(clampI(s.Font, 0, 2)), s.Lower, clampI(s.Spacing, 0, 4), gap)
 	if w == 0 || h == 0 {
 		return nil
 	}
@@ -83,8 +76,8 @@ func (d *textDialog) brush(a *App) *CustomBrush {
 		pad = 1
 	}
 	bw, bh := w+pad*2, h+pad*2
-	if bw > c64.W {
-		bw = c64.W
+	if bw > picW {
+		bw = picW
 	}
 	if bh > c64.H {
 		bh = c64.H
@@ -118,7 +111,7 @@ func (d *textDialog) use(a *App) {
 	if b == nil {
 		return
 	}
-	a.set.Text.Last = d.text
+	a.set.Text.Last = d.tf.String()
 	a.saveSettings()
 	a.closeModal(false)
 	a.useBrush(b, true, "Text brush – click to place it  ·  X / Y flip, H / Shift+H size")
@@ -132,15 +125,8 @@ func (d *textDialog) Draw(a *App, r gfx.Rect) {
 	y := r.Y
 	// text field
 	m.Text(font.UIB, r.X, y+6, "Text", th.Text)
-	tf := gfx.Rect{X: r.X + 70, Y: y, W: r.W - 70, H: 28}
-	m.Fill(tf, th.Popup)
-	m.Frame(tf, th.Accent)
-	shown := strings.ReplaceAll(d.text, "\n", " ¶ ")
-	tw := m.Text(font.UI, tf.X+6, tf.Y+(tf.H-font.UI.Height)/2, gfx.Elide(font.UI, shown, tf.W-14), th.Text)
-	if (a.now/500)%2 == 0 {
-		m.VLine(tf.X+7+min(tw, tf.W-14), tf.Y+5, tf.Bottom()-6, th.Text)
-	}
-	a.needAnim = true
+	d.tf.focus = true
+	d.tf.Draw(a, "tx_field", gfx.Rect{X: r.X + 70, Y: y, W: r.W - 70, H: 28})
 	y += 34
 	m.Text(font.UI, r.X+70, y, "Type the text  ·  Shift+Enter: new line  ·  Enter: use as brush", th.TextDim)
 	y += 24
@@ -194,27 +180,27 @@ func (d *textDialog) Draw(a *App, r gfx.Rect) {
 	m.Fill(pr, a.pal.Colors[a.pic.BG])
 	m.Frame(pr, th.Border)
 	if b := d.brush(a); b != nil {
-		sc := max(1, min(4, min(pr.W/(b.W*2+4), pr.H/(b.H+4))))
-		ox := pr.X + (pr.W-b.W*2*sc)/2
+		sc := max(1, min(4, min(pr.W/(b.W*asp+4), pr.H/(b.H+4))))
+		ox := pr.X + (pr.W-b.W*asp*sc)/2
 		oy := pr.Y + (pr.H-b.H*sc)/2
 		old := m.SetClip(pr.Inset(1).Intersect(m.Clip))
 		for yy := 0; yy < b.H; yy++ {
 			for xx := 0; xx < b.W; xx++ {
 				if v := b.Pix[yy*b.W+xx]; v >= 0 {
-					m.Fill(gfx.Rect{X: ox + xx*2*sc, Y: oy + yy*sc, W: 2 * sc, H: sc}, a.pal.Colors[v])
+					m.Fill(gfx.Rect{X: ox + xx*asp*sc, Y: oy + yy*sc, W: asp * sc, H: sc}, a.pal.Colors[v])
 				}
 			}
 		}
 		m.SetClip(old)
 		m.TextL(font.UI, gfx.Rect{X: r.X, Y: r.Bottom() - 28, W: r.W - 270, H: 28},
-			itoa(b.W*2)+" × "+itoa(b.H)+" screen pixels – the text becomes the brush", th.TextDim)
+			itoa(b.W*asp)+" × "+itoa(b.H)+" screen pixels – the text becomes the brush", th.TextDim)
 	}
 	by := r.Bottom() - 28
 	if u.Button("tx_cancel", gfx.Rect{X: r.Right() - 250, Y: by, W: 120, H: 28}, "Cancel") {
 		a.closeModal(true)
 		return
 	}
-	if u.ButtonEx("tx_ok", gfx.Rect{X: r.Right() - 120, Y: by, W: 120, H: 28}, "Use as brush", true, strings.TrimSpace(d.text) != "") {
+	if u.ButtonEx("tx_ok", gfx.Rect{X: r.Right() - 120, Y: by, W: 120, H: 28}, "Use as brush", true, strings.TrimSpace(d.tf.String()) != "") {
 		d.use(a)
 	}
 }

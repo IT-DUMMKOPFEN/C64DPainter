@@ -30,9 +30,14 @@ type Picture struct {
 	// Paint layers of the editor (see layers.go). Bits, Screen and ColorRAM
 	// then hold the composite of the visible layers.
 	Layered bool
-	L       [LayerCount][W * H]uint8 // 0 = transparent, 1..16 = color+1, 17 = background
+	L       [LayerCount][HW * H]uint8 // 0 = transparent, 1..16 = color+1, 17 = background
 	Hide    [LayerCount]bool
 	Active  int // layer that tools paint into
+
+	// Graphics mode (see hires.go). Hires pictures keep the color of every
+	// pixel in HP (320 × 200); Bits, Screen and ColorRAM are not used.
+	Mode Mode
+	HP   [HW * H]uint8
 }
 
 // ConflictMode bestimmt, was passiert, wenn eine Zelle schon vier Farben hat.
@@ -42,6 +47,10 @@ const (
 	ConflictBlock   ConflictMode = iota // Bildpunkt wird nicht gesetzt
 	ConflictReplace                     // seltenste Zellfarbe wird ersetzt
 	ConflictNearest                     // ähnlichste vorhandene Zellfarbe wird genutzt
+
+	// ConflictProtect (added to a mode) protects the other layers: a clash
+	// may only replace colors that no other layer uses in the cell.
+	ConflictProtect ConflictMode = 16
 )
 
 // PlotResult beschreibt das Ergebnis eines Setzvorgangs.
@@ -96,6 +105,12 @@ func (p *Picture) SetSlotColor(cell, slot int, c uint8) {
 
 // ColorAt liefert die sichtbare Farbe eines Bildpunkts.
 func (p *Picture) ColorAt(x, y int) uint8 {
+	if p.Hires() {
+		if x < 0 || y < 0 || x >= HW || y >= H {
+			return p.BG
+		}
+		return p.HP[y*HW+x]
+	}
 	if x < 0 || y < 0 || x >= W || y >= H {
 		return p.BG
 	}
@@ -134,13 +149,20 @@ func (p *Picture) CellColors(cell int) (cols [4]uint8, used [4]bool) {
 
 // Plot setzt einen Bildpunkt auf Farbe c und hält dabei die Multicolor-Regeln ein.
 func (p *Picture) Plot(x, y int, c uint8, mode ConflictMode, pal *Palette) PlotResult {
-	if x < 0 || y < 0 || x >= W || y >= H {
+	if x < 0 || y < 0 || x >= p.Width() || y >= H {
 		return PlotOK
 	}
 	c &= 15
+	if p.Hires() {
+		if !p.Layered {
+			p.ToLayers()
+		}
+		return p.plotHires(x, y, c, mode, pal)
+	}
 	if p.Layered {
 		return p.plotLayer(x, y, c, mode, pal)
 	}
+	mode &^= ConflictProtect
 	i := y*W + x
 	cell := CellOf(x, y)
 	if c == p.BG {
@@ -205,7 +227,11 @@ func rgbOf(c uint32) (int, int, int) { return int(c >> 16 & 255), int(c >> 8 & 2
 // Clear löscht das Bild (alle Bildpunkte = Hintergrund).
 func (p *Picture) Clear() {
 	for l := range p.L {
-		p.L[l] = [W * H]uint8{}
+		p.L[l] = [HW * H]uint8{}
+	}
+	p.HP = [HW * H]uint8{}
+	for i := range p.HP {
+		p.HP[i] = p.BG
 	}
 	p.Bits = [W * H]uint8{}
 	p.Screen = [Cells]uint8{}
@@ -214,7 +240,7 @@ func (p *Picture) Clear() {
 
 // CleanUnused setzt unbenutzte Bitpaar-Farben auf 0 (rein kosmetisch, ändert nichts Sichtbares).
 func (p *Picture) CleanUnused() {
-	if p.Layered {
+	if p.Layered || p.Hires() {
 		p.Recomposite() // assigns only used colors
 		return
 	}
@@ -264,6 +290,9 @@ func (p *Picture) Render(pal *Palette, dst []uint32) {
 // Validate prüft die Regeln (immer erfüllt, da das Modell sie erzwingt) und
 // zählt die Zellen mit 4 belegten Farben.
 func (p *Picture) FullCells() int {
+	if p.Hires() {
+		return 0
+	}
 	n := 0
 	for cell := 0; cell < Cells; cell++ {
 		u := p.Usage(cell, -1, -1)
@@ -282,6 +311,12 @@ func (p *Picture) FullCells() int {
 func (p *Picture) ReplaceCellColor(cell int, from, to uint8, both bool) int {
 	from &= 15
 	to &= 15
+	if p.Hires() {
+		if from == to || cell < 0 || cell >= Cells {
+			return 0
+		}
+		return p.hReplaceCellColor(cell, from, to, both)
+	}
 	if from == to || from == p.BG || cell < 0 || cell >= Cells || (to == p.BG && both) {
 		return 0
 	}

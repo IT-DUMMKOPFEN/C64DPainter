@@ -285,25 +285,25 @@ func gradientColorAt(cols []uint8, t float64, dither bool, x, y int) uint8 {
 
 // gradientRegion returns the connected area of the same (visible) color.
 func gradientRegion(p *c64.Picture, x, y int) []int {
-	if x < 0 || y < 0 || x >= c64.W || y >= c64.H {
+	if x < 0 || y < 0 || x >= picW || y >= c64.H {
 		return nil
 	}
 	target := p.ColorAt(x, y)
-	seen := make([]bool, c64.W*c64.H)
-	stack := []int{y*c64.W + x}
-	seen[y*c64.W+x] = true
+	seen := make([]bool, picW*c64.H)
+	stack := []int{y*picW + x}
+	seen[y*picW+x] = true
 	var region []int
 	for len(stack) > 0 {
 		i := stack[len(stack)-1]
 		stack = stack[:len(stack)-1]
 		region = append(region, i)
-		cx, cy := i%c64.W, i/c64.W
+		cx, cy := i%picW, i/picW
 		for _, d := range [4][2]int{{1, 0}, {-1, 0}, {0, 1}, {0, -1}} {
 			nx, ny := cx+d[0], cy+d[1]
-			if nx < 0 || ny < 0 || nx >= c64.W || ny >= c64.H {
+			if nx < 0 || ny < 0 || nx >= picW || ny >= c64.H {
 				continue
 			}
-			j := ny*c64.W + nx
+			j := ny*picW + nx
 			if !seen[j] && p.ColorAt(nx, ny) == target {
 				seen[j] = true
 				stack = append(stack, j)
@@ -319,7 +319,7 @@ func (a *App) gradientFill(region []int, sx, sy, ex, ey float64, drag bool) {
 	g := a.set.Gradient
 	cols := gradientColors(g.Group, g.Ramp, g.Reverse)
 	pos := func(i int) (float64, float64) {
-		return float64(i%c64.W)*2 + 1, float64(i/c64.W) + 0.5
+		return gradPos(i%picW, i/picW)
 	}
 	var ux, uy, length float64
 	metric := func(px, py float64) float64 { // distance along the gradient
@@ -357,7 +357,7 @@ func (a *App) gradientFill(region []int, sx, sy, ex, ey float64, drag bool) {
 	for _, i := range region {
 		px, py := pos(i)
 		t := metric(px, py) / length
-		x, y := i%c64.W, i/c64.W
+		x, y := i%picW, i/picW
 		a.plot(a.pic, x, y, gradientColorAt(cols, t, g.Dither, x, y))
 	}
 }
@@ -370,7 +370,9 @@ type gradientDrag struct {
 	dragging bool
 }
 
-func gradPos(x, y int) (float64, float64) { return float64(x)*2 + 1, float64(y) + 0.5 }
+func gradPos(x, y int) (float64, float64) {
+	return float64(x*asp) + float64(asp)/2, float64(y) + 0.5
+}
 
 // gradientPress starts a gradient fill at a picture pixel (single click result).
 func (a *App) gradientPress(px, py int) {
@@ -387,7 +389,7 @@ func (a *App) gradientMove(px, py int) {
 		return
 	}
 	g.ex, g.ey = px, py
-	dx, dy := float64(px-g.sx)*2, float64(py-g.sy)
+	dx, dy := float64((px-g.sx)*asp), float64(py-g.sy)
 	g.dragging = math.Hypot(dx, dy) >= 3
 	a.gradientRedraw()
 }
@@ -409,7 +411,8 @@ func (a *App) drawGradientLine() {
 	z := a.zoom
 	sx, sy := a.picToScreen(g.sx, g.sy)
 	ex, ey := a.picToScreen(g.ex, g.ey)
-	sx, sy, ex, ey = sx+z, sy+z/2, ex+z, ey+z/2
+	hx := asp * z / 2
+	sx, sy, ex, ey = sx+hx, sy+z/2, ex+hx, ey+z/2
 	m := a.img
 	m.Line(sx+1, sy+1, ex+1, ey+1, 0x000000)
 	m.Line(sx, sy, ex, ey, 0xFFFFFF)

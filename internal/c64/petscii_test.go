@@ -33,8 +33,25 @@ func run6502(t *testing.T, prg []byte) []byte {
 			x, z = mem[pc+1], mem[pc+1] == 0
 			pc += 2
 		case 0x8D:
+			if abs() == 0xDC00 {
+				return mem // the bitmap viewers wait for the space bar here
+			}
 			mem[abs()] = a
 			pc += 3
+		case 0x78: // SEI
+			pc++
+		case 0xAD:
+			a = mem[abs()]
+			z = a == 0
+			pc += 3
+		case 0x29:
+			a &= mem[pc+1]
+			z = a == 0
+			pc += 2
+		case 0x09:
+			a |= mem[pc+1]
+			z = a == 0
+			pc += 2
 		case 0xBD:
 			a = mem[abs()+int(x)]
 			z = a == 0

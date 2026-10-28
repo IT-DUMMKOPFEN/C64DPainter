@@ -131,7 +131,7 @@ func (a *App) pictureIndexes() []int8 {
 	out := make([]int8, 320*200)
 	for y := 0; y < 200; y++ {
 		for x := 0; x < 320; x++ {
-			out[y*320+x] = int8(a.pic.ColorAt(x/2, y))
+			out[y*320+x] = int8(a.pic.ColorAt(x/asp, y))
 		}
 	}
 	return out
@@ -219,4 +219,13 @@ func encodePNG(m *gfx.Image) ([]byte, error) {
 	var buf bytes.Buffer
 	err := png.Encode(&buf, img)
 	return buf.Bytes(), err
+}
+
+// c64Dist returns a distance function between two C64 colors of the palette.
+func (a *App) c64Dist() func(i, j int) int {
+	pr := a.pal.Colors
+	return func(i, j int) int {
+		ci, cj := pr[i&15], pr[j&15]
+		return c64.ColorDist(int(ci>>16&255), int(ci>>8&255), int(ci&255), int(cj>>16&255), int(cj>>8&255), int(cj&255))
+	}
 }

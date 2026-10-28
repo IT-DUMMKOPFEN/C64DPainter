@@ -126,7 +126,7 @@ func TestFontACMEAndFile(t *testing.T) {
 	if f.TileChar(1, 1, 1) != 193 {
 		t.Fatal("tile layout")
 	}
-	f.SetTilePixel(1, 15, 15, true)
+	f.SetTilePixel(1, 15, 15, 1)
 	if !f.Pixel(193, 7, 7) {
 		t.Fatal("tile pixel")
 	}
@@ -143,7 +143,7 @@ func TestFontACMEAndFile(t *testing.T) {
 	px[0] = 1
 	px[8*320+8+7] = 1 // cell 41, pixel (7,0)
 	imp := NewFont(-1)
-	imp.ImportFont(px, FontImport{StartCell: 0, Count: 42, Target: 0, BG: -1})
+	imp.ImportFont(px, FontImport{StartCell: 0, Count: 42, Target: 0, BG: -1}, nil)
 	if imp.Data[0] != 0x80 || imp.Data[41*8] != 0x01 {
 		t.Fatal("font import")
 	}
@@ -164,5 +164,55 @@ func TestFontACMEAndFile(t *testing.T) {
 	got, _ := os.ReadFile(filepath.Join(dir, "font.prg"))
 	if len(got) != 2050 || got[1] != 0x30 || !bytes.Equal(got[2:], f.Data[:]) {
 		t.Fatalf("assembled font differs (%d bytes)", len(got))
+	}
+}
+
+func TestFontMulticolor(t *testing.T) {
+	f := NewFont(-1)
+	f.Multi = true
+	f.BG, f.MC1, f.MC2, f.FG = 0, 2, 5, 7
+	for v := 0; v < 4; v++ {
+		f.Set(1, v, 0, v)
+	}
+	if f.Data[8] != 0b00011011 {
+		t.Fatalf("multicolor byte %08b", f.Data[8])
+	}
+	if f.ColorAt(1, 2, 0) != 2 || f.ColorAt(1, 5, 0) != 5 || f.ColorAt(1, 7, 0) != 7 {
+		t.Fatal("multicolor colors")
+	}
+	f.FG = 15 // only 0..7 in multicolor
+	if f.SlotColor(3) != 7 {
+		t.Fatal("character color 0..7")
+	}
+	data, _ := f.Marshal()
+	g, err := LoadFont(data)
+	if err != nil || !g.Multi || g.MC1 != 2 || g.MC2 != 5 {
+		t.Fatal("multicolor project", err)
+	}
+	// import: pixel pairs, colors found automatically
+	px := make([]int8, 320*200)
+	for i := range px {
+		px[i] = 6
+	}
+	for x := 0; x < 8; x++ {
+		px[x] = 2 // row 0 red (most frequent after blue)
+		px[320+x] = 2
+		px[2*320+x] = 5
+	}
+	px[3*320] = 1
+	px[3*320+1] = 1
+	dist := func(a, b int) int {
+		if a == b {
+			return 0
+		}
+		return 1
+	}
+	h := NewFont(-1)
+	h.ImportFont(px, FontImport{Count: 1, BG: -1, Multi: true}, dist)
+	if !h.Multi || h.BG != 6 || h.FG != 2 || h.MC1 != 5 || h.MC2 != 1 {
+		t.Fatalf("import colors bg %d fg %d mc %d %d", h.BG, h.FG, h.MC1, h.MC2)
+	}
+	if h.Get(0, 0, 0) != 3 || h.Get(0, 0, 2) != 1 || h.Get(0, 0, 3) != 2 || h.Get(0, 1, 3) != 0 {
+		t.Fatal("import pixels")
 	}
 }

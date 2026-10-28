@@ -30,7 +30,7 @@ func (a *App) brushesDir() string {
 }
 
 func encodeBrushPNG(b *CustomBrush, pal *c64.Palette) ([]byte, error) {
-	img := image.NewNRGBA(image.Rect(0, 0, b.W*2, b.H))
+	img := image.NewNRGBA(image.Rect(0, 0, b.W*asp, b.H))
 	for y := 0; y < b.H; y++ {
 		for x := 0; x < b.W; x++ {
 			v := b.Pix[y*b.W+x]
@@ -39,8 +39,9 @@ func encodeBrushPNG(b *CustomBrush, pal *c64.Palette) ([]byte, error) {
 			}
 			c := pal.Colors[v&15]
 			col := color.NRGBA{uint8(c >> 16), uint8(c >> 8), uint8(c), 255}
-			img.SetNRGBA(x*2, y, col)
-			img.SetNRGBA(x*2+1, y, col)
+			for k := 0; k < asp; k++ {
+				img.SetNRGBA(x*asp+k, y, col)
+			}
 		}
 	}
 	var buf bytes.Buffer
@@ -66,7 +67,7 @@ func decodeBrush(img image.Image, pal *c64.Palette) (*CustomBrush, error) {
 		return int8(pal.Nearest(int(cr>>8), int(cg>>8), int(cb>>8))), false
 	}
 	// double-wide pixels (as saved by this program)?
-	double := w%2 == 0
+	double := w%2 == 0 && asp == 2 // hires pictures use single pixels
 	for y := 0; y < h && double; y++ {
 		for x := 0; x+1 < w; x += 2 {
 			a, _ := px(x, y)
@@ -81,7 +82,7 @@ func decodeBrush(img image.Image, pal *c64.Palette) (*CustomBrush, error) {
 	if double {
 		bw = w / 2
 	}
-	if bw > c64.W || h > c64.H {
+	if bw > picW || h > c64.H {
 		return nil, fmt.Errorf("the brush is too large (at most 320 × 200 pixels)")
 	}
 	b := &CustomBrush{W: bw, H: h, Pix: make([]int8, bw*h)}
@@ -250,15 +251,15 @@ func (d *myBrushesDialog) use(a *App) {
 
 // drawBrushThumb draws a brush scaled into a box.
 func (a *App) drawBrushThumb(b *CustomBrush, r gfx.Rect) {
-	s := max(1, min(r.W/(b.W*2), r.H/b.H))
-	w, h := b.W*2*s, b.H*s
+	s := max(1, min(r.W/(b.W*asp), r.H/b.H))
+	w, h := b.W*asp*s, b.H*s
 	ox, oy := r.X+(r.W-w)/2, r.Y+(r.H-h)/2
 	old := a.img.SetClip(r.Intersect(a.img.Clip))
 	defer a.img.SetClip(old)
 	for y := 0; y < b.H; y++ {
 		for x := 0; x < b.W; x++ {
 			if v := b.Pix[y*b.W+x]; v >= 0 {
-				a.img.Fill(gfx.Rect{X: ox + x*2*s, Y: oy + y*s, W: 2 * s, H: s}, a.pal.Colors[v&15])
+				a.img.Fill(gfx.Rect{X: ox + x*asp*s, Y: oy + y*s, W: asp * s, H: s}, a.pal.Colors[v&15])
 			}
 		}
 	}
@@ -325,7 +326,7 @@ func (d *myBrushesDialog) Draw(a *App, r gfx.Rect) {
 	info := fmt.Sprintf("%d brushes", len(d.mine))
 	if d.sel >= 0 && d.sel < len(d.mine) {
 		b := d.mine[d.sel].b
-		info = fmt.Sprintf("%s · %d × %d screen pixels", d.mine[d.sel].name, b.W*2, b.H)
+		info = fmt.Sprintf("%s · %d × %d screen pixels", d.mine[d.sel].name, b.W*asp, b.H)
 	}
 	m.TextL(font.UI, gfx.Rect{X: r.X, Y: by, W: r.W - 260, H: 28}, gfx.Elide(font.UI, info, r.W-260), th.TextDim)
 	if u.Button("mb_cancel", gfx.Rect{X: r.Right() - 250, Y: by, W: 120, H: 28}, "Cancel") {

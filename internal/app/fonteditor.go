@@ -37,21 +37,22 @@ type fntEditor struct {
 	tool       int
 	grid       bool
 	compare    bool
-	clip       []bool
+	slot       int // drawing value: hires 0/1, multicolor 0..3
+	clip       []int
 	clipW      int
 	clipH      int
-	text       string
-	textFocus  bool
+	tf         *textField // test text
 	path       string
 	dirty      bool
 	// stroke
 	drawing bool
-	on      bool
+	on      int // value of the stroke
 	sx, sy  int
 	lx, ly  int
 	before  c64.Font
 	canvas  gfx.Rect
-	z       int
+	z       int // pixel height on screen
+	zx      int // pixel width on screen (twice z in multicolor)
 	hx, hy  int
 	textBox gfx.Rect
 }
@@ -60,7 +61,7 @@ func (a *App) openFontEditor() {
 	a.commitOrCancelForHistory()
 	a.menuOpen = -1
 	if a.fnt == nil {
-		a.fnt = &fntEditor{f: c64.NewFont(0), cur: 1, grid: true, text: "HELLO C64 DPAINTER 1234"}
+		a.fnt = &fntEditor{f: c64.NewFont(0), cur: 1, grid: true, slot: 1, tf: &textField{text: []rune("HELLO C64 DPAINTER 1234"), maxLen: 120}}
 	}
 	a.fnt.open = true
 	a.setStatus("Font editor")
@@ -68,9 +69,9 @@ func (a *App) openFontEditor() {
 
 func (a *App) closeFontEditor() {
 	a.fnt.open = false
-	a.fnt.textFocus = false
+	a.fnt.tf.focus = false
 	a.modal = nil
-	a.setStatus("Back to the multicolor editor")
+	a.setStatus("Back to the picture")
 }
 
 func (e *fntEditor) push() {
@@ -100,33 +101,68 @@ func (e *fntEditor) doRedo() {
 	}
 }
 
-// tileSize returns the tile size in pixels.
-func (e *fntEditor) tileSize() (int, int) {
-	tw, th := e.f.TileSize()
-	return tw * 8, th * 8
+// tileSize returns the tile size in editable pixels.
+func (e *fntEditor) tileSize() (int, int) { return e.f.TilePixels() }
+
+// canRotate: only square hires tiles can be rotated.
+func (e *fntEditor) canRotate() bool {
+	w, h := e.tileSize()
+	return !e.f.Multi && w == h
 }
 
+// maxSlot is the highest pixel value (1 hires, 3 multicolor).
+func (e *fntEditor) maxSlot() int {
+	if e.f.Multi {
+		return 3
+	}
+	return 1
+}
+
+type pixOp = func(get func(x, y int) int, w, h, x, y int) int
+
 // op applies a pixel operation to the current tile with undo.
-func (e *fntEditor) op(f func(get func(x, y int) bool, w, h, x, y int) bool) {
+func (e *fntEditor) op(f pixOp) {
 	e.push()
 	e.f.TileOp(e.cur, f)
 }
 
 func (e *fntEditor) flipH() {
-	e.op(func(g func(x, y int) bool, w, h, x, y int) bool { return g(w-1-x, y) })
+	e.op(func(g func(x, y int) int, w, h, x, y int) int { return g(w-1-x, y) })
 }
 func (e *fntEditor) flipV() {
-	e.op(func(g func(x, y int) bool, w, h, x, y int) bool { return g(x, h-1-y) })
+	e.op(func(g func(x, y int) int, w, h, x, y int) int { return g(x, h-1-y) })
 }
 func (e *fntEditor) rotate() {
-	e.op(func(g func(x, y int) bool, w, h, x, y int) bool { return g(y, w-1-x) })
+	if e.canRotate() {
+		e.op(func(g func(x, y int) int, w, h, x, y int) int { return g(y, w-1-x) })
+	}
 }
 func (e *fntEditor) invert() {
-	e.op(func(g func(x, y int) bool, w, h, x, y int) bool { return !g(x, y) })
+	ms := e.maxSlot()
+	e.op(func(g func(x, y int) int, w, h, x, y int) int { return g(x, y) ^ ms })
 }
-func (e *fntEditor) clear() { e.op(func(g func(x, y int) bool, w, h, x, y int) bool { return false }) }
+func (e *fntEditor) clear() { e.op(func(g func(x, y int) int, w, h, x, y int) int { return 0 }) }
 func (e *fntEditor) shift(dx, dy int) {
-	e.op(func(g func(x, y int) bool, w, h, x, y int) bool { return g((x-dx+w)%w, (y-dy+h)%h) })
+	e.op(func(g func(x, y int) int, w, h, x, y int) int { return g((x-dx+w)%w, (y-dy+h)%h) })
+}
+
+// setMulti switches the character set between hires and multicolor (the
+// bits stay, as on the C64).
+func (e *fntEditor) setMulti(on bool) {
+	if e.f.Multi == on {
+		return
+	}
+	e.push()
+	e.f.Multi = on
+	e.clip = nil
+	if on {
+		e.f.FG &= 7
+		e.compare = false
+	}
+	e.slot = min(e.slot, e.maxSlot())
+	if e.slot == 0 {
+		e.slot = 1
+	}
 }
 
 // restore copies the tile back from the reference ROM.
@@ -144,7 +180,7 @@ func (e *fntEditor) restore() {
 
 func (e *fntEditor) copyTile() {
 	w, h := e.tileSize()
-	e.clip = make([]bool, w*h)
+	e.clip = make([]int, w*h)
 	e.clipW, e.clipH = w, h
 	for y := 0; y < h; y++ {
 		for x := 0; x < w; x++ {
@@ -157,7 +193,7 @@ func (e *fntEditor) pasteTile() {
 	if e.clip == nil {
 		return
 	}
-	e.op(func(g func(x, y int) bool, w, h, x, y int) bool {
+	e.op(func(g func(x, y int) int, w, h, x, y int) int {
 		if x < e.clipW && y < e.clipH {
 			return e.clip[y*e.clipW+x]
 		}
@@ -174,14 +210,12 @@ func (a *App) fntKeys() {
 	e := a.fnt
 	for _, k := range a.in.Keys {
 		m := k.Mods
-		if e.textFocus {
+		if e.tf.focus {
 			switch k.Key {
-			case KeyBackspace:
-				if rs := []rune(e.text); len(rs) > 0 {
-					e.text = string(rs[:len(rs)-1])
-				}
 			case KeyEsc, KeyEnter:
-				e.textFocus = false
+				e.tf.focus = false
+			default:
+				e.tf.Key(k)
 			}
 			continue
 		}
@@ -221,10 +255,8 @@ func (a *App) fntKeys() {
 		}
 	}
 	for _, c := range a.in.Chars {
-		if e.textFocus {
-			if len([]rune(e.text)) < 120 {
-				e.text += string(c)
-			}
+		if e.tf.focus {
+			e.tf.Char(c)
 			continue
 		}
 		switch c {
@@ -239,15 +271,19 @@ func (a *App) fntKeys() {
 		case 'g', 'G':
 			e.grid = !e.grid
 		case 'b', 'B':
-			e.compare = !e.compare
+			e.compare = !e.compare && !e.f.Multi
 		case 'x', 'X':
 			e.flipH()
 		case 'y', 'Y':
 			e.flipV()
 		case 't', 'T':
-			if w, h := e.tileSize(); w == h {
-				e.rotate()
+			e.rotate()
+		case '0', '1', '2', '3':
+			if v := int(c - '0'); v <= e.maxSlot() {
+				e.slot = v
 			}
+		case 'c', 'C':
+			e.setMulti(!e.f.Multi)
 		case 'i', 'I':
 			e.invert()
 		case 'u':
@@ -260,13 +296,13 @@ func (a *App) fntKeys() {
 
 func (e *fntEditor) pixelAt(x, y int) (int, int, bool) {
 	w, h := e.tileSize()
-	px := (x - e.canvas.X) / e.z
+	px := (x - e.canvas.X) / e.zx
 	py := (y - e.canvas.Y) / e.z
 	in := x >= e.canvas.X && y >= e.canvas.Y && px < w && py < h
 	return clampI(px, 0, w-1), clampI(py, 0, h-1), in
 }
 
-func (e *fntEditor) shape(x0, y0, x1, y1 int, on bool) {
+func (e *fntEditor) shape(x0, y0, x1, y1 int, on int) {
 	switch e.tool {
 	case fntLine:
 		forLine(x0, y0, x1, y1, func(x, y int) { e.f.SetTilePixel(e.cur, x, y, on) })
@@ -283,7 +319,7 @@ func (e *fntEditor) shape(x0, y0, x1, y1 int, on bool) {
 	}
 }
 
-func (e *fntEditor) fill(x, y int, on bool) {
+func (e *fntEditor) fill(x, y int, on int) {
 	w, h := e.tileSize()
 	if e.f.TilePixel(e.cur, x, y) == on {
 		return
@@ -312,16 +348,19 @@ func (a *App) fntCanvasInput() {
 		return
 	}
 	if (in.Pressed[0] || in.Pressed[1]) && !e.textBox.Contains(in.MX, in.MY) {
-		e.textFocus = false
+		e.tf.focus = false
 	}
 	pressed := inside && (in.Pressed[0] || in.Pressed[1])
 	if pressed {
 		e.push()
 		e.drawing = true
-		e.on = in.Pressed[0]
-		// pencil on a set pixel with the left button clears (as in most font editors)
-		if e.tool == fntPencil && in.Pressed[0] && e.f.TilePixel(e.cur, x, y) {
-			e.on = false
+		e.on = e.slot
+		if in.Pressed[1] {
+			e.on = 0
+		}
+		// hires: the pencil on a set pixel clears (as in most font editors)
+		if !e.f.Multi && e.tool == fntPencil && in.Pressed[0] && e.f.TilePixel(e.cur, x, y) == e.slot && e.slot != 0 {
+			e.on = 0
 		}
 		e.sx, e.sy, e.lx, e.ly = x, y, x, y
 		e.before = *e.f
@@ -377,8 +416,13 @@ func (a *App) fntFrame() {
 	prevH := 150
 	ca := gfx.Rect{X: area.X, Y: area.Y, W: area.W, H: area.H - prevH - 10}
 	w, h := e.tileSize()
-	e.z = max(4, min(ca.W/w, ca.H/h))
-	e.canvas = gfx.Rect{X: ca.X + (ca.W-w*e.z)/2, Y: ca.Y + (ca.H-h*e.z)/2, W: w * e.z, H: h * e.z}
+	px := 1 // screen width of a pixel in pixel heights
+	if e.f.Multi {
+		px = 2
+	}
+	e.z = max(4, min(ca.W/(w*px), ca.H/h))
+	e.zx = e.z * px
+	e.canvas = gfx.Rect{X: ca.X + (ca.W-w*e.zx)/2, Y: ca.Y + (ca.H-h*e.z)/2, W: w * e.zx, H: h * e.z}
 	a.fntCanvasInput()
 	a.fntDrawCanvas()
 	a.fntDrawTest(gfx.Rect{X: area.X, Y: area.Bottom() - prevH, W: area.W, H: prevH})
@@ -414,7 +458,11 @@ func (a *App) fntFrame() {
 	if e.compare {
 		status += "  ·  comparing with the C64 ROM (B)"
 	}
-	a.toolStatus(status, "Left: set (on a set pixel: clear) · right: clear · Shift: straight line · arrows: character · F1: help")
+	help := "Left: set (on a set pixel: clear) · right: clear · Shift: straight line · arrows: character · F1: help"
+	if e.f.Multi {
+		help = "Left: chosen color (0–3) · right: background · Shift: straight line · arrows: character · F1: help"
+	}
+	a.toolStatus(status, help)
 	a.toolFrameEnd()
 }
 
@@ -444,17 +492,14 @@ func charLabel(c int, lower bool) string {
 	return s
 }
 
-// fntGlyph draws a character of the font (or of rom when not nil).
-func (a *App) fntGlyph(data []byte, c, x, y, s int, fg, bg uint32) {
+// fntGlyph draws a character of the font in its colors (the background
+// is left out).
+func (a *App) fntGlyph(f *c64.Font, c, x, y, s int) {
 	m := a.img
-	if bg != 0xFFFFFFFF {
-		m.Fill(gfx.Rect{X: x, Y: y, W: 8 * s, H: 8 * s}, bg)
-	}
 	for yy := 0; yy < 8; yy++ {
-		b := data[(c&255)*8+yy]
 		for xx := 0; xx < 8; xx++ {
-			if b&(0x80>>xx) != 0 {
-				m.Fill(gfx.Rect{X: x + xx*s, Y: y + yy*s, W: s, H: s}, fg)
+			if col := f.ColorAt(c, xx, yy); col != f.BG {
+				m.Fill(gfx.Rect{X: x + xx*s, Y: y + yy*s, W: s, H: s}, a.pal.Colors[col])
 			}
 		}
 	}
@@ -472,10 +517,18 @@ func (a *App) fntDrawCanvas() {
 	m.FillA(gfx.Rect{X: cr.X + 6, Y: cr.Bottom(), W: cr.W, H: 6}, a.th.Shadow, 80)
 	m.Fill(cr, pal[f.BG])
 	rom := f.RefROM()
+	zx := e.zx
 	for y := 0; y < h; y++ {
 		for x := 0; x < w; x++ {
-			on := f.TilePixel(e.cur, x, y)
-			r := gfx.Rect{X: cr.X + x*z, Y: cr.Y + y*z, W: z, H: z}
+			v := f.TilePixel(e.cur, x, y)
+			on := v != 0
+			r := gfx.Rect{X: cr.X + x*zx, Y: cr.Y + y*z, W: zx, H: z}
+			if f.Multi {
+				if v != 0 {
+					m.Fill(r, pal[f.SlotColor(v)])
+				}
+				continue
+			}
 			if e.compare {
 				c := f.TileChar(e.cur, x/8, y/8)
 				orig := rom[c*8+y%8]&(0x80>>(x%8)) != 0
@@ -495,13 +548,14 @@ func (a *App) fntDrawCanvas() {
 		}
 	}
 	if e.grid {
+		pw := f.PixW()
 		for x := 1; x < w; x++ {
 			al := 60
-			if x%8 == 0 {
+			if x%pw == 0 {
 				al = 200
 			}
 			for y := cr.Y; y < cr.Bottom(); y++ {
-				m.BlendPix(cr.X+x*z, y, 0x808080, al)
+				m.BlendPix(cr.X+x*zx, y, 0x808080, al)
 			}
 		}
 		for y := 1; y < h; y++ {
@@ -516,7 +570,7 @@ func (a *App) fntDrawCanvas() {
 	}
 	m.Frame(cr.Inset(-1), a.th.Border)
 	if e.hx >= 0 && a.modal == nil {
-		dashedFrame(m, gfx.Rect{X: cr.X + e.hx*z, Y: cr.Y + e.hy*z, W: z, H: z}, 0xFFFFFF, 0, 0)
+		dashedFrame(m, gfx.Rect{X: cr.X + e.hx*zx, Y: cr.Y + e.hy*z, W: zx, H: z}, 0xFFFFFF, 0, 0)
 	}
 }
 
@@ -535,22 +589,7 @@ func (a *App) fntDrawTest(r gfx.Rect) {
 	m.Text(font.UIB, x, y+5, "Test text", th.Text)
 	tf := gfx.Rect{X: x + 80, Y: y, W: r.W - 100, H: 26}
 	e.textBox = tf
-	m.Fill(tf, th.Popup)
-	if e.textFocus {
-		m.Frame(tf, th.Accent)
-	} else {
-		m.Frame(tf, th.BtnBorder)
-	}
-	tw := m.Text(font.UI, tf.X+6, tf.Y+(tf.H-font.UI.Height)/2, gfx.Elide(font.UI, e.text, tf.W-14), th.Text)
-	if e.textFocus && (a.now/500)%2 == 0 {
-		m.VLine(tf.X+7+min(tw, tf.W-14), tf.Y+5, tf.Bottom()-6, th.Text)
-	}
-	if e.textFocus {
-		a.needAnim = true
-	}
-	if c, _ := u.press("fe_tf", tf, 0); c {
-		e.textFocus = true
-	}
+	e.tf.Draw(a, "fe_tf", tf)
 	u.Tip("fe_tf", tf, "Click and type – Enter or Esc ends")
 	y += 34
 	box := gfx.Rect{X: x, Y: y, W: r.W - 20, H: r.Bottom() - y - 8}
@@ -560,7 +599,7 @@ func (a *App) fntDrawTest(r gfx.Rect) {
 	s := max(1, min(3, box.H/(ch+2)/2))
 	cx, cy := box.X+4, box.Y+4
 	old := m.SetClip(box.Intersect(m.Clip))
-	for _, rc := range e.text {
+	for _, rc := range e.tf.text {
 		code := int(c64.ScreenCode(rc, f.Ref == 1))
 		if cx+cw*s > box.Right()-4 {
 			cx = box.X + 4
@@ -568,7 +607,7 @@ func (a *App) fntDrawTest(r gfx.Rect) {
 		}
 		for ty := 0; ty < th2; ty++ {
 			for tx := 0; tx < tw2; tx++ {
-				a.fntGlyph(f.Data[:], f.TileChar(code, tx, ty), cx+tx*8*s, cy+ty*8*s, s, pal[f.FG], 0xFFFFFFFF)
+				a.fntGlyph(f, f.TileChar(code, tx, ty), cx+tx*8*s, cy+ty*8*s, s)
 			}
 		}
 		cx += cw * s
@@ -597,8 +636,10 @@ func (a *App) fntDrawLeft(r gfx.Rect) {
 	y += 2
 	e.grid = u.Checkbox("fe_grid", gfx.Rect{X: x, Y: y, W: w, H: 20}, "Grid (G)", e.grid)
 	y += 24
-	e.compare = u.Checkbox("fe_cmp", gfx.Rect{X: x, Y: y, W: w, H: 20}, "Compare with ROM (B)", e.compare)
-	y += 24
+	if !f.Multi {
+		e.compare = u.Checkbox("fe_cmp", gfx.Rect{X: x, Y: y, W: w, H: 20}, "Compare with ROM (B)", e.compare)
+		y += 24
+	}
 	if e.compare {
 		m.Fill(gfx.Rect{X: x + 20, Y: y + 3, W: 10, H: 10}, 0x40C040)
 		m.Text(font.UI, x+34, y, "new", th.TextDim)
@@ -607,6 +648,18 @@ func (a *App) fntDrawLeft(r gfx.Rect) {
 		y += 20
 	}
 	y += 6
+	m.Text(font.UIB, x, y, "Mode", th.Text)
+	m.TextR(font.UI, gfx.Rect{X: x, Y: y, W: w, H: 16}, "C: switch", th.TextDim)
+	y += 22
+	bw0 := (w - 4) / 2
+	for i, n := range []string{"Hires", "Multicolor"} {
+		br := gfx.Rect{X: x + i*(bw0+4), Y: y, W: bw0, H: 22}
+		if u.ButtonEx("fe_mode"+itoa(i), br, n, f.Multi == (i == 1), true) {
+			e.setMulti(i == 1)
+		}
+		u.Tip("fe_mode"+itoa(i), br, []string{"8 × 8 pixels in the character color", "4 × 8 double wide pixels in four colors (the bits stay, as on the C64)"}[i])
+	}
+	y += 30
 	m.Text(font.UIB, x, y, "Tile size", th.Text)
 	y += 22
 	qw := (w - 12) / 4
@@ -630,7 +683,6 @@ func (a *App) fntDrawLeft(r gfx.Rect) {
 	y += 6
 	m.Text(font.UIB, x, y, "Edit", th.Text)
 	y += 22
-	tw, thh := e.tileSize()
 	ops := []struct {
 		id, label, tip string
 		f              func()
@@ -638,7 +690,7 @@ func (a *App) fntDrawLeft(r gfx.Rect) {
 	}{
 		{"fe_fh", "Flip ↔", "X", e.flipH, true},
 		{"fe_fv", "Flip ↕", "Y", e.flipV, true},
-		{"fe_rot", "Rotate ↻", "T (square tiles)", e.rotate, tw == thh},
+		{"fe_rot", "Rotate ↻", "T (square hires tiles)", e.rotate, e.canRotate()},
 		{"fe_inv", "Invert", "I", e.invert, true},
 		{"fe_sl", "Shift ←", "Alt+←", func() { e.shift(-1, 0) }, true},
 		{"fe_sr", "Shift →", "Alt+→", func() { e.shift(1, 0) }, true},
@@ -705,7 +757,7 @@ func (a *App) fntDrawRight(r gfx.Rect) {
 	}
 	for c := 0; c < 256; c++ {
 		cx, cy := gr.X+(c%16)*cell, gr.Y+(c/16)*cell
-		a.fntGlyph(f.Data[:], c, cx+1, cy+1, 2, pal[f.FG], 0xFFFFFFFF)
+		a.fntGlyph(f, c, cx+1, cy+1, 2)
 		br := gfx.Rect{X: cx, Y: cy, W: cell, H: cell}
 		if inTile[c] {
 			m.Frame(br, 0xFFFFFF)
@@ -721,12 +773,56 @@ func (a *App) fntDrawRight(r gfx.Rect) {
 	y += gr.H + 8
 	m.Text(font.UI, x, y, charLabel(e.cur, f.Ref == 1), th.Text)
 	y += 24
-	m.Text(font.UIB, x, y, "Character color", th.Text)
+	m.Text(font.UIB, x, y, "Colors", th.Text)
+	m.TextR(font.UI, gfx.Rect{X: x, Y: y, W: w, H: 16}, "0–"+itoa(e.maxSlot())+": choose", th.TextDim)
 	y += 20
-	y += a.toolPalette("fe_fg", x, y, w, int(f.FG), func(c int) { f.FG = uint8(c) }) + 6
-	m.Text(font.UIB, x, y, "Background", th.Text)
-	y += 20
-	a.toolPalette("fe_bg", x, y, w, int(f.BG), func(c int) { f.BG = uint8(c) })
+	type slotInfo struct {
+		v         int
+		name, reg string
+		col       *uint8
+	}
+	slots := []slotInfo{{0, "Background", "$D021", &f.BG}, {1, "Character color", "color RAM", &f.FG}}
+	if f.Multi {
+		slots = []slotInfo{{0, "Background", "$D021", &f.BG}, {1, "Multicolor 1", "$D022", &f.MC1},
+			{2, "Multicolor 2", "$D023", &f.MC2}, {3, "Character color (0–7)", "color RAM", &f.FG}}
+	}
+	var cur *uint8
+	curIsChar := false
+	for _, sl := range slots {
+		br := gfx.Rect{X: x, Y: y, W: w, H: 23}
+		if u.ButtonEx("fe_slot"+itoa(sl.v), br, "", e.slot == sl.v, true) {
+			e.slot = sl.v
+		}
+		if e.slot == sl.v {
+			cur = sl.col
+			curIsChar = sl.col == &f.FG
+		}
+		sw := gfx.Rect{X: br.X + 4, Y: br.Y + 4, W: 26, H: br.H - 8}
+		m.Fill(sw, pal[f.SlotColor(sl.v)])
+		m.Frame(sw, th.BtnBorder)
+		m.TextL(font.UI, gfx.Rect{X: br.X + 38, Y: br.Y, W: br.W - 40, H: br.H}, itoa(sl.v)+"  "+sl.name, th.Text)
+		m.TextR(font.UI, gfx.Rect{X: br.X, Y: br.Y, W: br.W - 6, H: br.H}, sl.reg, th.TextDim)
+		y += 26
+	}
+	if cur == nil {
+		cur = &f.FG
+		curIsChar = true
+	}
+	y += 4
+	limit := 16
+	if f.Multi && curIsChar {
+		limit = 8 // the character color of a multicolor character is 0–7
+	}
+	target := cur
+	a.toolPalette("fe_pal", x, y, w, int(*cur), func(c int) {
+		if c < limit {
+			*target = uint8(c)
+		}
+	})
+	if limit < 16 {
+		sw := w / 8
+		m.FillA(gfx.Rect{X: x, Y: y + sw - 4, W: w, H: sw - 6}, th.Panel, 170)
+	}
 }
 
 // --- new ---------------------------------------------------------------------------
@@ -746,6 +842,7 @@ func (d *fntNewDialog) Draw(a *App, r gfx.Rect) {
 			rom := []int{0, 1, -1}[i]
 			nf := c64.NewFont(rom)
 			nf.FG, nf.BG, nf.Tile, nf.TileLayout = e.f.FG, e.f.BG, e.f.Tile, e.f.TileLayout
+			nf.Multi, nf.MC1, nf.MC2 = e.f.Multi, e.f.MC1, e.f.MC2
 			*e.f = *nf
 			e.path = ""
 			a.closeModal(false)
@@ -837,9 +934,7 @@ func (a *App) fontSheet() *gfx.Image {
 	for c := 0; c < 256; c++ {
 		for y := 0; y < 8; y++ {
 			for x := 0; x < 8; x++ {
-				if f.Pixel(c, x, y) {
-					img.Set((c%16)*8+x, (c/16)*8+y, a.pal.Colors[f.FG])
-				}
+				img.Set((c%16)*8+x, (c/16)*8+y, a.pal.Colors[f.ColorAt(c, x, y)])
 			}
 		}
 	}
@@ -909,7 +1004,7 @@ func romPicture(rom []byte) []int8 {
 
 func (a *App) fntOpenImport() {
 	a.modal = &fntImportDialog{src: a.pictureIndexes(), name: "the multicolor picture",
-		o: c64.FontImport{Count: 256, BG: int(a.pic.BG)}}
+		o: c64.FontImport{Count: 256, BG: int(a.pic.BG), Multi: a.fnt.f.Multi}}
 }
 
 func (d *fntImportDialog) Title() string          { return "Import characters" }
@@ -929,7 +1024,7 @@ func (d *fntImportDialog) apply(a *App) {
 	e.push()
 	o := d.o
 	o.Count = d.count()
-	e.f.ImportFont(d.src, o)
+	e.f.ImportFont(d.src, o, a.c64Dist())
 	e.cur = o.Target
 	a.closeModal(false)
 	a.setStatus(fmt.Sprintf("Imported %d characters from %s", o.Count, d.name))
@@ -1006,10 +1101,31 @@ func (d *fntImportDialog) Draw(a *App, r gfx.Rect) {
 	y += 26
 	m.Text(font.UI, x+120, y, fmt.Sprintf("%d characters: $%02X – $%02X", d.count(), d.o.Target, d.o.Target+max(0, d.count()-1)), th.TextDim)
 	y += 28
-	hdr("Background (not set)")
+	hdr("Mode")
+	bw := (w - 4) / 2
+	for i, l := range []string{"Hires", "Multicolor"} {
+		if u.ButtonEx("fi_m"+itoa(i), gfx.Rect{X: x + i*(bw+4), Y: y, W: bw, H: 22}, l, d.o.Multi == (i == 1), true) {
+			d.o.Multi = i == 1
+		}
+	}
+	y += 28
+	hdr("Background")
 	a.toolColorChoice("fi_bg", x, y, w, d.o.BG, "Most frequent color", func(c int) { d.o.BG = c })
-	y += 34
-	for _, ln := range wrapText(font.UI, "Every pixel that is not the background color becomes a set pixel (hires). A multicolor picture is read with its double wide pixels.", w) {
+	y += 30
+	info := "Every pixel that is not the background color becomes a set pixel. A multicolor picture is read with its double wide pixels."
+	if d.o.Multi {
+		for i, l := range []string{"Find colors", "Keep colors"} {
+			br := gfx.Rect{X: x + i*(bw+4), Y: y, W: bw, H: 22}
+			if u.ButtonEx("fi_k"+itoa(i), br, l, d.o.KeepColors == (i == 1), true) {
+				d.o.KeepColors = i == 1
+			}
+			u.Tip("fi_k"+itoa(i), br, []string{"Multicolor 1, 2 and the character color (0–7) become the most frequent colors", "Keep the colors of the character set"}[i])
+		}
+		y += 28
+		info = "Every pixel pair gets the nearest of the four colors: background, multicolor 1 and 2 and the character color (0–7)."
+	}
+	y += 4
+	for _, ln := range wrapText(font.UI, info, w) {
 		m.Text(font.UI, x, y, ln, th.TextDim)
 		y += font.UI.Height + 2
 	}

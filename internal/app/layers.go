@@ -237,6 +237,13 @@ func (a *App) panelLayers(x, y, w int) int {
 			func() { a.toggleLayer(l) }, func() { a.setActiveLayer(l) })
 	}
 	y += 2
+	pr := gfx.Rect{X: x, Y: y, W: w, H: 20}
+	if on := u.Checkbox("ly_protect", pr, "Protect other layers on clashes", a.set.ProtectLayers); on != a.set.ProtectLayers {
+		a.set.ProtectLayers = on
+		a.saveSettings()
+	}
+	u.Tip("ly_protect", pr, "When a cell is full, only colors of the active layer may be replaced – the other layers stay as they are")
+	y += 26
 	if u.ButtonEx("lyclear", gfx.Rect{X: x, Y: y, W: w, H: 22}, "Clear "+layerName(a.pic.Active), false, a.pic.LayerPixels(a.pic.Active) > 0) {
 		a.clearActiveLayer()
 	}

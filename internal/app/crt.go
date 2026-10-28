@@ -79,10 +79,8 @@ func (a *App) crtSource() []uint32 {
 	const bx, by = (crtW - 320) / 2, (crtH - 200) / 2
 	for y := 0; y < c64.H; y++ {
 		row := src[(by+y)*crtW+bx:]
-		for x := 0; x < c64.W; x++ {
-			c := a.pal.Colors[a.pic.ColorAt(x, y)]
-			row[x*2] = c
-			row[x*2+1] = c
+		for x := 0; x < 320; x++ {
+			row[x] = a.pal.Colors[a.pic.ColorAt(x/asp, y)]
 		}
 	}
 	return src

@@ -25,7 +25,7 @@ func (a *App) smearStart(x, y int) {
 	a.smearBuf = make([]int8, len(st.Offs))
 	for k, o := range st.Offs {
 		px, py := x+o.X, y+o.Y
-		if px < 0 || py < 0 || px >= c64.W || py >= c64.H {
+		if px < 0 || py < 0 || px >= picW || py >= c64.H {
 			a.smearBuf[k] = -1
 			continue
 		}
@@ -44,7 +44,7 @@ func (a *App) smearStep(x, y int) {
 	s := uint32(a.smearStrength())
 	for k, o := range st.Offs {
 		px, py := x+o.X, y+o.Y
-		if px < 0 || py < 0 || px >= c64.W || py >= c64.H {
+		if px < 0 || py < 0 || px >= picW || py >= c64.H {
 			continue
 		}
 		cur := a.pic.ColorAt(px, py)

@@ -23,6 +23,9 @@ type swapDialog struct {
 
 func (a *App) validSwapColors(from, to uint8) (uint8, uint8) {
 	bg := a.pic.BG
+	if a.hires() {
+		bg = 255 // no common background in hires
+	}
 	if from == bg {
 		from = 255
 	}
@@ -69,14 +72,14 @@ func (d *swapDialog) Key(a *App, k KeyEvent) {
 }
 
 func (d *swapDialog) ok(a *App) bool {
-	return d.from != d.to && d.from != a.pic.BG
+	return d.from != d.to && (d.from != a.pic.BG || a.hires())
 }
 
 func (d *swapDialog) apply(a *App) {
 	if !d.ok(a) {
 		return
 	}
-	if d.to == a.pic.BG {
+	if d.to == a.pic.BG && !a.hires() {
 		d.both = false // the background cannot become another color
 	}
 	a.swapFrom, a.swapTo, a.swapBoth, a.swapSet = d.from, d.to, d.both, true
@@ -103,10 +106,10 @@ func (d *swapDialog) apply(a *App) {
 func countColor(p *c64.Picture, col uint8) (pixels, cells int) {
 	for cell := 0; cell < c64.Cells; cell++ {
 		n := 0
-		cx, cy := (cell%c64.Cols)*4, (cell/c64.Cols)*8
+		cx, cy := p.CellOrigin(cell)
 		for y := cy; y < cy+8; y++ {
-			for x := cx; x < cx+4; x++ {
-				if p.Bits[y*c64.W+x] != 0 && p.ColorAt(x, y) == col {
+			for x := cx; x < cx+p.CellW(); x++ {
+				if (p.Hires() || p.Bits[y*c64.W+x] != 0) && p.ColorAt(x, y) == col {
 					n++
 				}
 			}
@@ -142,7 +145,7 @@ func (d *swapDialog) Draw(a *App, r gfx.Rect) {
 			sr := gfx.Rect{X: r.X + i*(sw+1), Y: y, W: sw, H: 30}
 			m.Fill(sr, a.pal.Colors[i])
 			m.Frame(sr, th.BtnBorder)
-			isBG := c == a.pic.BG
+			isBG := c == a.pic.BG && !a.hires()
 			if isBG && bgOK {
 				mc := uint32(0xFFFFFF)
 				if luma(a.pal.Colors[i]) > 140 {
@@ -178,7 +181,7 @@ func (d *swapDialog) Draw(a *App, r gfx.Rect) {
 	}
 	row("sw_f", "Replace this color:", &d.from, d.to, false)
 	row("sw_t", "with this color:", &d.to, d.from, true)
-	toBG := d.to == a.pic.BG
+	toBG := d.to == a.pic.BG && !a.hires()
 	if toBG {
 		d.both = false
 	}
@@ -204,6 +207,9 @@ func (d *swapDialog) Draw(a *App, r gfx.Rect) {
 	u.Tip("sw_both", gfx.Rect{X: r.X, Y: y, W: r.W, H: 20}, "Off: only A becomes B.  On: A becomes B and B becomes A.")
 	y += 28
 	info := "The background color ($D021) itself is never changed, but a color can become background."
+	if a.hires() {
+		info = "In hires the number of colors per cell never grows: two colors of a cell can only merge."
+	}
 	if !d.brush {
 		n, cells := countColor(a.pic, d.from)
 		info = fmt.Sprintf("%s is used by %d pixels in %d cells. ", c64.ColorNames[d.from], n, cells) + info
@@ -258,10 +264,10 @@ func (a *App) cellsUnderStamp(x, y int) []int {
 	var out []int
 	for _, o := range st.Offs {
 		px, py := x+o.X, y+o.Y
-		if px < 0 || py < 0 || px >= c64.W || py >= c64.H {
+		if px < 0 || py < 0 || px >= picW || py >= c64.H {
 			continue
 		}
-		c := c64.CellOf(px, py)
+		c := a.pic.Cell(px, py)
 		if !seen[c] {
 			seen[c] = true
 			out = append(out, c)
@@ -289,7 +295,7 @@ func (a *App) drawCellSwapPreview() {
 	m := a.img
 	z := a.zoom
 	for _, c := range a.cellsUnderStamp(a.mpx, a.mpy) {
-		cx, cy := (c%c64.Cols)*4, (c/c64.Cols)*8
+		cx, cy := a.pic.CellOrigin(c)
 		sx, sy := a.picToScreen(cx, cy)
 		r := gfx.Rect{X: sx, Y: sy, W: 8 * z, H: 8 * z}
 		m.FillA(r, a.pal.Colors[a.swapTo], 70)

@@ -292,20 +292,36 @@ func render() {
 	a.Resize((int(viewW)+scale-1)/scale, (int(viewH)+scale-1)/scale)
 	a.Tick(time.Since(startTime).Milliseconds())
 	frame = a.Frame()
-	if a.HasDeferred() {
-		msg(view, "setNeedsDisplay:", true)
-		msg(view, "displayIfNeeded")
-		inModal++
-		a.RunDeferred()
-		inModal--
-		releaseAll()
-		if a == nil {
-			return
-		}
-		a.Resize((int(viewW)+scale-1)/scale, (int(viewH)+scale-1)/scale)
-		frame = a.Frame()
+	if a.HasDeferred() && !deferredQueued {
+		// Open/save panels and alerts are opened after the current event is
+		// finished, not from inside mouseDown:/keyDown:. A panel started inside
+		// an event handler does not get clean mouse events: clicks into the
+		// name field of the save panel did not place the cursor.
+		deferredQueued = true
+		msg(view, "performSelector:withObject:afterDelay:", sel("runDeferred:"), objc.ID(0), float64(0))
 	}
 	msg(view, "setNeedsDisplay:", true)
+}
+
+var deferredQueued bool
+
+func runDeferred(self objc.ID, cmd objc.SEL, arg objc.ID) {
+	defer guard()
+	deferredQueued = false
+	if a == nil || inModal > 0 {
+		return
+	}
+	msg(view, "setNeedsDisplay:", true)
+	msg(view, "displayIfNeeded")
+	inModal++
+	a.RunDeferred()
+	inModal--
+	releaseAll()
+	if a == nil {
+		return
+	}
+	render()
+	msg(view, "displayIfNeeded")
 }
 
 func drawRect(self objc.ID, cmd objc.SEL) {
@@ -768,6 +784,7 @@ func registerClasses() (viewClass, delegateClass objc.Class) {
 		ev("keyUp:", keyUp),
 		ev("flagsChanged:", flagsChanged),
 		ev("tick:", tick),
+		ev("runDeferred:", runDeferred),
 		{Cmd: sel("draggingEntered:"), Fn: draggingEntered},
 		{Cmd: sel("performDragOperation:"), Fn: performDrag},
 	})
@@ -814,6 +831,17 @@ func buildMainMenu(delegate objc.ID) {
 	msg(appMenu, "addItem:", msg(cls("NSMenuItem"), "separatorItem"))
 	msg(appMenu, "addItem:", menuItem("Quit "+app.AppName, "terminate:", "q", 0))
 	msg(appItem, "setSubmenu:", appMenu)
+	// edit menu: the standard text commands for the name field of the save
+	// panel. The drawing view does not answer these actions, so the items
+	// are disabled there and Cmd+Z/C/V reach the program as before.
+	editItem := msg(msg(cls("NSMenuItem"), "alloc"), "init")
+	msg(bar, "addItem:", editItem)
+	editMenu := msg(msg(cls("NSMenu"), "alloc"), "initWithTitle:", nsstr("Edit"))
+	for _, e := range [][2]string{{"Cut", "cut:"}, {"Copy", "copy:"}, {"Paste", "paste:"}, {"Select All", "selectAll:"}} {
+		key := map[string]string{"cut:": "x", "copy:": "c", "paste:": "v", "selectAll:": "a"}[e[1]]
+		msg(editMenu, "addItem:", menuItem(e[0], e[1], key, 0))
+	}
+	msg(editItem, "setSubmenu:", editMenu)
 	// window menu
 	winItem := msg(msg(cls("NSMenuItem"), "alloc"), "init")
 	msg(bar, "addItem:", winItem)

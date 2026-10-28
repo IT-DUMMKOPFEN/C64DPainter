@@ -23,13 +23,13 @@ func floorDiv(a, b int) int {
 // screenToPic rechnet Bildschirm- in Bildpunktkoordinaten um.
 func (a *App) screenToPic(sx, sy int) (int, int) {
 	ox, oy := a.origin()
-	return floorDiv(sx-ox, 2*a.zoom), floorDiv(sy-oy, a.zoom)
+	return floorDiv(sx-ox, asp*a.zoom), floorDiv(sy-oy, a.zoom)
 }
 
 // picToScreen liefert die linke obere Ecke eines Bildpunkts.
 func (a *App) picToScreen(px, py int) (int, int) {
 	ox, oy := a.origin()
-	return ox + px*2*a.zoom, oy + py*a.zoom
+	return ox + px*asp*a.zoom, oy + py*a.zoom
 }
 
 func (a *App) borderSize() (l, t, r, b int) {
@@ -152,11 +152,11 @@ func (a *App) drawCanvas() {
 	}
 	// Bild
 	pic := a.pic
-	var cols [c64.W * c64.H]uint32
+	cols := make([]uint32, picW*c64.H)
 	showPic := !a.tpl.hidePic
 	for y := 0; y < c64.H; y++ {
-		for x := 0; x < c64.W; x++ {
-			cols[y*c64.W+x] = a.pal.Colors[pic.ColorAt(x, y)]
+		for x := 0; x < picW; x++ {
+			cols[y*picW+x] = a.pal.Colors[pic.ColorAt(x, y)]
 		}
 	}
 	vis := imgR.Intersect(cr)
@@ -169,7 +169,7 @@ func (a *App) drawCanvas() {
 		txMap = make([]int, vis.W)
 		for i := range pxMap {
 			sx := vis.X + i
-			pxMap[i] = (sx - ox) / (2 * z)
+			pxMap[i] = (sx - ox) / (asp * z)
 			txMap[i] = (sx - ox) * a.tpl.w / (320 * z)
 		}
 	}
@@ -178,9 +178,9 @@ func (a *App) drawCanvas() {
 		row := m.Pix[sy*m.W : sy*m.W+m.W]
 		if !tplOn {
 			for sx := vis.X; sx < vis.Right(); {
-				px := (sx - ox) / (2 * z)
-				c := cols[py*c64.W+px]
-				end := ox + (px+1)*2*z
+				px := (sx - ox) / (asp * z)
+				c := cols[py*picW+px]
+				end := ox + (px+1)*asp*z
 				if end > vis.Right() {
 					end = vis.Right()
 				}
@@ -196,7 +196,7 @@ func (a *App) drawCanvas() {
 		ty := (sy - oy) * a.tpl.h / (200 * z)
 		for sx := vis.X; sx < vis.Right(); sx++ {
 			px := pxMap[sx-vis.X]
-			c := cols[py*c64.W+px]
+			c := cols[py*picW+px]
 			if !showPic {
 				c = bgCol
 			}
@@ -204,7 +204,7 @@ func (a *App) drawCanvas() {
 			ta := int(a.tpl.alpha[ti])
 			if ta > 0 {
 				if a.tpl.under {
-					if pic.Bits[py*c64.W+px] == 0 || !showPic {
+					if (pic.Hires() && pic.ColorAt(px, py) == pic.BG) || (!pic.Hires() && pic.Bits[py*c64.W+px] == 0) || !showPic {
 						c = gfx.Mix(c, a.tpl.buf[ti], alpha*ta/255)
 					}
 				} else {
@@ -216,8 +216,8 @@ func (a *App) drawCanvas() {
 	}
 	// Bildpunktraster
 	if a.set.PixelGrid && z >= 4 {
-		for px := 1; px < c64.W; px++ {
-			x := ox + px*2*z
+		for px := 1; px < picW; px++ {
+			x := ox + px*asp*z
 			if x >= vis.X && x < vis.Right() {
 				for sy := vis.Y; sy < vis.Bottom(); sy++ {
 					i := sy*m.W + x
@@ -247,7 +247,7 @@ func (a *App) drawCanvas() {
 			continue
 		}
 		a.needAnim = true
-		cx, cy := (cell%c64.Cols)*4, (cell/c64.Cols)*8
+		cx, cy := a.pic.CellOrigin(cell)
 		sx, sy := a.picToScreen(cx, cy)
 		r := gfx.Rect{X: sx, Y: sy, W: 8 * z, H: 8 * z}
 		al := int(200 - age*200/900)
@@ -256,10 +256,25 @@ func (a *App) drawCanvas() {
 			m.Frame(r, gfx.RGB(255, 40, 40))
 		}
 	}
+	// Hires free: cells with more than two colors (reduced on export)
+	if a.pic.Mode == c64.ModeFree && z >= 2 {
+		for cell := 0; cell < c64.Cells; cell++ {
+			if !a.pic.CellClash(cell) {
+				continue
+			}
+			cx, cy := a.pic.CellOrigin(cell)
+			sx, sy := a.picToScreen(cx, cy)
+			r := gfx.Rect{X: sx, Y: sy, W: 8 * z, H: 8 * z}
+			if r.Intersect(vis).Empty() {
+				continue
+			}
+			m.Frame(r, gfx.RGB(255, 60, 60))
+		}
+	}
 	// Zellenhinweis unter der Maus
 	if a.mouseIn && a.set.CellHint && a.modal == nil && a.menuOpen < 0 {
-		cell := c64.CellOf(a.mpx, a.mpy)
-		cx, cy := (cell%c64.Cols)*4, (cell/c64.Cols)*8
+		cell := a.pic.Cell(a.mpx, a.mpy)
+		cx, cy := a.pic.CellOrigin(cell)
 		sx, sy := a.picToScreen(cx, cy)
 		r := gfx.Rect{X: sx, Y: sy, W: 8 * z, H: 8 * z}
 		dashedFrame(m, r, 0xFFFFFF, 0x000000, 0)
@@ -362,7 +377,7 @@ func (a *App) drawBrushPreview() {
 	}
 	for i, o := range st.Offs {
 		px, py := a.mpx+o.X, a.mpy+o.Y
-		if px < 0 || py < 0 || px >= c64.W || py >= c64.H {
+		if px < 0 || py < 0 || px >= picW || py >= c64.H {
 			continue
 		}
 		c := col
@@ -382,11 +397,11 @@ func (a *App) drawBrushPreview() {
 			continue
 		}
 		sx, sy := a.picToScreen(px, py)
-		m.FillA(gfx.Rect{X: sx, Y: sy, W: 2 * z, H: z}, c, 190)
+		m.FillA(gfx.Rect{X: sx, Y: sy, W: asp * z, H: z}, c, 190)
 	}
 	// Umriss des Pinsels
 	sx, sy := a.picToScreen(a.mpx-st.HX, a.mpy-st.HY)
-	r := gfx.Rect{X: sx - 1, Y: sy - 1, W: st.W*2*z + 2, H: st.H*z + 2}
+	r := gfx.Rect{X: sx - 1, Y: sy - 1, W: st.W*asp*z + 2, H: st.H*z + 2}
 	if st.W*st.H > 1 || z >= 3 {
 		dashedFrame(m, r, 0xFFFFFF, 0x000000, 0)
 	}
@@ -394,8 +409,8 @@ func (a *App) drawBrushPreview() {
 	if a.symActive() {
 		for _, q := range a.symMirrors(a.mpx, a.mpy) {
 			qx, qy := a.picToScreen(q.X, q.Y)
-			c := gfx.Rect{X: qx + z - 4, Y: qy + z/2 - 4, W: 9, H: 9}
-			dashedFrame(m, gfx.Rect{X: qx + z - st.W*z - 1, Y: qy + z/2 - st.H*z/2 - 1, W: st.W*2*z + 2, H: st.H*z + 2}, 0xFF40C0, 0xFFFFFF, 0)
+			c := gfx.Rect{X: qx + asp*z/2 - 4, Y: qy + z/2 - 4, W: 9, H: 9}
+			dashedFrame(m, gfx.Rect{X: qx + asp*z/2 - st.W*asp*z/2 - 1, Y: qy + z/2 - st.H*z/2 - 1, W: st.W*asp*z + 2, H: st.H*z + 2}, 0xFF40C0, 0xFFFFFF, 0)
 			m.HLine(c.X, c.Right()-1, c.Y+4, 0xFF40C0)
 			m.VLine(c.X+4, c.Y, c.Bottom()-1, 0xFF40C0)
 		}

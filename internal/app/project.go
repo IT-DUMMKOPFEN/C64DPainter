@@ -30,11 +30,12 @@ type projectFile struct {
 	Border     uint8            `json:"border"`
 	Active     int              `json:"activeLayer"`
 	Palette    string           `json:"palette,omitempty"`
+	Mode       string           `json:"mode,omitempty"` // "Hires", "Hires free"; empty = multicolor
 	Layers     []projectLayer   `json:"layers"`
 	Template   *projectTemplate `json:"template,omitempty"`
 }
 
-// projectLayer: 160×200 bytes, 0 = transparent, 1..16 = C64 color + 1,
+// projectLayer: 160×200 bytes (hires: 320×200), 0 = transparent, 1..16 = C64 color + 1,
 // 17 = background color.
 type projectLayer struct {
 	Name    string `json:"name"`
@@ -60,8 +61,11 @@ func (a *App) encodeProjectOf(p *c64.Picture) ([]byte, error) {
 		Format: projectFormat, Version: projectVersion, App: AppName + " " + AppVersion,
 		Background: p.BG, Border: p.Border, Active: p.Active, Palette: a.pal.Name,
 	}
+	if p.Hires() {
+		f.Mode = c64.ModeNames[p.Mode]
+	}
 	for l := 0; l < c64.LayerCount; l++ {
-		px := make([]byte, c64.W*c64.H)
+		px := make([]byte, p.Width()*c64.H)
 		copy(px, p.L[l][:])
 		f.Layers = append(f.Layers, projectLayer{Name: layerName(l), Visible: !p.Hide[l], Pixels: px})
 	}
@@ -112,10 +116,15 @@ func decodeProject(data []byte) (*c64.Picture, *projectTemplate, image.Image, er
 		return nil, nil, nil, fmt.Errorf("this project was saved by a newer version of %s", AppName)
 	}
 	p := c64.NewPicture(f.Background, f.Border)
+	for m, n := range c64.ModeNames {
+		if m > 0 && n == f.Mode {
+			p = c64.NewHiresPicture(c64.Mode(m), f.Background, f.Border)
+		}
+	}
 	p.ToLayers()
 	for l := 0; l < c64.LayerCount && l < len(f.Layers); l++ {
 		px := f.Layers[l].Pixels
-		if len(px) != c64.W*c64.H {
+		if len(px) != p.Width()*c64.H {
 			return nil, nil, nil, fmt.Errorf("damaged project file (layer %d)", l+2)
 		}
 		for i, v := range px {

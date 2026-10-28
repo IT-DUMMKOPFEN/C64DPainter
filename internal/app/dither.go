@@ -205,6 +205,10 @@ type autoDitherDialog struct {
 }
 
 func (a *App) openAutoDither() {
+	if a.hires() {
+		a.setStatus("Auto dither works in multicolor pictures only")
+		return
+	}
 	a.commitOrCancelForHistory()
 	a.menuOpen = -1
 	d := &autoDitherDialog{opts: a.set.DitherAuto, src: a.pic.Clone()}

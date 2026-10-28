@@ -73,11 +73,16 @@ func (d *importDialog) update(a *App) {
 		d.adjKey = ak
 		d.adjusted = c64.ApplyAdjust(d.screen, d.opts.Adjust)
 	}
-	key := fmt.Sprintf("%v/%d", d.opts, a.palIdx)
+	key := fmt.Sprintf("%v/%d/%d", d.opts, a.palIdx, a.pic.Mode)
 	if d.key != key {
 		d.key = key
-		px := c64.ApplyAdjust(c64.MergePairs(d.screen, d.opts.Pair), d.opts.Adjust)
-		d.preview = c64.ConvertRGB(px, a.pal, d.opts)
+		if a.hires() {
+			// hires: the picture keeps its mode (two colors per 8×8 cell or free)
+			d.preview = c64.ConvertHiresRGB(d.adjusted, a.pal, d.opts, a.pic.Mode)
+		} else {
+			px := c64.ApplyAdjust(c64.MergePairs(d.screen, d.opts.Pair), d.opts.Adjust)
+			d.preview = c64.ConvertRGB(px, a.pal, d.opts)
+		}
 	}
 }
 
@@ -96,7 +101,7 @@ func (d *importDialog) Draw(a *App, r gfx.Rect) {
 		scale = 1
 	}
 	vx := r.X
-	tabs := []string{"Multicolor", "Original", "Split"}
+	tabs := []string{c64.ModeNames[a.pic.Mode], "Original", "Split"}
 	for i, t := range tabs {
 		if u.ButtonEx("im_v"+itoa(i), gfx.Rect{X: vx + i*104, Y: r.Y, W: 100, H: 24}, t, d.view == i, true) {
 			d.view = i
@@ -121,7 +126,7 @@ func (d *importDialog) Draw(a *App, r gfx.Rect) {
 				p := d.adjusted[y*320+x]
 				c = gfx.RGB(uint8(p[0]), uint8(p[1]), uint8(p[2]))
 			} else {
-				c = a.pal.Colors[d.preview.ColorAt(x/2, y)]
+				c = a.pal.Colors[d.preview.ColorAt(x*d.preview.Width()/320, y)]
 			}
 			m.Fill(gfx.Rect{X: pr.X + x*scale, Y: pr.Y + y*scale, W: scale, H: scale}, c)
 		}
@@ -141,17 +146,32 @@ func (d *importDialog) Draw(a *App, r gfx.Rect) {
 		info += " – will be scaled to 320 × 200"
 	}
 	m.Text(font.UI, r.X, iy, info, th.Text)
-	if d.target != 1 {
+	if d.target != 1 && !a.hires() {
 		m.Text(font.UI, r.X, iy+18, fmt.Sprintf("Background: %s  ·  cells using all 4 colors: %d of 1000  ·  palette: %s",
 			c64.ColorNames[d.preview.BG], d.preview.FullCells(), a.pal.Name), th.TextDim)
+	} else if d.target != 1 {
+		m.Text(font.UI, r.X, iy+18, fmt.Sprintf("Mode: %s  ·  paper color: %s  ·  palette: %s",
+			c64.ModeNames[a.pic.Mode], c64.ColorNames[d.preview.BG], a.pal.Name), th.TextDim)
 	}
 	cellText := []string{
 		"Every 4×8 cell gets the background color plus the three colors that fit best.",
 		"Every 4×8 cell gets the background color plus its three most frequent colors.",
 		"The whole picture uses the background color plus the same three colors.",
 	}[clampI(int(d.opts.Cells), 0, 2)]
+	rules := "The result always follows the multicolor rules."
+	if a.pic.Mode == c64.ModeHires {
+		cellText = []string{
+			"Every 8×8 cell gets the two colors that fit best.",
+			"Every 8×8 cell gets its two most frequent colors.",
+			"The whole picture uses the same two colors.",
+		}[clampI(int(d.opts.Cells), 0, 2)]
+		rules = "The result always follows the hires rules (2 colors per cell)."
+	} else if a.pic.Mode == c64.ModeFree {
+		cellText = "Hires free: every pixel gets the nearest of all 16 colors."
+		rules = "Cells may have more than 2 colors; they are reduced when you export for the C64."
+	}
 	m.Text(font.UI, r.X, iy+40, cellText, th.TextDim)
-	m.Text(font.UI, r.X, iy+56, "The result always follows the multicolor rules.", th.TextDim)
+	m.Text(font.UI, r.X, iy+56, rules, th.TextDim)
 
 	// ---- settings (right, scrollable) ----
 	cx := r.Right() - colW
@@ -188,7 +208,7 @@ func (d *importDialog) Draw(a *App, r gfx.Rect) {
 	if v := row3("im_f", []string{"Stretch", "Fit", "Fill"}, int(d.opts.Fit), !exact); v >= 0 {
 		d.opts.Fit = c64.FitMode(v)
 	}
-	if v := row3("im_p", []string{"Average", "Left pixel", "Right pixel"}, int(d.opts.Pair), d.target != 1); v >= 0 {
+	if v := row3("im_p", []string{"Average", "Left pixel", "Right pixel"}, int(d.opts.Pair), d.target != 1 && !a.hires()); v >= 0 {
 		d.opts.Pair = c64.PairMode(v)
 	}
 	u.Tip("im_p0", gfx.Rect{X: cx, Y: y - 30, W: w, H: 24}, "Two screen pixels become one wide multicolor pixel")
@@ -251,7 +271,11 @@ func (d *importDialog) Draw(a *App, r gfx.Rect) {
 		u.Tip("im_c"+itoa(i), gfx.Rect{X: cx + i*(bw+4), Y: y - 30, W: bw, H: 24}, tip)
 	}
 	y += 4
-	hdr("Background color ($D021)")
+	if a.hires() {
+		hdr("Paper color (empty pixels)")
+	} else {
+		hdr("Background color ($D021)")
+	}
 	sw := (w - 16) / 17
 	for i := -1; i < 16; i++ {
 		sr := gfx.Rect{X: cx + (i+1)*(sw+1), Y: y, W: sw, H: 22}
@@ -300,6 +324,7 @@ func (d *importDialog) Draw(a *App, r gfx.Rect) {
 			border := a.pic.Border
 			a.setFlatPicture(d.preview)
 			a.pic.Border = border
+			a.syncMode()
 			a.filePath[a.page] = ""
 			a.updateTitle()
 			a.setStatus("Image converted: " + d.name)

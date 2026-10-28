@@ -431,19 +431,21 @@ func (a *App) panelBrush(x, y, w int) int {
 			break
 		}
 	}
-	cx := pr.X + pr.W/2 - st.W*ps
+	cx := pr.X + pr.W/2 - st.W*ps*asp/2
 	cy := pr.Y + pr.H/2 - st.H*ps/2
 	for i, o := range st.Offs {
 		c := a.pal.Colors[a.fg]
 		if st.Cols != nil && a.customOwnColor {
 			c = a.pal.Colors[st.Cols[i]]
 		}
-		a.img.Fill(gfx.Rect{X: cx + (o.X+st.HX)*2*ps, Y: cy + (o.Y+st.HY)*ps, W: 2 * ps, H: ps}, c)
+		a.img.Fill(gfx.Rect{X: cx + (o.X+st.HX)*asp*ps, Y: cy + (o.Y+st.HY)*ps, W: asp * ps, H: ps}, c)
 	}
 	y += 60
-	a.set.AspectBrush = u.Checkbox("baspect", gfx.Rect{X: x, Y: y, W: w, H: 20}, "Round on screen (2:1)", a.set.AspectBrush)
-	u.Tip("baspect", gfx.Rect{X: x, Y: y, W: w, H: 20}, "Multicolor pixels are twice as wide as high")
-	y += 24
+	if !a.hires() {
+		a.set.AspectBrush = u.Checkbox("baspect", gfx.Rect{X: x, Y: y, W: w, H: 20}, "Round on screen (2:1)", a.set.AspectBrush)
+		u.Tip("baspect", gfx.Rect{X: x, Y: y, W: w, H: 20}, "Multicolor pixels are twice as wide as high")
+		y += 24
+	}
 	if a.tool == ToolSpray {
 		a.sprayRadius = u.Slider("sprad", gfx.Rect{X: x, Y: y, W: w, H: 22}, "Spray radius", a.sprayRadius, 2, 64, "")
 		y += 26
@@ -526,9 +528,20 @@ func (a *App) panelColors(x, y, w int) int {
 		}
 		y += 20
 	}
-	row("bgc", "Background ($D021, bit pair %00)", a.pic.BG, a.setBG)
+	bgLabel := "Background ($D021, bit pair %00)"
+	if a.hires() {
+		bgLabel = "Paper (empty pixels)"
+	}
+	row("bgc", bgLabel, a.pic.BG, a.setBG)
 	row("brc", "Border ($D020)", a.pic.Border, a.setBorder)
-	u.Label(gfx.Rect{X: x, Y: y, W: w, H: 16}, "When a cell is full (4 colors):", true)
+	full := "When a cell is full (4 colors):"
+	switch a.pic.Mode {
+	case c64.ModeHires:
+		full = "When a cell is full (2 colors):"
+	case c64.ModeFree:
+		full = "Hires free: no limits (on export 2 per cell)"
+	}
+	u.Label(gfx.Rect{X: x, Y: y, W: w, H: 16}, full, true)
 	y += 18
 	names := []string{"Block (strict)", "Replace rarest color", "Use nearest color"}
 	tips := []string{
@@ -559,7 +572,11 @@ func (a *App) panelCell(x, y, w int) int {
 		u.Label(gfx.Rect{X: x, Y: y, W: w, H: 18}, "Move the mouse over the picture", true)
 		y += 22
 	} else {
-		cell := c64.CellOf(a.mpx, a.mpy)
+		cell := a.pic.Cell(a.mpx, a.mpy)
+		if a.hires() {
+			y = a.hiresCellInfo(x, y, w, cell)
+			return y + 6
+		}
 		cols, used := a.pic.CellColors(cell)
 		hidden := a.pic.HiddenOnly(cell)
 		u.Label(gfx.Rect{X: x, Y: y, W: w, H: 18}, fmt.Sprintf("Column %d, row %d  (4×8 pixels)", cell%c64.Cols, cell/c64.Cols), false)
@@ -591,6 +608,52 @@ func (a *App) panelCell(x, y, w int) int {
 	return y + 26
 }
 
+// hiresCellInfo shows the colors of a hires cell.
+func (a *App) hiresCellInfo(x, y, w, cell int) int {
+	u := &a.ui
+	m := a.img
+	th := a.th
+	u.Label(gfx.Rect{X: x, Y: y, W: w, H: 18}, fmt.Sprintf("Column %d, row %d  (8×8 pixels)", cell%c64.Cols, cell/c64.Cols), false)
+	y += 20
+	var cnt [16]int
+	cx, cy := a.pic.CellOrigin(cell)
+	for yy := cy; yy < cy+8; yy++ {
+		for xx := cx; xx < cx+8; xx++ {
+			cnt[a.pic.ColorAt(xx, yy)]++
+		}
+	}
+	n := 0
+	for c := 0; c < 16; c++ {
+		if cnt[c] == 0 {
+			continue
+		}
+		n++
+		r := gfx.Rect{X: x, Y: y, W: 18, H: 15}
+		m.Fill(r, a.pal.Colors[c])
+		m.Frame(r, th.BtnBorder)
+		lbl := fmt.Sprintf("%s  ·  %d pixels", c64.ColorNames[c], cnt[c])
+		if uint8(c) == a.pic.BG {
+			lbl += "  (paper)"
+		}
+		m.Text(font.UI, x+24, y+1, gfx.Elide(font.UI, lbl, w-24), th.Text)
+		y += 18
+	}
+	if a.pic.Mode == c64.ModeFree {
+		c := th.TextDim
+		s := fmt.Sprintf("Cells with more than 2 colors: %d", a.pic.HiresClashes())
+		if n > 2 {
+			c = gfx.RGB(220, 60, 60)
+			s = "This cell has more than 2 colors · " + s
+		}
+		m.Text(font.UI, x, y+2, gfx.Elide(font.UI, s, w), c)
+		y += 20
+	} else {
+		m.Text(font.UI, x, y+2, "Hires: 2 colors per cell", th.TextDim)
+		y += 20
+	}
+	return y
+}
+
 func (a *App) panelNavigator(x, y, w int) int {
 	m := a.img
 	th := a.th
@@ -603,7 +666,7 @@ func (a *App) panelNavigator(x, y, w int) int {
 	for yy := 0; yy < nh; yy++ {
 		py := yy * 200 / nh
 		for xx := 0; xx < w; xx++ {
-			px := xx * 160 / w
+			px := xx * picW / w
 			m.Set(nr.X+xx, nr.Y+yy, a.pal.Colors[a.pic.ColorAt(px, py)])
 		}
 	}
@@ -703,6 +766,36 @@ func (a *App) transformControls(x, y, w int, idp string) int {
 		}
 	}
 	bw2 := (w - 4) / 2
+	// perspective
+	pr := gfx.Rect{X: x, Y: y, W: w, H: 20}
+	if on := u.Checkbox(idp+"persp", pr, "Perspective (handles)", s.persp.on); on != s.persp.on {
+		s.persp.on = on
+		if on {
+			a.selEnsureFloating()
+		}
+	}
+	u.Tip(idp+"persp", pr, "Drag the corners to distort the selection in perspective")
+	y += 24
+	if s.persp.on {
+		for i, l := range []string{"Opposite", "Free"} {
+			br := gfx.Rect{X: x + i*(bw2+4), Y: y, W: bw2, H: 22}
+			if u.ButtonEx(idp+"pm"+itoa(i), br, l, s.persp.free == (i == 1), true) {
+				s.persp.free = i == 1
+			}
+			u.Tip(idp+"pm"+itoa(i), br, []string{"The other corner of the edge moves the other way", "Every corner moves on its own"}[i])
+		}
+		y += 26
+		for i, l := range []string{"↔ Top / bottom", "↕ Left / right"} {
+			br := gfx.Rect{X: x + i*(bw2+4), Y: y, W: bw2, H: 22}
+			if u.ButtonEx(idp+"pd"+itoa(i), br, l, s.persp.vert == (i == 1), true) && s.persp.vert != (i == 1) {
+				s.persp.vert = i == 1
+				s.persp.off = [4]float64{}
+				a.selRender()
+			}
+			u.Tip(idp+"pd"+itoa(i), br, []string{"The corners of the top and bottom edge move left and right", "The corners of the left and right edge move up and down"}[i])
+		}
+		y += 28
+	}
 	if u.ButtonEx(idp+"reset", gfx.Rect{X: x, Y: y, W: bw2, H: 22}, "Reset", false, s.state == selFloating) {
 		a.transformQuick(qReset)
 	}

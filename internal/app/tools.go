@@ -17,7 +17,7 @@ func (a *App) canvasInput() {
 	cr := a.rCanvas
 	over := cr.Contains(in.MX, in.MY)
 	px, py := a.screenToPic(in.MX, in.MY)
-	a.mouseIn = over && px >= 0 && py >= 0 && px < c64.W && py < c64.H
+	a.mouseIn = over && px >= 0 && py >= 0 && px < picW && py < c64.H
 	if a.mouseIn {
 		a.mpx, a.mpy = px, py
 	}
@@ -63,7 +63,7 @@ func btnOf(in *Input) int {
 }
 
 func (a *App) pickColor(px, py, btn int) {
-	if px < 0 || py < 0 || px >= c64.W || py >= c64.H {
+	if px < 0 || py < 0 || px >= picW || py >= c64.H {
 		return
 	}
 	c := a.pic.ColorAt(px, py)
@@ -249,17 +249,17 @@ func (a *App) shapePreview(px, py int) {
 			a.lineDabs(a.pic, x0, y1, x0, y0, d.btn)
 		}
 	case ToolCircle, ToolCircleF:
-		dxh := float64(x1-x0) * 2
+		dxh := float64(x1-x0) * float64(asp)
 		dy := float64(y1 - y0)
 		r := math.Sqrt(dxh*dxh + dy*dy)
-		a.ellipse(x0, y0, r/2, r, a.tool == ToolCircleF, d.btn)
+		a.ellipse(x0, y0, r/float64(asp), r, a.tool == ToolCircleF, d.btn)
 	case ToolEllipse, ToolEllipseF:
 		rx := math.Abs(float64(x1 - x0))
 		ry := math.Abs(float64(y1 - y0))
 		if shift {
 			// Umschalt: Kreis am Bildschirm
-			m := math.Max(rx*2, ry)
-			rx, ry = m/2, m
+			m := math.Max(rx*float64(asp), ry)
+			rx, ry = m/float64(asp), m
 		}
 		a.ellipse(x0, y0, rx, ry, a.tool == ToolEllipseF, d.btn)
 	default:
@@ -270,7 +270,7 @@ func (a *App) shapePreview(px, py int) {
 }
 
 func constrain45(x0, y0, x1, y1 int) (int, int) {
-	dx := float64(x1-x0) * 2
+	dx := float64(x1-x0) * float64(asp)
 	dy := float64(y1 - y0)
 	ax, ay := math.Abs(dx), math.Abs(dy)
 	switch {
@@ -287,12 +287,12 @@ func constrain45(x0, y0, x1, y1 int) (int, int) {
 		if dy < 0 {
 			sy = -1
 		}
-		return x0 + int(math.Round(sx*m/2)), y0 + int(math.Round(sy*m))
+		return x0 + int(math.Round(sx*m/float64(asp))), y0 + int(math.Round(sy*m))
 	}
 }
 
 func constrainSquare(x0, y0, x1, y1 int) (int, int) {
-	dx := float64(x1-x0) * 2
+	dx := float64(x1-x0) * float64(asp)
 	dy := float64(y1 - y0)
 	m := math.Max(math.Abs(dx), math.Abs(dy))
 	sx, sy := 1.0, 1.0
@@ -302,7 +302,7 @@ func constrainSquare(x0, y0, x1, y1 int) (int, int) {
 	if dy < 0 {
 		sy = -1
 	}
-	return x0 + int(math.Round(sx*m/2)), y0 + int(math.Round(sy*m))
+	return x0 + int(math.Round(sx*m/float64(asp))), y0 + int(math.Round(sy*m))
 }
 
 func (a *App) fillRect(x0, y0, x1, y1, btn int) {
@@ -352,7 +352,7 @@ func (a *App) ellipse(cx, cy int, rx, ry float64, filled bool, btn int) {
 func (a *App) drawCurve(p *c64.Picture, A, B, M pt, btn int) {
 	cx := 2*float64(M.X) - float64(A.X+B.X)/2
 	cy := 2*float64(M.Y) - float64(A.Y+B.Y)/2
-	l := math.Hypot(float64(A.X-M.X)*2, float64(A.Y-M.Y)) + math.Hypot(float64(B.X-M.X)*2, float64(B.Y-M.Y))
+	l := math.Hypot(float64(A.X-M.X)*float64(asp), float64(A.Y-M.Y)) + math.Hypot(float64(B.X-M.X)*float64(asp), float64(B.Y-M.Y))
 	n := int(l/3) + 8
 	lx, ly := A.X, A.Y
 	for i := 1; i <= n; i++ {
@@ -374,28 +374,28 @@ func (a *App) drawCurve(p *c64.Picture, A, B, M pt, btn int) {
 // floodFill füllt die zusammenhängende Fläche gleicher Farbe.
 func (a *App) floodFill(x, y, btn int) bool {
 	p := a.pic
-	if x < 0 || y < 0 || x >= c64.W || y >= c64.H {
+	if x < 0 || y < 0 || x >= picW || y >= c64.H {
 		return false
 	}
 	target := p.ColorAt(x, y)
 	if target == a.colorFor(btn) && a.pattern == 0 {
 		return false
 	}
-	seen := make([]bool, c64.W*c64.H)
-	stack := []int{y*c64.W + x}
-	seen[y*c64.W+x] = true
+	seen := make([]bool, picW*c64.H)
+	stack := []int{y*picW + x}
+	seen[y*picW+x] = true
 	var region []int
 	for len(stack) > 0 {
 		i := stack[len(stack)-1]
 		stack = stack[:len(stack)-1]
 		region = append(region, i)
-		cx, cy := i%c64.W, i/c64.W
+		cx, cy := i%picW, i/picW
 		for _, d := range [4][2]int{{1, 0}, {-1, 0}, {0, 1}, {0, -1}} {
 			nx, ny := cx+d[0], cy+d[1]
-			if nx < 0 || ny < 0 || nx >= c64.W || ny >= c64.H {
+			if nx < 0 || ny < 0 || nx >= picW || ny >= c64.H {
 				continue
 			}
-			j := ny*c64.W + nx
+			j := ny*picW + nx
 			if !seen[j] && p.ColorAt(nx, ny) == target {
 				seen[j] = true
 				stack = append(stack, j)
@@ -403,7 +403,7 @@ func (a *App) floodFill(x, y, btn int) bool {
 		}
 	}
 	for _, i := range region {
-		px, py := i%c64.W, i/c64.W
+		px, py := i%picW, i/picW
 		if patBit(a.pattern, px, py) {
 			a.plot(p, px, py, a.colorFor(btn))
 		}
@@ -427,7 +427,7 @@ func (a *App) spray(x, y int) {
 				break
 			}
 		}
-		px := x + int(math.Round(u*R/2))
+		px := x + int(math.Round(u*R/float64(asp)))
 		py := y + int(math.Round(v*R))
 		a.dab(a.pic, px, py, a.drag.btn)
 	}

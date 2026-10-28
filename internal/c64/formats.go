@@ -176,12 +176,20 @@ func (p *Picture) ToImage(pal *Palette, mode PNGMode) *image.Paletted {
 	default:
 		w, h, sx = 320, 200, 2
 	}
+	pw := W
+	if p.Hires() {
+		// hires: one pixel per screen pixel (no 160 pixel version)
+		pw, sx = HW, 1
+		if mode == PNG160 {
+			w = 320
+		}
+	}
 	im := image.NewPaletted(image.Rect(0, 0, w, h), cp)
 	for i := range im.Pix {
 		im.Pix[i] = p.Border & 15
 	}
 	for y := 0; y < H; y++ {
-		for x := 0; x < W; x++ {
+		for x := 0; x < pw; x++ {
 			c := p.ColorAt(x, y)
 			for k := 0; k < sx; k++ {
 				im.Pix[(y+oy)*w+ox+x*sx+k] = c

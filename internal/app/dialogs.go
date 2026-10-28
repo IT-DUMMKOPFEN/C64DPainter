@@ -304,9 +304,14 @@ func (a *App) openTransformDialog() {
 	}
 	a.modal = &transformDialog{}
 }
-func (d *transformDialog) Title() string          { return "Rotate, scale and shear selection" }
-func (d *transformDialog) NoDim()                 {}
-func (d *transformDialog) Size(a *App) (int, int) { return 420, 380 }
+func (d *transformDialog) Title() string { return "Rotate, scale, shear and perspective" }
+func (d *transformDialog) NoDim()        {}
+func (d *transformDialog) Size(a *App) (int, int) {
+	if a.sel.persp.on {
+		return 420, 460
+	}
+	return 420, 410
+}
 func (d *transformDialog) Draw(a *App, r gfx.Rect) {
 	m := a.img
 	m.Text(font.UI, r.X, r.Y, "Changes are shown in the picture right away. The color", a.th.TextDim)
@@ -369,7 +374,7 @@ func (d *aboutDialog) Draw(a *App, r gfx.Rect) {
 	center(font.BodyB, "Version "+AppVersion, th.Accent, 10)
 	center(font.Body, "Created by "+AppAuthor, th.Text, 4)
 	center(font.Body, AppLicense, th.Text, 12)
-	center(font.UI, "A paint program for the C64 multicolor bitmap mode for", th.TextDim, 4)
+	center(font.UI, "A paint program for the C64 bitmap modes (multicolor and hires) for", th.TextDim, 4)
 	center(font.UI, "Windows 11 (Windows 10 may crash) · macOS (Apple silicon and Intel) · Linux", th.TextDim, 10)
 	center(font.UI, "Inspired by Deluxe Paint (Electronic Arts, 1985), PyDPainter and Multipaint.", th.Text, 4)
 	center(font.UI, "I was also inspired by many comments from users. Thank you so much! \u2764", th.Text, 14)

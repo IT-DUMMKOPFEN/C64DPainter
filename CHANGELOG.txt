@@ -1,12 +1,56 @@
 C64 DPainter - Changelog
 ========================
 
-A paint program for Commodore 64 multicolor bitmap pictures
+A paint program for Commodore 64 bitmap pictures (multicolor and hires)
 for Windows 11, macOS (Apple silicon and Intel) and Linux.
 
 
 Version 0.99 beta
 -----------------
+
+Graphics modes: hires and hires free
+- At the start and with File > New a window asks for the mode:
+  Multicolor (160 x 200, 4 x 8 cells, background + 3 colors), Hires
+  (320 x 200, standard bitmap mode, 8 x 8 cells with 2 colors) or Hires
+  free (320 x 200, all 16 colors without rules).
+- Hires follows the rules of the standard bitmap mode; empty pixels show
+  the paper color. A third color in a cell is blocked, replaces the
+  rarest color or uses the nearest one, as in multicolor.
+- Hires free marks cells with more than two colors; they are reduced to
+  their two most frequent colors when exported for the C64.
+- All tools, layers, selection, text, gradients and the import work in
+  hires (the converter makes hires or hires free pictures). Auto dither
+  and the dither brush stay multicolor only.
+- New file formats: Art Studio hires (.art) and Doodle (.dd), load and
+  save; a hires C64 program (.prg) with its own viewer; projects keep the
+  mode.
+
+Perspective
+- Selection > Perspective handles (also in the side panel and the
+  transform window): six handles on the corners and edges. Top/bottom
+  (corners move left/right) or left/right (corners move up/down);
+  "Opposite" moves the other corner of the edge the other way, "Free"
+  moves every corner on its own; the middle handles move a whole edge.
+- Brushes > Brush as selection puts the brush into the picture to
+  transform (and distort) it.
+
+Layers
+- "Protect other layers on clashes" (Layers panel, Layer menu): when a
+  cell is full, only colors of the active layer may be replaced.
+
+Font editor
+- Hires or multicolor character sets: background $D021, multicolor 1
+  $D022, multicolor 2 $D023 and the character color (0-7); keys 0-3 choose
+  the drawing color, C switches the mode. Multicolor import, project
+  files and ACME export with all colors.
+
+Text fields
+- Click into a text to place the cursor, select with the mouse or
+  Shift+arrows, Home/End, Delete, Ctrl+A (text tool, test text, built-in
+  file window).
+- macOS: the open and save panels are opened after the click is finished,
+  so the name field of the save panel takes clicks again; an Edit menu
+  brings Cut/Copy/Paste/Select All to the panels.
 
 macOS for Intel
 - There is now also a macOS version for Macs with an Intel processor.

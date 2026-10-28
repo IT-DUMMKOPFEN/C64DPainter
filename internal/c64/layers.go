@@ -27,7 +27,21 @@ const (
 // other layers are empty and all layers are visible.
 func (p *Picture) ToLayers() {
 	for l := range p.L {
-		p.L[l] = [W * H]uint8{}
+		p.L[l] = [HW * H]uint8{}
+	}
+	if p.Hires() {
+		if !p.Layered {
+			for i, c := range p.HP {
+				if c != p.BG {
+					p.L[0][i] = c + 1
+				}
+			}
+		}
+		p.Layered = true
+		p.Hide = [LayerCount]bool{}
+		p.Active = 0
+		p.hRecomposite()
+		return
 	}
 	if !p.Layered {
 		for y := 0; y < H; y++ {
@@ -58,10 +72,10 @@ func (p *Picture) layerColor(v uint8) (c uint8, opaque bool) {
 
 // LayerColorAt returns the color of a layer pixel and whether it is opaque.
 func (p *Picture) LayerColorAt(l, x, y int) (uint8, bool) {
-	if l < 0 || l >= LayerCount || x < 0 || y < 0 || x >= W || y >= H {
+	if l < 0 || l >= LayerCount || x < 0 || y < 0 || x >= p.Width() || y >= H {
 		return 0, false
 	}
-	return p.layerColor(p.L[l][y*W+x])
+	return p.layerColor(p.L[l][y*p.Width()+x])
 }
 
 // LayerPixels counts the opaque pixels of a layer.
@@ -155,6 +169,10 @@ func (p *Picture) rebuildCell(cell int) {
 
 // Recomposite rebuilds the visible C64 picture from the layers.
 func (p *Picture) Recomposite() {
+	if p.Hires() {
+		p.hRecomposite()
+		return
+	}
 	if !p.Layered {
 		return
 	}
@@ -175,7 +193,11 @@ func (p *Picture) SetLayerHidden(l int, hide bool) {
 // Erase makes a pixel of the active layer transparent. Without layers the
 // pixel becomes background.
 func (p *Picture) Erase(x, y int) {
-	if x < 0 || y < 0 || x >= W || y >= H {
+	if x < 0 || y < 0 || x >= p.Width() || y >= H {
+		return
+	}
+	if p.Hires() {
+		p.hErase(x, y)
 		return
 	}
 	i := y*W + x
@@ -195,7 +217,7 @@ func (p *Picture) ClearLayer(l int) {
 	if !p.Layered || l < 0 || l >= LayerCount {
 		return
 	}
-	p.L[l] = [W * H]uint8{}
+	p.L[l] = [HW * H]uint8{}
 	p.Recomposite()
 }
 
@@ -220,6 +242,8 @@ func (p *Picture) SetBG(c uint8) {
 // plotLayer is Plot for layered pictures: it paints into the active layer
 // and checks the rules for all layers together.
 func (p *Picture) plotLayer(x, y int, c uint8, mode ConflictMode, pal *Palette) PlotResult {
+	protect := mode&ConflictProtect != 0
+	mode &^= ConflictProtect
 	i := y*W + x
 	cell := CellOf(x, y)
 	v := c + 1
@@ -243,13 +267,31 @@ func (p *Picture) plotLayer(x, y int, c uint8, mode ConflictMode, pal *Palette) 
 	// conflict: the layers already use background + 3 colors in this cell
 	switch mode {
 	case ConflictReplace:
+		cx, cy := (cell%Cols)*4, (cell/Cols)*8
+		var other [16]int // pixels of the other layers per color
+		if protect {
+			for l := 0; l < LayerCount; l++ {
+				if l == p.Active {
+					continue
+				}
+				for yy := cy; yy < cy+8; yy++ {
+					for xx := cx; xx < cx+4; xx++ {
+						if v := p.L[l][yy*W+xx]; v != LayerClear && v != LayerBG {
+							other[v-1]++
+						}
+					}
+				}
+			}
+		}
 		rare := -1
 		for k := 0; k < 16; k++ {
-			if cnt[k] > 0 && (rare < 0 || cnt[k] < cnt[rare]) {
+			if cnt[k] > 0 && other[k] == 0 && (rare < 0 || cnt[k] < cnt[rare]) {
 				rare = k
 			}
 		}
-		cx, cy := (cell%Cols)*4, (cell/Cols)*8
+		if rare < 0 {
+			return PlotBlocked // every color is used by another layer
+		}
 		for l := 0; l < LayerCount; l++ {
 			for yy := cy; yy < cy+8; yy++ {
 				for xx := cx; xx < cx+4; xx++ {

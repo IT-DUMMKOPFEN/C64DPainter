@@ -273,10 +273,12 @@ func New(host Host) *App {
 		a.set.HelpSeen = true
 		a.saveSettings()
 	}
-	a.askWorkDir(func() {
-		if showHelp {
-			a.openHelp("start")
-		}
+	a.askMode(true, func() {
+		a.askWorkDir(func() {
+			if showHelp {
+				a.openHelp("start")
+			}
+		})
 	})
 	a.setStatus("Welcome to " + AppName + " " + AppVersion + "! Press F1 for help.")
 	return a
@@ -587,11 +589,15 @@ func (a *App) plot(p *c64.Picture, x, y int, c uint8) {
 		}
 		a.noSym = false
 	}
-	if x < 0 || y < 0 || x >= c64.W || y >= c64.H {
+	if x < 0 || y < 0 || x >= picW || y >= c64.H {
 		return
 	}
-	if r := p.Plot(x, y, c, c64.ConflictMode(a.set.Conflict), a.pal); r != c64.PlotOK {
-		a.flash[c64.CellOf(x, y)] = a.now
+	mode := c64.ConflictMode(a.set.Conflict)
+	if a.set.ProtectLayers {
+		mode |= c64.ConflictProtect
+	}
+	if r := p.Plot(x, y, c, mode, a.pal); r != c64.PlotOK {
+		a.flash[p.Cell(x, y)] = a.now
 		a.needAnim = true
 	}
 }
@@ -604,13 +610,13 @@ func (a *App) plotPat(p *c64.Picture, x, y, btn int) {
 }
 
 func (a *App) stamp() *Stamp {
-	key := fmt.Sprintf("%d/%d/%v/%p", a.brushShape, a.brushSize, a.set.AspectBrush, a.custom)
+	key := fmt.Sprintf("%d/%d/%v/%p/%d", a.brushShape, a.brushSize, a.set.AspectBrush, a.custom, asp)
 	if a.stampCache == nil || a.stampKey != key {
 		shape := a.brushShape
 		if shape == BrushCustom && a.custom == nil {
 			shape = BrushRound
 		}
-		a.stampCache = makeStamp(shape, a.brushSize, a.set.AspectBrush, a.custom)
+		a.stampCache = makeStamp(shape, a.brushSize, a.set.AspectBrush && asp == 2, a.custom)
 		a.stampKey = key
 	}
 	return a.stampCache
@@ -723,6 +729,7 @@ func (a *App) frameOnce() *gfx.Image {
 	if a.img == nil {
 		a.Resize(1280, 800)
 	}
+	a.syncMode()
 	a.ui.now = a.now
 	a.ui.hoverID = ""
 	a.ui.wheelUsed = false
@@ -832,9 +839,13 @@ func (a *App) drawStatus() {
 	// Mitte: Position
 	mid := ""
 	if a.mouseIn {
-		cell := c64.CellOf(a.mpx, a.mpy)
-		bp := a.pic.Bits[a.mpy*c64.W+a.mpx]
-		mid = fmt.Sprintf("X %3d  Y %3d   Cell %2d,%2d   %%%02b  %s", a.mpx, a.mpy, cell%c64.Cols, cell/c64.Cols, bp, c64.ColorNames[a.pic.ColorAt(a.mpx, a.mpy)])
+		cell := a.pic.Cell(a.mpx, a.mpy)
+		if a.hires() {
+			mid = fmt.Sprintf("X %3d  Y %3d   Cell %2d,%2d   %s", a.mpx, a.mpy, cell%c64.Cols, cell/c64.Cols, c64.ColorNames[a.pic.ColorAt(a.mpx, a.mpy)])
+		} else {
+			bp := a.pic.Bits[a.mpy*c64.W+a.mpx]
+			mid = fmt.Sprintf("X %3d  Y %3d   Cell %2d,%2d   %%%02b  %s", a.mpx, a.mpy, cell%c64.Cols, cell/c64.Cols, bp, c64.ColorNames[a.pic.ColorAt(a.mpx, a.mpy)])
+		}
 	}
 	midW := 330
 	midX := r.Right() - rw - 24 - midW
@@ -1108,6 +1119,10 @@ func (a *App) nudge(dx, dy int, m Mods) {
 
 func (a *App) setTool(t int) {
 	if t == a.tool {
+		return
+	}
+	if t == ToolDither && a.hires() {
+		a.setStatus("The dither brush works in multicolor pictures only")
 		return
 	}
 	if a.curve.stage != 0 {

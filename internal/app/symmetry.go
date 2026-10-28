@@ -24,8 +24,8 @@ var symModes = []string{"Left ↔ right", "Top ↔ bottom", "Both"}
 
 func (s *SymSettings) clamp() {
 	s.Mode = clampI(s.Mode, 0, 2)
-	if s.AX <= 0 || s.AX >= c64.W {
-		s.AX = c64.W / 2
+	if s.AX <= 0 || s.AX >= picW {
+		s.AX = picW / 2
 	}
 	if s.AY <= 0 || s.AY >= c64.H {
 		s.AY = c64.H / 2
@@ -87,7 +87,7 @@ func (a *App) drawSymAxes() {
 		return 0xFFFFFF
 	}
 	if s.Mode != 1 {
-		x := ox + s.AX*2*z
+		x := ox + s.AX*asp*z
 		for i, y := 0, oy; y < oy+c64.H*z; i, y = i+1, y+1 {
 			m.Set(x, y, dash(i))
 			m.Set(x-1, y, dash(i))
@@ -95,7 +95,7 @@ func (a *App) drawSymAxes() {
 	}
 	if s.Mode != 0 {
 		y := oy + s.AY*z
-		for i, x := 0, ox; x < ox+c64.W*2*z; i, x = i+1, x+1 {
+		for i, x := 0, ox; x < ox+picW*asp*z; i, x = i+1, x+1 {
 			m.Set(x, y, dash(i))
 			m.Set(x, y-1, dash(i))
 		}
@@ -130,7 +130,7 @@ func (a *App) panelSymmetry(x, y, w int) int {
 	half := (w - 4) / 2
 	if s.Mode != 1 {
 		m.Text(font.UI, x, y+4, "Axis X", a.th.Text)
-		s.AX = u.Spinner("sym_ax", gfx.Rect{X: x + half - 40, Y: y, W: w - half + 40, H: 22}, s.AX, 1, c64.W-1, 1, "")
+		s.AX = u.Spinner("sym_ax", gfx.Rect{X: x + half - 40, Y: y, W: w - half + 40, H: 22}, s.AX, 1, picW-1, 1, "")
 		y += 26
 	}
 	if s.Mode != 0 {
@@ -216,8 +216,8 @@ func (a *App) shadeStep(c uint8, dir int) uint8 {
 }
 
 func (a *App) shadeDab(p *c64.Picture, x, y, btn int) {
-	if len(a.shadeDone) != c64.W*c64.H {
-		a.shadeDone = make([]bool, c64.W*c64.H)
+	if len(a.shadeDone) != picW*c64.H {
+		a.shadeDone = make([]bool, picW*c64.H)
 	}
 	dir := 1
 	if btn == 1 {
@@ -225,10 +225,10 @@ func (a *App) shadeDab(p *c64.Picture, x, y, btn int) {
 	}
 	for _, o := range a.stamp().Offs {
 		px, py := x+o.X, y+o.Y
-		if px < 0 || py < 0 || px >= c64.W || py >= c64.H || a.shadeDone[py*c64.W+px] {
+		if px < 0 || py < 0 || px >= picW || py >= c64.H || a.shadeDone[py*picW+px] {
 			continue
 		}
-		a.shadeDone[py*c64.W+px] = true
+		a.shadeDone[py*picW+px] = true
 		c := p.ColorAt(px, py)
 		if n := a.shadeStep(c, dir); n != c {
 			a.plot(p, px, py, n)

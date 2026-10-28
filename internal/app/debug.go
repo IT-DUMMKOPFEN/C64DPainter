@@ -7,7 +7,7 @@ import "c64dpainter/internal/c64"
 // PicToScreenCenter liefert die Bildschirmmitte eines Bildpunkts.
 func (a *App) PicToScreenCenter(x, y int) (int, int) {
 	sx, sy := a.picToScreen(x, y)
-	return sx + a.zoom, sy + a.zoom/2
+	return sx + asp*a.zoom/2, sy + a.zoom/2
 }
 
 // Debug setzt interne Zustände für Tests.

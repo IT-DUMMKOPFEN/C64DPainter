@@ -2,7 +2,7 @@
 
 [![Build](https://github.com/IT-DUMMKOPFEN/C64DPainter/actions/workflows/build.yml/badge.svg)](https://github.com/IT-DUMMKOPFEN/C64DPainter/actions/workflows/build.yml)
 
-A paint program for Windows, macOS (Apple silicon and Intel) and Linux for pictures in the **multicolor bitmap mode of the Commodore 64**. Its look and controls follow Deluxe Paint and PyDPainter.
+A paint program for Windows, macOS (Apple silicon and Intel) and Linux for pictures in the **bitmap modes of the Commodore 64**: multicolor, hires and "hires free". Its look and controls follow Deluxe Paint and PyDPainter.
 
 Version 0.99 beta · Created by IT-Dummköpfen · Free for private use.
 
@@ -21,7 +21,7 @@ Version 0.99 beta · Created by IT-Dummköpfen · Free for private use.
 
 ## Features
 
-- Strict multicolor rules (160×200 pixels, 4×8 cells, bit pairs %00/%01/%10/%11). When a cell is full, the program can block the pixel, replace the rarest cell color or use the nearest cell color.
+- Three modes, chosen at the start and with File → New: **Multicolor** (160×200 pixels, 4×8 cells, bit pairs %00/%01/%10/%11), **Hires** (320×200, standard bitmap mode, 2 colors per 8×8 cell) and **Hires free** (320×200, all colors; reduced to 2 per cell on export). When a cell is full, the program can block the pixel, replace the rarest cell color or use the nearest cell color – optionally without touching the other layers.
 - Tools: dots, freehand, line, curve, fill, gradient fill, airbrush, dither, smear, shade, eraser, rectangle, square, circle, ellipse, triangle, hexagon and star (each outlined or filled), select and color picker.
 - **Symmetry**: paint mirrored left ↔ right, top ↔ bottom or four-fold, with movable axes.
 - **Shade** brush: lightens or darkens one step per stroke, by brightness or along a color ramp.
@@ -31,7 +31,7 @@ Version 0.99 beta · Created by IT-Dummköpfen · Free for private use.
 - **Text tool**: C64 wide, tall and narrow fonts in multicolor pixels, with shadow or outline, as brush.
 - **PETSCII editor** (Tools menu): convert pictures to PETSCII, edit them and export PRG, ACME assembler source, PNG or Petmate files.
 - **Sprite editor** (Tools menu): 64 hires or multicolor sprites, overlay, animation preview, import from the picture or a 320×200 image (single or as a raster), project files, ACME assembler export with all colors and settings. A sprite grid (24×21) in the View menu helps to draw sprites in the multicolor editor.
-- **Font editor** (Tools menu): C64 character sets with 1×1 to 2×2 tiles, compare with the ROM, test text, import from the picture, a 320×200 image or the C64 font, project files, raw .bin/.64c and ACME assembler export.
+- **Font editor** (Tools menu): hires or multicolor C64 character sets with 1×1 to 2×2 tiles, compare with the ROM, test text, import from the picture, a 320×200 image or the C64 font, project files, raw .bin/.64c and ACME assembler export.
 - **Auto backup** (Options menu, off at start) into the working folder and a list of **recent files**.
 - **Brushes** menu: load and save brushes as PNG with a transparent background.
 - Round, square or diamond brushes from 1 to 16 pixels, plus custom brushes made from a selection.
@@ -40,14 +40,14 @@ Version 0.99 beta · Created by IT-Dummköpfen · Free for private use.
 - **Gradient fill**: 27 three-color, 14 four-color and 13 five-color C64 ramps plus your own custom ramps, plus five-band versions (dark → light → dark, light → dark → light), linear, circle or diamond, single click or drag for direction and width, optional dithered transitions.
 - **Smear** brush: drags colors along the stroke like a smudge tool.
 - Swap colors in the whole picture or with a cell brush (a color can become the background color, the background itself is never swapped away).
-- Selections can be copied (default) or moved (Shift), flipped, rotated by 90° or freely, scaled and sheared in both directions.
+- Selections can be copied (default) or moved (Shift), flipped, rotated by 90° or freely, scaled, sheared in both directions and **distorted in perspective** (corners opposite or free, top/bottom or left/right).
 - Zoom from 1× to 32×, configurable grid (8×8 by default), pixel grid and C64 border.
 - Only the 16 C64 colors, with 116 palette variants from c64gfx.com.
 - Layers: three paint layers (layer 2 at the bottom, 4 on top; layers 3 + 4 have an on/off switch; show/hide, eraser) on which the multicolor rules apply together – every combination of visible layers is a valid C64 picture – plus a template layer (PNG/BMP/JPG/GIF, above or below the picture, with opacity) and a spare page.
 - **Import & convert** for 320×200 images: live multicolor preview (multicolor / original / split view), brightness, contrast, saturation, hue and gamma, 13 dithering methods with adjustable strength, pixel-pair modes and background color choice, color matching in RGB, YUV, XYZ, Lab, OkLab or by brightness, and cell colors by best fit, most frequent or the same in all cells.
 - Project files (.c64dp) keep all layers and the template.
-- Loading: C64 DPainter projects, KLA/KOA, Advanced Art Studio (.ocp), Amica Paint (.ami), PNG, BMP.
-- Saving: KLA, PNG (320×200, 160×200, 384×272 with border) and PRG (a runnable C64 program with a viewer).
+- Loading: C64 DPainter projects, KLA/KOA, Advanced Art Studio (.ocp), Amica Paint (.ami), Art Studio hires (.art), Doodle (.dd), PNG, BMP.
+- Saving: KLA (multicolor), Art Studio hires and Doodle (hires), PNG (320×200, 160×200, 384×272 with border) and PRG (a runnable C64 program with a viewer for multicolor or hires).
 - Foldable side panel sections, detailed built-in help (F1), light and dark theme, interface size 100/200/300 %, movable dialog windows.
 
 ## Building

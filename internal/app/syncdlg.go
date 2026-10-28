@@ -135,6 +135,23 @@ type fileDialog struct {
 	lastClick int
 	fresh     bool
 	lastTime  int64
+	tf        *textField // the name field
+}
+
+// field returns the name field, in step with d.name.
+func (d *fileDialog) field() *textField {
+	if d.tf == nil {
+		d.tf = &textField{focus: true}
+	}
+	if d.tf.String() != d.name {
+		d.tf.text = []rune(d.name)
+		d.tf.cur = len(d.tf.text)
+		d.tf.anchor = d.tf.cur
+		if d.fresh {
+			d.tf.SelectAll()
+		}
+	}
+	return d.tf
 }
 
 func newFileDialog(save bool, title string, filters []Filter, dir, name, defExt string) *fileDialog {
@@ -218,11 +235,9 @@ func (d *fileDialog) Char(a *App, r rune) {
 		return
 	}
 	if r >= 32 && r != '/' {
-		if d.fresh {
-			d.name = ""
-			d.fresh = false
-		}
-		d.name += string(r)
+		tf := d.field()
+		tf.Char(r)
+		d.name, d.fresh = tf.String(), false
 		d.confirm = false
 	}
 }
@@ -230,14 +245,19 @@ func (d *fileDialog) Char(a *App, r rune) {
 func (d *fileDialog) Key(a *App, k KeyEvent) {
 	switch k.Key {
 	case KeyBackspace:
-		if d.fresh {
-			d.name, d.fresh = "", false
-		} else if d.name != "" {
-			rs := []rune(d.name)
-			d.name = string(rs[:len(rs)-1])
+		if d.name != "" {
+			tf := d.field()
+			tf.Key(k)
+			d.name, d.fresh = tf.String(), false
 			d.confirm = false
 		} else {
 			d.load(filepath.Dir(d.dir))
+		}
+	case KeyLeft, KeyRight, KeyHome, KeyEnd, KeyDelete:
+		if !d.folder {
+			tf := d.field()
+			tf.Key(k)
+			d.name, d.fresh = tf.String(), false
 		}
 	case KeyEnter:
 		d.accept()
@@ -427,19 +447,11 @@ func (d *fileDialog) drawNameAndFilter(a *App, r gfx.Rect, lx, lw, y int) int {
 	// name + filter
 	m.TextL(font.UI, gfx.Rect{X: lx, Y: y, W: 80, H: 26}, "File name", th.Text)
 	nr := gfx.Rect{X: lx + 80, Y: y, W: lw - 80, H: 26}
-	m.Fill(nr, th.Popup)
-	m.Frame(nr, th.Accent)
-	shown := gfx.Elide(font.UI, d.name, nr.W-14)
-	tc := th.Text
-	if d.fresh && d.name != "" {
-		m.Fill(gfx.Rect{X: nr.X + 4, Y: nr.Y + 4, W: font.UI.Width(shown) + 4, H: nr.H - 8}, th.Accent)
-		tc = th.AccentText
+	tf := d.field()
+	tf.focus = true
+	if tf.Draw(a, "fd_name", nr) {
+		d.fresh = false
 	}
-	tw := m.Text(font.UI, nr.X+6, nr.Y+(nr.H-font.UI.Height)/2, shown, tc)
-	if (a.now/500)%2 == 0 {
-		m.VLine(nr.X+7+tw, nr.Y+5, nr.Bottom()-6, th.Text)
-	}
-	a.needAnim = true
 	y += 34
 	if len(d.filters) > 0 {
 		m.TextL(font.UI, gfx.Rect{X: lx, Y: y, W: 80, H: 24}, "Show", th.Text)
