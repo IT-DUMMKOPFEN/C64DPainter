@@ -638,14 +638,9 @@ func (a *App) hiresCellInfo(x, y, w, cell int) int {
 		m.Text(font.UI, x+24, y+1, gfx.Elide(font.UI, lbl, w-24), th.Text)
 		y += 18
 	}
+	_ = n
 	if a.pic.Mode == c64.ModeFree {
-		c := th.TextDim
-		s := fmt.Sprintf("Cells with more than 2 colors: %d", a.pic.HiresClashes())
-		if n > 2 {
-			c = gfx.RGB(220, 60, 60)
-			s = "This cell has more than 2 colors · " + s
-		}
-		m.Text(font.UI, x, y+2, gfx.Elide(font.UI, s, w), c)
+		m.Text(font.UI, x, y+2, "Hires free: no color limits", th.TextDim)
 		y += 20
 	} else {
 		m.Text(font.UI, x, y+2, "Hires: 2 colors per cell", th.TextDim)

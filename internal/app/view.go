@@ -256,21 +256,6 @@ func (a *App) drawCanvas() {
 			m.Frame(r, gfx.RGB(255, 40, 40))
 		}
 	}
-	// Hires free: cells with more than two colors (reduced on export)
-	if a.pic.Mode == c64.ModeFree && z >= 2 {
-		for cell := 0; cell < c64.Cells; cell++ {
-			if !a.pic.CellClash(cell) {
-				continue
-			}
-			cx, cy := a.pic.CellOrigin(cell)
-			sx, sy := a.picToScreen(cx, cy)
-			r := gfx.Rect{X: sx, Y: sy, W: 8 * z, H: 8 * z}
-			if r.Intersect(vis).Empty() {
-				continue
-			}
-			m.Frame(r, gfx.RGB(255, 60, 60))
-		}
-	}
 	// Zellenhinweis unter der Maus
 	if a.mouseIn && a.set.CellHint && a.modal == nil && a.menuOpen < 0 {
 		cell := a.pic.Cell(a.mpx, a.mpy)

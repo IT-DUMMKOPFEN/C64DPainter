@@ -16,8 +16,9 @@ Graphics modes: hires and hires free
 - Hires follows the rules of the standard bitmap mode; empty pixels show
   the paper color. A third color in a cell is blocked, replaces the
   rarest color or uses the nearest one, as in multicolor.
-- Hires free marks cells with more than two colors; they are reduced to
-  their two most frequent colors when exported for the C64.
+- Hires free has no color limits and marks nothing; cells with more than
+  two colors are reduced to their two most frequent colors only when the
+  picture is exported for the C64.
 - All tools, layers, selection, text, gradients and the import work in
   hires (the converter makes hires or hires free pictures). Auto dither
   and the dither brush stay multicolor only.

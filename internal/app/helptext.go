@@ -125,7 +125,7 @@ In the standard bitmap mode of the C64 every pixel is one bit. Each 8 × 8 cell 
 
 ## Hires free
 
-Paint with all 16 colors without any cell rules – handy for sketches and for pictures you keep editing. Cells with more than two colors get a **red frame** (from zoom 2×); the cell info in the side panel shows the colors of the cell under the mouse and the number of such cells.
+Paint with all 16 colors without any cell rules – handy for sketches and for pictures you keep editing. Nothing is marked or blocked; the cell info in the side panel shows the colors of the cell under the mouse.
 
 When you export for the C64 (Art Studio, Doodle, PRG), every cell keeps its two most frequent colors; the other pixels get the nearer of the two. PNG and the project file keep all colors.
 
