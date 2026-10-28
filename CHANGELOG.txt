@@ -5,8 +5,14 @@ A paint program for Commodore 64 bitmap pictures (multicolor and hires)
 for Windows 11, macOS (Apple silicon and Intel) and Linux.
 
 
-Version 0.99 beta
------------------
+Version 1.0
+-----------
+
+The first full version. Thank you to everybody who tried the betas and
+sent ideas!
+
+About
+- A little firework left and right of the icon in Help > About.
 
 Graphics modes: hires and hires free
 - At the start and with File > New a window asks for the mode:
@@ -52,6 +58,9 @@ Text fields
 - macOS: the open and save panels are opened after the click is finished,
   so the name field of the save panel takes clicks again; an Edit menu
   brings Cut/Copy/Paste/Select All to the panels.
+
+Version 0.99 beta
+-----------------
 
 macOS for Intel
 - There is now also a macOS version for Macs with an Intel processor.

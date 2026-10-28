@@ -4,7 +4,7 @@
 
 A paint program for Windows, macOS (Apple silicon and Intel) and Linux for pictures in the **bitmap modes of the Commodore 64**: multicolor, hires and "hires free". Its look and controls follow Deluxe Paint and PyDPainter.
 
-Version 0.99 beta · Created by IT-Dummköpfen · Free for private use.
+Version 1.0 · Created by IT-Dummköpfen · Free for private use.
 
 ## Download
 
@@ -62,11 +62,11 @@ This needs Go, Python 3 with Pillow (`pip install pillow`, for the macOS icon), 
 
 ### Making a release
 
-Either on GitHub: **Actions → Build → Run workflow**, enter a tag such as `v0.99b` and start it. Or push a tag that starts with `v`:
+Either on GitHub: **Actions → Build → Run workflow**, enter a tag such as `v1.0` and start it. Or push a tag that starts with `v`:
 
 ```
-git tag v0.99b
-git push origin v0.99b
+git tag v1.0
+git push origin v1.0
 ```
 
 GitHub then builds everything and publishes a release with all four files.
@@ -85,7 +85,7 @@ macOS (app for Apple silicon or Intel, can be built on any OS):
 
 ```
 CGO_ENABLED=0 GOOS=darwin GOARCH=arm64 go build -trimpath -ldflags "-s -w" -o build/C64DPainter_arm64 ./cmd/c64dpainter
-python3 tools/macbundle.py build/C64DPainter_arm64 res/c64dpainter.png build 0.99
+python3 tools/macbundle.py build/C64DPainter_arm64 res/c64dpainter.png build 1.0
 # Intel: GOARCH=amd64
 ```
 

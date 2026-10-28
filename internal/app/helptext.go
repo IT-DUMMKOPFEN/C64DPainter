@@ -1081,7 +1081,7 @@ When sprites are combined with the picture, bit pairs ` + "`%00`" + ` and ` + "`
 	{id: "about", title: "About C64 DPainter", body: `
 # About C64 DPainter
 
-**Version 0.99 beta** – a paint program for C64 multicolor bitmaps.
+**Version 1.0** – a paint program for C64 bitmap pictures (multicolor and hires).
 
 Runs on **Windows 11** (Windows 10 may crash), **macOS** (Apple silicon and Intel) and **Linux**.
 

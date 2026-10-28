@@ -12,7 +12,7 @@ import (
 )
 
 const AppName = "C64 DPainter"
-const AppVersion = "0.99 beta"
+const AppVersion = "1.0"
 
 // AppAuthor and AppLicense appear on the About page.
 const AppAuthor = "IT-Dummköpfen"

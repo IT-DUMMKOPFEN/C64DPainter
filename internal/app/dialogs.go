@@ -2,6 +2,7 @@ package app
 
 import (
 	"fmt"
+	"math"
 
 	"c64dpainter/internal/c64"
 	"c64dpainter/internal/font"
@@ -364,6 +365,28 @@ func (d *aboutDialog) Draw(a *App, r gfx.Rect) {
 	th := a.th
 	// logo: the program icon as big pixel art
 	lr := gfx.Rect{X: r.X + (r.W-64)/2, Y: r.Y + 4, W: 64, H: 64}
+	// version 1.0: a little firework left and right of the icon, each in
+	// its own small night sky
+	for side := 0; side < 2; side++ {
+		sky := gfx.Rect{X: lr.X - 24 - 190, Y: lr.Y, W: 190, H: lr.H}
+		if side == 1 {
+			sky.X = lr.Right() + 24
+		}
+		sky = sky.Intersect(gfx.Rect{X: r.X + 8, Y: r.Y, W: r.W - 16, H: r.H})
+		for yy := 0; yy < sky.H; yy++ {
+			m.Fill(gfx.Rect{X: sky.X, Y: sky.Y + yy, W: sky.W, H: 1}, gfx.Mix(0x10102A, 0x2A2A6A, yy*256/max(1, sky.H)))
+		}
+		// a few stars
+		for k := 0; k < 14; k++ {
+			sx := sky.X + int(fwHash(k, side, 7)%uint32(max(1, sky.W)))
+			sy := sky.Y + int(fwHash(k, side, 9)%uint32(max(1, sky.H-6)))
+			if (int(a.now/400)+k)%5 != 0 {
+				m.Set(sx, sy, 0xB0B0D0)
+			}
+		}
+		a.drawFireworks(sky, side)
+		m.Frame(sky, th.Border)
+	}
 	drawBigLogo(m, lr)
 	y := lr.Bottom() + 12
 	center := func(f *font.Face, s string, c uint32, gap int) {
@@ -403,5 +426,89 @@ func (d *aboutDialog) Draw(a *App, r gfx.Rect) {
 	}
 	if a.ui.ButtonEx("ab_ok", gfx.Rect{X: r.Right() - 110, Y: by, W: 110, H: 28}, "Close", true, true) {
 		a.closeModal(false)
+	}
+}
+
+// --- firework (About window, version 1.0) ----------------------------------
+
+// fwHash gives pseudo random numbers for the firework (the same for every
+// frame, so no state is needed).
+func fwHash(v ...int) uint32 {
+	h := uint32(2166136261)
+	for _, x := range v {
+		h ^= uint32(x)
+		h *= 16777619
+		h ^= h >> 13
+	}
+	return h
+}
+
+func fwRand(f float64, v ...int) float64 { return f * float64(fwHash(v...)%10000) / 10000 }
+
+// drawFireworks draws rockets that rise and burst in C64 colors inside the
+// area. side shifts the timing so both sides do not burst at the same time.
+func (a *App) drawFireworks(area gfx.Rect, side int) {
+	if area.W < 40 || area.H < 40 {
+		return
+	}
+	m := a.img
+	old := m.SetClip(area.Intersect(m.Clip))
+	defer m.SetClip(old)
+	a.needAnim = true
+	bright := []int{1, 7, 13, 14, 15, 10, 3, 5, 8, 4}
+	const period = 2300
+	const rise = 450
+	px := 2 // size of a firework "pixel"
+	for slot := 0; slot < 2; slot++ {
+		t := a.now + int64(side*1100+slot*1150)
+		n := int(t / period)
+		tau := float64(t % period)
+		seed := []int{n, side, slot}
+		bx := float64(area.X) + float64(area.W)*(0.2+fwRand(0.6, append(seed, 1)...))
+		by := float64(area.Y) + float64(area.H)*(0.22+fwRand(0.3, append(seed, 2)...))
+		c1 := a.pal.Colors[bright[fwHash(append(seed, 3)...)%uint32(len(bright))]]
+		c2 := a.pal.Colors[bright[fwHash(append(seed, 4)...)%uint32(len(bright))]]
+		if tau < rise {
+			// the rocket rises with a short trail
+			f := tau / rise
+			sy := float64(area.Bottom())
+			for k := 0; k < 5; k++ {
+				ff := f - float64(k)*0.04
+				if ff < 0 {
+					break
+				}
+				y := sy + (by-sy)*(1-(1-ff)*(1-ff))
+				al := 255 - k*45
+				m.FillA(gfx.Rect{X: int(bx) - px/2, Y: int(y), W: px, H: px}, 0xFFF0C0, al)
+			}
+			continue
+		}
+		dt := (tau - rise) / 1000 // seconds since the burst
+		life := float64(period-rise) / 1000
+		alpha := int(255 * (1 - dt/life))
+		if alpha <= 0 {
+			continue
+		}
+		count := 22 + int(fwHash(append(seed, 5)...)%10)
+		speed := 22 + fwRand(10, append(seed, 6)...)
+		for i := 0; i < count; i++ {
+			ang := float64(i)*2*math.Pi/float64(count) + fwRand(0.25, append(seed, 10+i)...)
+			v := speed * (0.75 + fwRand(0.35, append(seed, 50+i)...))
+			x := bx + math.Cos(ang)*v*dt
+			y := by + math.Sin(ang)*v*dt + 10*dt*dt // gravity
+			c := c1
+			if i%2 == 1 {
+				c = c2
+			}
+			al := alpha
+			if dt > life*0.6 && (int(a.now/70)+i)%3 == 0 {
+				al /= 3 // sparkle at the end
+			}
+			m.FillA(gfx.Rect{X: int(x), Y: int(y), W: px, H: px}, c, al)
+			// a short tail behind every spark
+			tx := bx + math.Cos(ang)*v*dt*0.85
+			ty := by + math.Sin(ang)*v*dt*0.85 + 10*dt*dt*0.85
+			m.FillA(gfx.Rect{X: int(tx), Y: int(ty), W: px - 1, H: px - 1}, c, al/3)
+		}
 	}
 }
