@@ -42,6 +42,30 @@ type Settings struct {
 	Recent        []string              `json:"recent"`
 	Text          TextSettings          `json:"text"`
 	Petscii       c64.PetsciiOptions    `json:"petscii"`
+	Import        *c64.ConvertOptions   `json:"import,omitempty"`
+	Window        WindowState           `json:"window"`
+}
+
+// WindowState is the window position and size of the last session (in the
+// units of the front end). Scale is the interface size it belongs to.
+type WindowState struct {
+	X, Y, W, H int
+	Max        bool
+	Scale      int
+}
+
+// SavedWindow returns the window of the last session when it was stored
+// with the current interface size.
+func (a *App) SavedWindow() (WindowState, bool) {
+	w := a.set.Window
+	return w, w.W > 0 && w.H > 0 && w.Scale == a.UIScale()
+}
+
+// RememberWindow stores the window position and size for the next start.
+func (a *App) RememberWindow(w WindowState) {
+	w.Scale = a.UIScale()
+	a.set.Window = w
+	a.saveSettings()
 }
 
 func defaultSettings() Settings {

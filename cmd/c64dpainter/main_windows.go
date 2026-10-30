@@ -61,6 +61,9 @@ var (
 	pMonitorFromWindow             = user32.NewProc("MonitorFromWindow")
 	pGetMonitorInfoW               = user32.NewProc("GetMonitorInfoW")
 	pIsZoomed                      = user32.NewProc("IsZoomed")
+	pGetWindowPlacement            = user32.NewProc("GetWindowPlacement")
+	pSetWindowPlacement            = user32.NewProc("SetWindowPlacement")
+	pMonitorFromRect               = user32.NewProc("MonitorFromRect")
 
 	pStretchDIBits     = gdi32.NewProc("StretchDIBits")
 	pSetStretchBltMode = gdi32.NewProc("SetStretchBltMode")
@@ -139,6 +142,38 @@ type wndClassEx struct {
 }
 
 type point struct{ X, Y int32 }
+
+type windowPlacement struct {
+	length, flags, showCmd uint32
+	minPos, maxPos         point
+	normal                 rect
+}
+
+// rememberWindow stores the window position for the next start.
+func rememberWindow() {
+	var wp windowPlacement
+	wp.length = uint32(unsafe.Sizeof(wp))
+	if r, _, _ := pGetWindowPlacement.Call(hwnd, uintptr(unsafe.Pointer(&wp))); r == 0 {
+		return
+	}
+	n := wp.normal
+	a.RememberWindow(app.WindowState{X: int(n.Left), Y: int(n.Top), W: int(n.Right - n.Left), H: int(n.Bottom - n.Top), Max: wp.showCmd == 3})
+}
+
+// restoreWindow moves the window to where it was in the last session (when
+// that place is still on a screen).
+func restoreWindow(st app.WindowState) {
+	rc := rect{int32(st.X), int32(st.Y), int32(st.X + st.W), int32(st.Y + st.H)}
+	if m, _, _ := pMonitorFromRect.Call(uintptr(unsafe.Pointer(&rc)), 0); m == 0 {
+		return // MONITOR_DEFAULTTONULL: the screen is gone
+	}
+	wp := windowPlacement{showCmd: 1, normal: rc}
+	if st.Max {
+		wp.showCmd = 3
+	}
+	wp.length = uint32(unsafe.Sizeof(wp))
+	pSetWindowPlacement.Call(hwnd, uintptr(unsafe.Pointer(&wp)))
+}
 
 type msg struct {
 	hwnd     uintptr
@@ -332,7 +367,7 @@ func (winHost) Ask(title, text string) int {
 }
 
 func (winHost) Info(title, text string)            { msgBox(text, title, 0x40) }
-func (winHost) Quit()                              { pDestroyWindow.Call(hwnd) }
+func (winHost) Quit()                              { rememberWindow(); pDestroyWindow.Call(hwnd) }
 func (winHost) SetTitle(s string)                  { pSetWindowTextW.Call(hwnd, uintptr(unsafe.Pointer(u16(s)))) }
 func (winHost) ReadFile(p string) ([]byte, error)  { return os.ReadFile(p) }
 func (winHost) WriteFile(p string, d []byte) error { return os.WriteFile(p, d, 0o644) }
@@ -746,6 +781,7 @@ func wndProcInner(h uintptr, m uint32, wp, lp uintptr) uintptr {
 		if busy {
 			return 0
 		}
+		rememberWindow()
 		inModal++
 		ok := a.CanClose()
 		inModal--
@@ -832,6 +868,9 @@ func main() {
 		}
 	}
 	a = first
+	if st, ok := a.SavedWindow(); ok {
+		restoreWindow(st)
+	}
 	a.RefreshTitle()
 	updateClient()
 	pDragAcceptFiles.Call(hwnd, 1)

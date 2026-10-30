@@ -52,6 +52,8 @@ func (a *App) buildMenus() {
 			item("PNG 320×200 …", "", func() { a.later(func() { a.cmdExport(exportPNG320) }) }),
 			{Label: "PNG 160×200 (native pixels) …", Action: func() { a.later(func() { a.cmdExport(exportPNG160) }) }, Enabled: func() bool { return !a.hires() }},
 			item("PNG 384×272 with border …", "", func() { a.later(func() { a.cmdExport(exportPNGBorder) }) }),
+			item("PNG 640×400 (2× larger) …", "", func() { a.later(func() { a.cmdExport(exportPNG2x) }) }),
+			item("PNG 1280×800 (4× larger) …", "", func() { a.later(func() { a.cmdExport(exportPNG4x) }) }),
 			sep(),
 			item("Load template …", "", func() { a.later(a.loadTemplateDialog) }),
 			sep(),

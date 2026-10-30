@@ -84,6 +84,8 @@ jobs:
     permissions:
       contents: write
     steps:
+      - uses: actions/checkout@v5
+
       - uses: actions/download-artifact@v7
         with:
           path: dist
@@ -94,6 +96,8 @@ jobs:
           tag_name: ${{ inputs.release_tag || github.ref_name }}
           target_commitish: ${{ github.sha }}
           name: C64 DPainter ${{ inputs.release_tag || github.ref_name }}
-          prerelease: true
+          # versions with a letter (e.g. v0.99b) are betas
+          prerelease: ${{ contains(inputs.release_tag || github.ref_name, 'b') }}
+          body_path: packaging/RELEASE_NOTES.md
           generate_release_notes: true
           files: dist/*

@@ -146,6 +146,14 @@ type ConvertOptions struct {
 	Cells      CellMethod // how the three colors of a cell are chosen
 }
 
+// Valid reports whether all settings are in range (e.g. from a settings file).
+func (o ConvertOptions) Valid() bool {
+	return o.Fit >= FitStretch && o.Fit <= FitCover && o.Pair >= PairAverage && o.Pair <= PairRight &&
+		o.Dither >= 0 && o.Dither < ditherCount && o.Strength >= 0 && o.Strength <= 100 &&
+		o.Match >= 0 && o.Match < matchCount && o.Cells >= 0 && o.Cells < cellMethodCount &&
+		o.Adjust.AutoLevels >= 0 && o.Adjust.AutoLevels < len(AutoLevelNames)
+}
+
 // CellMethod selects how the colors of the 4×8 cells are chosen.
 type CellMethod int
 

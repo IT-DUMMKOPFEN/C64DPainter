@@ -895,6 +895,9 @@ func main() {
 	msg(window, "setContentView:", view)
 	msg(window, "setDelegate:", delegate)
 	msg(window, "center")
+	// position and size of the last session (stored by macOS itself)
+	msg(window, "setFrameUsingName:", nsstr("C64DPainterMain"))
+	msg(window, "setFrameAutosaveName:", nsstr("C64DPainterMain"))
 	msg(window, "makeFirstResponder:", view)
 
 	updateViewSize()

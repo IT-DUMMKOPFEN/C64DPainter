@@ -28,6 +28,21 @@ Better import (compared with Retropixels)
   the new default), Retropixels look, Smooth and Sharp.
 - The same improvements for hires and hires free imports; the PETSCII
   converter got the automatic contrast too.
+- The presets are shown as four small previews of your picture - one
+  click picks the look you like best.
+
+Safety and comfort
+- Crash recovery: changed pictures are saved quietly every minute. After
+  a crash the next start offers to restore them; a normal quit removes
+  the files.
+- The import settings are kept for the next start (the picture
+  adjustments start at 0 for every new image).
+- The window opens where it was last time, with the same size (macOS and
+  Windows also the position; Linux the size).
+- Export PNG 640 x 400 and 1280 x 800 (2x / 4x larger, sharp pixels) for
+  showing pictures on the web.
+- README and release notes explain how to open the program the first
+  time on Windows, macOS and Linux.
 
 Graphics modes: hires and hires free
 - At the start and with File > New a window asks for the mode:

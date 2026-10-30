@@ -27,6 +27,8 @@ const (
 	exportPNGBorder
 	exportART
 	exportDD
+	exportPNG2x
+	exportPNG4x
 )
 
 var openFilters = []Filter{
@@ -452,6 +454,12 @@ func (a *App) writeExport(p string, kind int) bool {
 		data, err = a.pic.SavePNG(a.pal, c64.PNG160)
 	case exportPNGBorder:
 		data, err = a.pic.SavePNG(a.pal, c64.PNGBorder)
+	case exportPNG2x, exportPNG4x:
+		f := 2
+		if kind == exportPNG4x {
+			f = 4
+		}
+		data, err = scaledPNG(a.pic.ToImage(a.pal, c64.PNG320), f)
 	}
 	if err == nil {
 		err = a.host.WriteFile(p, data)
@@ -483,6 +491,10 @@ func (a *App) cmdExport(kind int) {
 		f, name, ext, title = []Filter{{"PNG image (*.png)", "*.png"}}, base+"_160.png", "png", "Export PNG 160×200"
 	case exportPNGBorder:
 		f, name, ext, title = []Filter{{"PNG image (*.png)", "*.png"}}, base+"_border.png", "png", "Export PNG with border"
+	case exportPNG2x:
+		f, name, ext, title = []Filter{{"PNG image (*.png)", "*.png"}}, base+"_2x.png", "png", "Export PNG 640×400"
+	case exportPNG4x:
+		f, name, ext, title = []Filter{{"PNG image (*.png)", "*.png"}}, base+"_4x.png", "png", "Export PNG 1280×800"
 	case exportART:
 		f, name, ext, title = []Filter{{"Art Studio hires (*.art)", "*.art"}}, base+".art", "art", "Export as Art Studio hires"
 	case exportDD:
@@ -532,4 +544,21 @@ func FixDoubleExt(p string) string {
 		}
 		p = rest
 	}
+}
+
+// scaledPNG enlarges an indexed picture by a whole factor (sharp pixels, for
+// showing pictures on the web).
+func scaledPNG(src *image.Paletted, f int) ([]byte, error) {
+	b := src.Bounds()
+	dst := image.NewPaletted(image.Rect(0, 0, b.Dx()*f, b.Dy()*f), src.Palette)
+	for y := 0; y < b.Dy()*f; y++ {
+		row := dst.Pix[y*dst.Stride:]
+		srow := src.Pix[(y/f)*src.Stride:]
+		for x := 0; x < b.Dx()*f; x++ {
+			row[x] = srow[x/f]
+		}
+	}
+	var buf bytes.Buffer
+	err := png.Encode(&buf, dst)
+	return buf.Bytes(), err
 }

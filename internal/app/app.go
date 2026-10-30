@@ -196,23 +196,25 @@ type App struct {
 	lastImport                              c64.ConvertOptions
 
 	// Dither brush: result for the current picture (cached) and its key
-	ditherRes   *c64.Picture
-	ditherKey   string
-	extraLayers bool   // layers 3 and 4 switched on
-	smearBuf    []int8 // colors carried by the smear brush
-	grad        gradientDrag
-	noSym       bool   // symmetry paused (selection, smear, mirrored dabs)
-	shadeDone   []bool // pixels the shade brush already changed in this stroke
-	mirrorView  bool   // the view is mirrored horizontally (Shift+M)
-	crt         crtWindow
-	quickNum    int             // last number used by quick save (F2)
-	autoBackup  bool            // Options → Auto backup (off at every start)
-	lastBackup  int64           // time of the last backup check
-	backupHash  [2]uint64       // pages as they were saved last
-	collapsed   map[string]bool // folded side panel sections (all open at start)
-	pet         *petEditor      // the PETSCII editor (kept while the program runs)
-	spr         *sprEditor      // the sprite editor
-	fnt         *fntEditor      // the font editor
+	ditherRes    *c64.Picture
+	ditherKey    string
+	extraLayers  bool   // layers 3 and 4 switched on
+	smearBuf     []int8 // colors carried by the smear brush
+	grad         gradientDrag
+	noSym        bool   // symmetry paused (selection, smear, mirrored dabs)
+	shadeDone    []bool // pixels the shade brush already changed in this stroke
+	mirrorView   bool   // the view is mirrored horizontally (Shift+M)
+	crt          crtWindow
+	quickNum     int  // last number used by quick save (F2)
+	autoBackup   bool // Options → Auto backup (off at every start)
+	lastRecovery int64
+	recoveryHash [2]uint64
+	lastBackup   int64           // time of the last backup check
+	backupHash   [2]uint64       // pages as they were saved last
+	collapsed    map[string]bool // folded side panel sections (all open at start)
+	pet          *petEditor      // the PETSCII editor (kept while the program runs)
+	spr          *sprEditor      // the sprite editor
+	fnt          *fntEditor      // the font editor
 }
 
 type dragState struct {
@@ -264,7 +266,7 @@ func New(host Host) *App {
 	a.fitPending = true
 	a.tpl.opacity = 50
 	a.tpl.visible = true
-	a.lastImport = importPresets[0].opts(c64.ConvertOptions{BG: -1, Fit: c64.FitContain})
+	a.lastImport = a.savedImport()
 	a.ui.in = &a.in
 	a.buildMenus()
 	a.updateTitle()
@@ -273,13 +275,25 @@ func New(host Host) *App {
 		a.set.HelpSeen = true
 		a.saveSettings()
 	}
-	a.askMode(true, func() {
+	afterMode := func() {
 		a.askWorkDir(func() {
 			if showHelp {
 				a.openHelp("start")
 			}
 		})
-	})
+	}
+	if hasRecovery() {
+		// the last session did not end normally: offer its pictures first
+		a.later(func() {
+			if a.offerRecovery() {
+				afterMode()
+			} else {
+				a.askMode(true, afterMode)
+			}
+		})
+	} else {
+		a.askMode(true, afterMode)
+	}
 	a.setStatus("Welcome to " + AppName + " " + AppVersion + "! Press F1 for help.")
 	return a
 }
@@ -363,6 +377,7 @@ func (a *App) Tick(now int64) bool {
 	a.now = now
 	a.ui.now = now
 	a.checkBackup()
+	a.checkRecovery()
 	redraw := false
 	if a.drag.active && (a.tool == ToolSpray) && now-a.lastSpray >= 30 {
 		redraw = true
@@ -424,6 +439,7 @@ func (a *App) CanClose() bool {
 		}
 	}
 	a.saveSettings()
+	a.clearRecovery()
 	return true
 }
 

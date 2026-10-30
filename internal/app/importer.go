@@ -56,12 +56,19 @@ type importDialog struct {
 	key       string
 	scroll    int
 	colH      int
+
+	thumbs   [4][]uint32 // preset previews (thumbW × thumbH)
+	thumbKey [4]string
+	thumbW   int
+	thumbH   int
+	autoWas  int // automatic contrast before it was switched off for a C64-sized image
 }
 
 func newImportDialog(a *App, img image.Image, name string) *importDialog {
 	d := &importDialog{img: img, name: name, opts: a.lastImport}
 	if b := img.Bounds(); (b.Dx() == 320 || b.Dx() == 160) && b.Dy() == 200 {
 		// most likely already a C64 picture: do not change its colors
+		d.autoWas = d.opts.Adjust.AutoLevels
 		d.opts.Adjust.AutoLevels = 0
 	}
 	d.screenFit = -1
@@ -107,17 +114,76 @@ func (d *importDialog) update(a *App) {
 		d.adjKey = ak
 		d.adjusted = c64.ApplyAdjust(d.screen, d.opts.Adjust)
 	}
-	key := fmt.Sprintf("%v/%d/%d", d.opts, a.palIdx, a.pic.Mode)
+	key := d.keyOf(a, d.opts)
 	if d.key != key {
 		d.key = key
-		if a.hires() {
-			// hires: the picture keeps its mode (two colors per 8×8 cell or free)
-			d.preview = c64.ConvertHiresRGB(d.adjusted, a.pal, d.opts, a.pic.Mode)
-		} else {
-			px := c64.ApplyAdjust(c64.MergePairs(d.screen, d.opts.Pair), d.opts.Adjust)
-			d.preview = c64.ConvertRGB(px, a.pal, d.opts)
+		d.preview = d.convert(a, d.opts)
+	}
+}
+
+func (d *importDialog) keyOf(a *App, o c64.ConvertOptions) string {
+	return fmt.Sprintf("%v/%d/%d", o, a.palIdx, a.pic.Mode)
+}
+
+// convert turns the resampled source into a picture with the given options.
+func (d *importDialog) convert(a *App, o c64.ConvertOptions) *c64.Picture {
+	if a.hires() {
+		// hires: the picture keeps its mode (two colors per 8×8 cell or free)
+		return c64.ConvertHiresRGB(c64.ApplyAdjust(d.screen, o.Adjust), a.pal, o, a.pic.Mode)
+	}
+	px := c64.ApplyAdjust(c64.MergePairs(d.screen, o.Pair), o.Adjust)
+	return c64.ConvertRGB(px, a.pal, o)
+}
+
+// updateThumbs builds the preset previews: at most one conversion per frame,
+// so the dialog stays responsive while they are made.
+func (d *importDialog) updateThumbs(a *App, tw, th int) {
+	if tw != d.thumbW || th != d.thumbH {
+		d.thumbW, d.thumbH = tw, th
+		d.thumbKey = [4]string{}
+	}
+	for i, ps := range importPresets {
+		if i >= len(d.thumbs) {
+			break
+		}
+		o := ps.opts(d.opts)
+		key := d.keyOf(a, o)
+		if d.thumbKey[i] == key {
+			continue
+		}
+		pic := d.preview
+		if key != d.key {
+			pic = d.convert(a, o)
+		}
+		d.thumbs[i] = thumbOf(pic, a.pal, tw, th)
+		d.thumbKey[i] = key
+		a.needAnim = true // the next frame makes the next preview
+		return
+	}
+}
+
+// thumbOf scales a picture down to tw × th (box filter over 320 × 200).
+func thumbOf(p *c64.Picture, pal *c64.Palette, tw, th int) []uint32 {
+	out := make([]uint32, tw*th)
+	pw := p.Width()
+	for ty := 0; ty < th; ty++ {
+		y0, y1 := ty*200/th, max((ty+1)*200/th, ty*200/th+1)
+		for tx := 0; tx < tw; tx++ {
+			x0, x1 := tx*320/tw, max((tx+1)*320/tw, tx*320/tw+1)
+			var r, g, b, n int
+			for y := y0; y < y1; y++ {
+				for x := x0; x < x1; x++ {
+					c := pal.Colors[p.ColorAt(x*pw/320, y)]
+					r += int(c>>16) & 255
+					g += int(c>>8) & 255
+					b += int(c) & 255
+					n++
+				}
+			}
+			out[ty*tw+tx] = gfx.RGB(uint8(r/n), uint8(g/n), uint8(b/n))
 		}
 	}
+	return out
 }
 
 func (d *importDialog) Draw(a *App, r gfx.Rect) {
@@ -233,17 +299,50 @@ func (d *importDialog) Draw(a *App, r gfx.Rect) {
 		y += 30
 		return res
 	}
-	hdr("Presets")
-	pbw := (w - 4) / 2
+	hdr("Presets – click a preview")
+	tw := (w - 8) / 2
+	tht := tw * 200 / 320
+	d.updateThumbs(a, tw, tht)
 	for i, ps := range importPresets {
-		br := gfx.Rect{X: cx + (i%2)*(pbw+4), Y: y + (i/2)*28, W: pbw, H: 24}
+		cell := gfx.Rect{X: cx + (i%2)*(tw+8), Y: y + (i/2)*(tht+28), W: tw, H: tht + 22}
+		tr := gfx.Rect{X: cell.X, Y: cell.Y, W: tw, H: tht}
 		cur := ps.opts(d.opts) == d.opts
-		if u.ButtonEx("im_ps"+itoa(i), br, ps.name, cur, d.target != 1) {
+		enabled := d.target != 1
+		clicked, _ := u.press("im_ps"+itoa(i), cell, 0)
+		if clicked && enabled {
 			d.opts = ps.opts(d.opts)
+			cur = true
 		}
-		u.Tip("im_ps"+itoa(i), br, ps.tip)
+		if t := d.thumbs[i]; t != nil && len(t) == tw*tht {
+			for py := 0; py < tht; py++ {
+				for px := 0; px < tw; px++ {
+					m.Set(tr.X+px, tr.Y+py, t[py*tw+px])
+				}
+			}
+			if !enabled {
+				m.FillA(tr, th.Panel, 160)
+			}
+		} else {
+			m.Fill(tr, th.Track)
+			m.TextC(font.UI, tr, "…", th.TextDim)
+		}
+		switch {
+		case cur && enabled:
+			m.Frame(tr.Inset(-1), th.Accent)
+			m.Frame(tr.Inset(-2), th.Accent)
+		case enabled && u.hover(cell):
+			m.Frame(tr.Inset(-1), th.Text)
+		default:
+			m.Frame(tr.Inset(-1), th.Border)
+		}
+		lc := th.Text
+		if !enabled {
+			lc = th.TextDim
+		}
+		m.TextC(font.UI, gfx.Rect{X: cell.X, Y: tr.Bottom() + 3, W: tw, H: 18}, ps.name, lc)
+		u.Tip("im_ps"+itoa(i), cell, ps.tip)
 	}
-	y += ((len(importPresets)+1)/2)*28 + 4
+	y += ((len(importPresets)+1)/2)*(tht+28) + 4
 	hdr("Use as")
 	if v := row3("im_t", []string{"C64 picture", "Template", "Both"}, d.target, true); v >= 0 {
 		d.target = v
@@ -386,6 +485,11 @@ func (d *importDialog) Draw(a *App, r gfx.Rect) {
 	}
 	if u.ButtonEx("im_ok", gfx.Rect{X: r.Right() - 120, Y: by, W: 120, H: 28}, "Import", true, true) {
 		a.lastImport = d.opts
+		if d.autoWas != 0 && d.opts.Adjust.AutoLevels == 0 {
+			// keep automatic contrast for the next photo
+			a.lastImport.Adjust.AutoLevels = d.autoWas
+		}
+		a.rememberImport()
 		if d.target != 1 {
 			a.commitOrCancelForHistory()
 			a.sel.state = selNone
@@ -403,4 +507,27 @@ func (d *importDialog) Draw(a *App, r gfx.Rect) {
 		}
 		a.closeModal(false)
 	}
+}
+
+// rememberImport stores the converter settings for the next start. The
+// picture adjustments (brightness, contrast, …) and the background color
+// belong to one image and are not kept.
+func (a *App) rememberImport() {
+	o := a.lastImport
+	o.BG = -1
+	o.Adjust = c64.Adjust{AutoLevels: o.Adjust.AutoLevels}
+	a.set.Import = &o
+	a.saveSettings()
+}
+
+// savedImport returns the stored converter settings, or the default preset.
+func (a *App) savedImport() c64.ConvertOptions {
+	def := importPresets[0].opts(c64.ConvertOptions{BG: -1, Fit: c64.FitContain})
+	o := a.set.Import
+	if o == nil || !o.Valid() {
+		return def
+	}
+	r := *o
+	r.BG = -1
+	return r
 }

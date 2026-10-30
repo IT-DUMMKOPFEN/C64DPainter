@@ -134,7 +134,7 @@ When you export for the C64 (Art Studio, Doodle, PRG), every cell keeps its two 
 - **Project (.c64dp)** keeps the mode, the layers and the template.
 - **Art Studio hires (.art, .aas, .hpi)**: 9009 bytes, load address $2000: bitmap, screen RAM and border color.
 - **Doodle (.dd, .ddl)**: 9218 bytes, load address $5C00: screen RAM at $5C00, bitmap at $6000.
-- **PNG** 320 × 200 or 384 × 272 with border.
+- **PNG** 320 × 200, 384 × 272 with border, or 2× / 4× larger.
 - **C64 program (.prg)**: a viewer for the hires picture (bitmap at $2000, screen RAM at $0400, $D016 = $08). **Space** resets the C64.
 
 Koala and the 160 × 200 PNG are for multicolor pictures only.
@@ -670,6 +670,7 @@ At the start and with **File → New** the program asks for the **working folder
 - **320 × 200**: as on screen (every pixel 2 pixels wide). Default for "Save as" with .png.
 - **160 × 200**: one pixel per multicolor pixel.
 - **384 × 272 with border**: like a PAL TV with border color.
+- **640 × 400** and **1280 × 800** (File → Export): 2× or 4× larger with sharp pixels – for showing your pictures on the web.
 
 PNGs are saved with the currently selected palette and 16 indexed colors.
 
@@ -689,6 +690,10 @@ The **File** menu lists the last 8 files you opened or saved. A click opens the 
 
 **Options → Auto backup** saves your work every 3 minutes into the working folder as ` + "`Backup.c64dp`" + ` (with all layers and the template) – and ` + "`Backup (page 2).c64dp`" + ` when the spare page is used. A backup is only written when the picture has changed; the file is overwritten each time. Auto backup is **off** at every start of the program; switch it on when you need it. Templates can also be JPG and GIF.
 
+## Crash recovery
+
+Independent of the auto backup, changed pictures (both pages) are saved quietly every minute next to the settings. When you quit normally, these files are removed. If the program or the computer crashed, the next start asks: **Restore the unsaved picture(s)?** – **Yes** brings them back with their file names (save them right away), **No** discards them. The editors (PETSCII, sprites, fonts) are not part of the recovery; save them yourself.
+
 -> prg | Running the C64 program
 -> import | Import & convert
 `},
@@ -699,14 +704,14 @@ The **File** menu lists the last 8 files you opened or saved. A click opens the 
 
 ## Presets
 
-One click sets dithering, color matching, cell colors and the automatic contrast together:
+Four small previews show the picture with each preset. One click on a preview sets dithering, color matching, cell colors and the automatic contrast together:
 
 = Recommended | Bayer 4 × 4, YUV, best fit, automatic contrast – calm patterns and true colors (the default)
 = Retropixels look | as the web version of Retropixels: Bayer 2 × 2, YUV, most frequent colors
 = Smooth | Floyd–Steinberg error diffusion – soft transitions
 = Sharp | no dithering – flat areas, good for graphics and logos
 
-After a preset you can change every single setting.
+After a preset you can change every single setting. The program keeps your import settings for the next start (brightness, contrast and the other picture adjustments start at 0 for every new image).
 
 ## Use as
 
@@ -1141,7 +1146,7 @@ Thank you all for making your work available and letting us use it:
 
 ## Settings
 
-Settings (theme, palette, grid, conflict mode …) are stored in ` + "`{SETTINGS}`" + `.
+Settings (theme, palette, grid, conflict mode, import settings, window position and size …) are stored in ` + "`{SETTINGS}`" + `.
 
 -> start | Back to "First steps"
 `},

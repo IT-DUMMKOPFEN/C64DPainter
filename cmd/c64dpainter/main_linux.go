@@ -690,6 +690,11 @@ func main() {
 	scale = a.UIScale()
 	var minW, minH int
 	winW, winH, minW, minH = windowSizeFor(scale)
+	if st, ok := a.SavedWindow(); ok {
+		// the size of the last session (the window manager places it)
+		sw, sh := screenArea()
+		winW, winH = min(max(st.W, minW), sw), min(max(st.H, minH), sh)
+	}
 	win, err = xproto.NewWindowId(conn)
 	if err != nil {
 		fail(err.Error())
@@ -759,6 +764,9 @@ func main() {
 			safe(render)
 			dirty = false
 		}
+	}
+	if winW > 0 && winH > 0 {
+		a.RememberWindow(app.WindowState{W: winW, H: winH})
 	}
 	xproto.DestroyWindow(conn, win)
 	conn.Sync()

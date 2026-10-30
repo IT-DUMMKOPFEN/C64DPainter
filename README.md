@@ -19,6 +19,14 @@ Version 1.0 · Created by IT-Dummköpfen · Free for private use.
 | `c64dpainter-linux-x86_64.tar.gz` | Linux on PCs (64 bit) |
 | `c64dpainter-linux-arm64.tar.gz` | Linux on ARM (e.g. Raspberry Pi 4/5 with a 64-bit system) |
 
+### First start
+
+The program is not signed with a paid developer certificate, so Windows and macOS warn the first time:
+
+- **Windows:** if "Windows protected your PC" appears, click **More info**, then **Run anyway**.
+- **macOS:** drag "C64 DPainter.app" into Applications, then run `xattr -cr "/Applications/C64 DPainter.app"` once in Terminal. Without Terminal: try to open the app, then click **Open Anyway** in System Settings → Privacy & Security.
+- **Linux:** unpack the archive and start `./c64dpainter`; `./install.sh` adds a menu entry and an icon.
+
 ## Features
 
 - Three modes, chosen at the start and with File → New: **Multicolor** (160×200 pixels, 4×8 cells, bit pairs %00/%01/%10/%11), **Hires** (320×200, standard bitmap mode, 2 colors per 8×8 cell) and **Hires free** (320×200, all colors; reduced to 2 per cell on export). When a cell is full, the program can block the pixel, replace the rarest cell color or use the nearest cell color – optionally without touching the other layers.
@@ -32,7 +40,7 @@ Version 1.0 · Created by IT-Dummköpfen · Free for private use.
 - **PETSCII editor** (Tools menu): convert pictures to PETSCII, edit them and export PRG, ACME assembler source, PNG or Petmate files.
 - **Sprite editor** (Tools menu): 64 hires or multicolor sprites, overlay, animation preview, import from the picture or a 320×200 image (single or as a raster), project files, ACME assembler export with all colors and settings. A sprite grid (24×21) in the View menu helps to draw sprites in the multicolor editor.
 - **Font editor** (Tools menu): hires or multicolor C64 character sets with 1×1 to 2×2 tiles, compare with the ROM, test text, import from the picture, a 320×200 image or the C64 font, project files, raw .bin/.64c and ACME assembler export.
-- **Auto backup** (Options menu, off at start) into the working folder and a list of **recent files**.
+- **Crash recovery**: changed pictures are saved quietly every minute and offered again after a crash. **Auto backup** (Options menu, off at start) into the working folder and a list of **recent files**. Window position and size and the import settings are kept for the next start.
 - **Brushes** menu: load and save brushes as PNG with a transparent background.
 - Round, square or diamond brushes from 1 to 16 pixels, plus custom brushes made from a selection.
 - 42 patterns (density steps, dots, lines, diagonals, grids and textures).
@@ -44,10 +52,10 @@ Version 1.0 · Created by IT-Dummköpfen · Free for private use.
 - Zoom from 1× to 32×, configurable grid (8×8 by default), pixel grid and C64 border.
 - Only the 16 C64 colors, with 116 palette variants from c64gfx.com.
 - Layers: three paint layers (layer 2 at the bottom, 4 on top; layers 3 + 4 have an on/off switch; show/hide, eraser) on which the multicolor rules apply together – every combination of visible layers is a valid C64 picture – plus a template layer (PNG/BMP/JPG/GIF, above or below the picture, with opacity) and a spare page.
-- **Import & convert** for 320×200 images, with presets (Recommended, Retropixels look, Smooth, Sharp) and automatic contrast: live preview (multicolor / original / split view), brightness, contrast, saturation, hue and gamma, 16 dithering methods (ordered patterns as in Retropixels, blue noise, cell pattern, Yliluoma and error diffusion) with adjustable strength, pixel-pair modes and background color choice, color matching in RGB, YUV, XYZ, Lab, OkLab or by brightness, and cell colors by best fit, most frequent or the same in all cells.
+- **Import & convert** for 320×200 images, with presets shown as small previews (Recommended, Retropixels look, Smooth, Sharp) and automatic contrast: live preview (multicolor / original / split view), brightness, contrast, saturation, hue and gamma, 16 dithering methods (ordered patterns as in Retropixels, blue noise, cell pattern, Yliluoma and error diffusion) with adjustable strength, pixel-pair modes and background color choice, color matching in RGB, YUV, XYZ, Lab, OkLab or by brightness, and cell colors by best fit, most frequent or the same in all cells.
 - Project files (.c64dp) keep all layers and the template.
 - Loading: C64 DPainter projects, KLA/KOA, Advanced Art Studio (.ocp), Amica Paint (.ami), Art Studio hires (.art), Doodle (.dd), PNG, BMP.
-- Saving: KLA (multicolor), Art Studio hires and Doodle (hires), PNG (320×200, 160×200, 384×272 with border) and PRG (a runnable C64 program with a viewer for multicolor or hires).
+- Saving: KLA (multicolor), Art Studio hires and Doodle (hires), PNG (320×200, 160×200, 384×272 with border, 640×400 and 1280×800) and PRG (a runnable C64 program with a viewer for multicolor or hires).
 - Foldable side panel sections, detailed built-in help (F1), light and dark theme, interface size 100/200/300 %, movable dialog windows.
 
 ## Building
