@@ -18,7 +18,9 @@ func (a *App) canvasInput() {
 	over := cr.Contains(in.MX, in.MY)
 	px, py := a.screenToPic(in.MX, in.MY)
 	a.mouseIn = over && px >= 0 && py >= 0 && px < picW && py < c64.H
-	if a.mouseIn {
+	_, _, side := a.stripAt(px, py)
+	a.mouseSide = over && side
+	if a.mouseIn || a.mouseSide {
 		a.mpx, a.mpy = px, py
 	}
 	// Mausrad: Zoom (Umschalt = waagerecht verschieben)
@@ -63,7 +65,7 @@ func btnOf(in *Input) int {
 }
 
 func (a *App) pickColor(px, py, btn int) {
-	if px < 0 || py < 0 || px >= picW || py >= c64.H {
+	if !a.paintable(px, py) {
 		return
 	}
 	c := a.pic.ColorAt(px, py)
@@ -375,6 +377,9 @@ func (a *App) drawCurve(p *c64.Picture, A, B, M pt, btn int) {
 func (a *App) floodFill(x, y, btn int) bool {
 	p := a.pic
 	if x < 0 || y < 0 || x >= picW || y >= c64.H {
+		if side, sx, ok := a.stripAt(x, y); ok && !c64.SideHidden(side, y) {
+			return a.stripFill(side, sx, y, btn)
+		}
 		return false
 	}
 	target := p.ColorAt(x, y)

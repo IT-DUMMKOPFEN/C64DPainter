@@ -194,6 +194,9 @@ func (p *Picture) SetLayerHidden(l int, hide bool) {
 // pixel becomes background.
 func (p *Picture) Erase(x, y int) {
 	if x < 0 || y < 0 || x >= p.Width() || y >= H {
+		if side, sx, ok := SideAt(x); ok && p.SideActive() {
+			p.EraseSide(side, sx, y)
+		}
 		return
 	}
 	if p.Hires() {

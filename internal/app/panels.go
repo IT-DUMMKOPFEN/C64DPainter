@@ -325,6 +325,7 @@ func (a *App) drawPanel() {
 	}
 	y = a.panelColors(x, y, w)
 	y = a.panelLayers(x, y, w)
+	y = a.panelSide(x, y, w)
 	y = a.panelCell(x, y, w)
 	y = a.panelNavigator(x, y, w)
 	a.panelContentH = y + a.panelScroll - r.Y + 8

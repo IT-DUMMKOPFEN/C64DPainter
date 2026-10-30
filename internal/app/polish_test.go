@@ -153,3 +153,66 @@ func TestWindowMemory(t *testing.T) {
 		t.Fatal("another interface size must not use the old window")
 	}
 }
+
+func TestSideBorderEditor(t *testing.T) {
+	a, h := setup(t)
+	a.toggleSideBorder()
+	if !a.sideOn() {
+		t.Fatal("side border should be open")
+	}
+	// paint with the freehand tool into the right strip
+	a.tool = ToolDraw
+	a.fg = 2
+	x0, y0 := pc(a, c64.W+2, 30)
+	x1, y1 := pc(a, c64.W+8, 30)
+	tdrag(a, x0, y0, x1, y1, 0)
+	if a.pic.SideColorAt(1, 2, 30) != 2 || a.pic.SideColorAt(1, 8, 30) != 2 {
+		t.Fatalf("strip not painted: %d", a.pic.SideColorAt(1, 2, 30))
+	}
+	// fill in the left strip
+	a.tool = ToolFill
+	a.fg = 5
+	fx, fy := pc(a, -5, 100)
+	tclick(a, fx, fy, 0)
+	if a.pic.SideColorAt(0, 0, 100) != 5 || a.pic.SideColorAt(0, 11, 199) != 5 || a.pic.SideColorAt(0, 4, 0) == 5 {
+		t.Fatal("strip fill")
+	}
+	// undo restores the strip
+	a.undo()
+	if a.pic.SideColorAt(0, 0, 100) == 5 {
+		t.Fatal("undo")
+	}
+	// project file keeps everything
+	h.save = filepath.Join(h.dir, "side.c64dp")
+	if !a.saveTo(h.save) {
+		t.Fatal("save")
+	}
+	b, _ := setup(t)
+	b.openPath(h.save)
+	if !b.sideOn() || b.pic.SideColorAt(1, 8, 30) != 2 || b.pic.Side.Col[1][1] != 2 {
+		t.Fatal("project did not keep the side border")
+	}
+	// export the program
+	h.save = filepath.Join(h.dir, "side.prg")
+	a.cmdExportSide(false)
+	data, err := os.ReadFile(h.save)
+	want, _ := a.pic.SideBorderPRG()
+	if err != nil || !bytes.Equal(data, want) {
+		t.Fatal("prg export")
+	}
+	h.save = filepath.Join(h.dir, "side.asm")
+	a.cmdExportSide(true)
+	if src, err := os.ReadFile(h.save); err != nil || !bytes.Contains(src, []byte("sty $d016")) {
+		t.Fatal("asm export")
+	}
+	// PNG with border shows the strips
+	img := a.pic.ToImage(a.pal, c64.PNGBorder)
+	if img.ColorIndexAt(32+320+2*8, 35+30) != 2 {
+		t.Fatal("png with border")
+	}
+	// hires: not available
+	a.newPicture(c64.ModeHires)
+	if a.sideOn() {
+		t.Fatal("hires has no side border")
+	}
+}

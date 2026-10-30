@@ -192,6 +192,8 @@ type App struct {
 	rMenu, rPanel, rTools, rCanvas, rStatus gfx.Rect
 	panelScroll, panelContentH              int
 	needAnim                                bool
+	mouseSide                               bool // mouse over a side border strip
+	sideFlash                               map[[2]int]int64
 	quitting                                bool
 	lastImport                              c64.ConvertOptions
 
@@ -606,6 +608,9 @@ func (a *App) plot(p *c64.Picture, x, y int, c uint8) {
 		a.noSym = false
 	}
 	if x < 0 || y < 0 || x >= picW || y >= c64.H {
+		if side, sx, ok := a.stripAt(x, y); ok {
+			a.plotSide(p, side, sx, y, c)
+		}
 		return
 	}
 	mode := c64.ConflictMode(a.set.Conflict)
@@ -788,6 +793,7 @@ func (a *App) frameOnce() *gfx.Image {
 		a.canvasInput()
 	} else if overCRT {
 		a.mouseIn = false
+		a.mouseSide = false
 	}
 	a.drawCanvas()
 	a.drawPanel()
@@ -854,7 +860,9 @@ func (a *App) drawStatus() {
 	a.img.TextL(f, gfx.Rect{X: r.Right() - rw - 10, Y: r.Y, W: rw, H: r.H}, right, th.TextDim)
 	// Mitte: Position
 	mid := ""
-	if a.mouseIn {
+	if a.mouseSide {
+		mid = a.sideStatus()
+	} else if a.mouseIn {
 		cell := a.pic.Cell(a.mpx, a.mpy)
 		if a.hires() {
 			mid = fmt.Sprintf("X %3d  Y %3d   Cell %2d,%2d   %s", a.mpx, a.mpy, cell%c64.Cols, cell/c64.Cols, c64.ColorNames[a.pic.ColorAt(a.mpx, a.mpy)])

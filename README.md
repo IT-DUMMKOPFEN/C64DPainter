@@ -53,9 +53,10 @@ The program is not signed with a paid developer certificate, so Windows and macO
 - Only the 16 C64 colors, with 116 palette variants from c64gfx.com.
 - Layers: three paint layers (layer 2 at the bottom, 4 on top; layers 3 + 4 have an on/off switch; show/hide, eraser) on which the multicolor rules apply together – every combination of visible layers is a valid C64 picture – plus a template layer (PNG/BMP/JPG/GIF, above or below the picture, with opacity) and a spare page.
 - **Import & convert** for 320×200 images, with presets shown as small previews (Recommended, Retropixels look, Smooth, Sharp) and automatic contrast: live preview (multicolor / original / split view), brightness, contrast, saturation, hue and gamma, 16 dithering methods (ordered patterns as in Retropixels, blue noise, cell pattern, Yliluoma and error diffusion) with adjustable strength, pixel-pair modes and background color choice, color matching in RGB, YUV, XYZ, Lab, OkLab or by brightness, and cell colors by best fit, most frequent or the same in all cells.
+- **Side border sprites** (multicolor, experimental): paint left and right of the picture into the opened side border – 10 multicolor sprites per side, exported as a cycle-exact C64 program (.prg) and ACME source (PAL only).
 - Project files (.c64dp) keep all layers and the template.
 - Loading: C64 DPainter projects, KLA/KOA, Advanced Art Studio (.ocp), Amica Paint (.ami), Art Studio hires (.art), Doodle (.dd), PNG, BMP.
-- Saving: KLA (multicolor), Art Studio hires and Doodle (hires), PNG (320×200, 160×200, 384×272 with border, 640×400 and 1280×800) and PRG (a runnable C64 program with a viewer for multicolor or hires).
+- Saving: KLA (multicolor), Art Studio hires and Doodle (hires), PNG (320×200, 160×200, 384×272 with border, 640×400 and 1280×800) and PRG (a runnable C64 program with a viewer for multicolor or hires; with the side border open also a PRG and ACME source that show the border sprites).
 - Foldable side panel sections, detailed built-in help (F1), light and dark theme, interface size 100/200/300 %, movable dialog windows.
 
 ## Building
@@ -154,3 +155,6 @@ Licenses and credits of ideas and data:
 | [Image-to-PETSCII](https://github.com/amb/Image-to-PETSCII) by amb | GPL-3 | the idea of matching cells against characters, no code |
 | [Retropixels](https://github.com/micheldebree/retropixels) by Michel de Bree | MIT | ideas for color matching, cell colors, automatic contrast and brightness-shifting ordered dithering |
 | [RECOIL](https://github.com/pfusik/recoil) by Piotr Fusik | MIT | format details of Advanced Art Studio and Amica Paint |
+| VIC-II article by Christian Bauer | – | timing rules for the side border program |
+| [VICE](https://github.com/VICE-Team/svn-mirror) (x64sc) | GPL-2 | testing the side border program, no code included |
+| [ACME](https://github.com/meonwax/acme) cross assembler | GPL-2 | checking the built-in assembler, no code included |

@@ -196,7 +196,51 @@ func (p *Picture) ToImage(pal *Palette, mode PNGMode) *image.Paletted {
 			}
 		}
 	}
+	if mode == PNGBorder && p.SideActive() {
+		p.drawSideBorder(im.Pix, w, ox, oy)
+	}
 	return im
+}
+
+// drawSideBorder paints the opened side border as the C64 shows it: the
+// border shows the background color, the strips are 24 screen pixels wide
+// next to the picture. The left border of a line opens with the line
+// before it, so the left side is shown one line lower (its first line stays
+// closed). The line below the picture shows the background color up to
+// the right border.
+func (p *Picture) drawSideBorder(pix []uint8, w, ox, oy int) {
+	for y := 0; y <= H; y++ {
+		if y < H {
+			// right side: lines 0..199
+			for x := ox + 320; x < w; x++ {
+				pix[(y+oy)*w+x] = p.BG
+			}
+			for sx := 0; sx < SideW; sx++ {
+				c := p.SideColorAt(1, sx, y)
+				pix[(y+oy)*w+ox+320+2*sx] = c
+				pix[(y+oy)*w+ox+320+2*sx+1] = c
+			}
+		}
+		if y == H {
+			// the line below the picture stays open up to the right border
+			for x := 0; x < ox+320; x++ {
+				pix[(y+oy)*w+x] = p.BG
+			}
+		}
+		if y >= 1 {
+			// left side: lines 1..200
+			for x := 0; x < ox; x++ {
+				pix[(y+oy)*w+x] = p.BG
+			}
+			if y < H {
+				for sx := 0; sx < SideW; sx++ {
+					c := p.SideColorAt(0, sx, y)
+					pix[(y+oy)*w+ox-24+2*sx] = c
+					pix[(y+oy)*w+ox-24+2*sx+1] = c
+				}
+			}
+		}
+	}
 }
 
 // SavePNG kodiert das Bild als PNG.

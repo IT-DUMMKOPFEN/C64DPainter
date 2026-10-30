@@ -33,7 +33,7 @@ func (a *App) picToScreen(px, py int) (int, int) {
 }
 
 func (a *App) borderSize() (l, t, r, b int) {
-	if !a.set.ShowBorder {
+	if !a.set.ShowBorder && !a.sideOn() {
 		return 0, 0, 0, 0
 	}
 	return 32, 35, 32, 37
@@ -239,6 +239,9 @@ func (a *App) drawCanvas() {
 	if a.set.GridOn {
 		a.drawGrid(vis, ox, oy, z)
 	}
+	if a.sideOn() {
+		a.drawSideStrips(imgR, z)
+	}
 	// Konflikt-Aufblitzen
 	for cell, t := range a.flash {
 		age := a.now - t
@@ -265,7 +268,7 @@ func (a *App) drawCanvas() {
 		dashedFrame(m, r, 0xFFFFFF, 0x000000, 0)
 	}
 	// Pinselvorschau
-	if a.mouseIn && !a.drag.active && !a.panning && a.modal == nil && a.menuOpen < 0 && !a.in.Space {
+	if (a.mouseIn || a.mouseSide) && !a.drag.active && !a.panning && a.modal == nil && a.menuOpen < 0 && !a.in.Space {
 		a.drawBrushPreview()
 	}
 	a.drawGradientLine()
@@ -362,7 +365,7 @@ func (a *App) drawBrushPreview() {
 	}
 	for i, o := range st.Offs {
 		px, py := a.mpx+o.X, a.mpy+o.Y
-		if px < 0 || py < 0 || px >= picW || py >= c64.H {
+		if !a.paintable(px, py) {
 			continue
 		}
 		c := col

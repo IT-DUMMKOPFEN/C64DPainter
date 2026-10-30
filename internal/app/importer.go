@@ -495,8 +495,13 @@ func (d *importDialog) Draw(a *App, r gfx.Rect) {
 			a.sel.state = selNone
 			a.pushUndo(a.pic.Clone())
 			border := a.pic.Border
+			sideOn, side := a.pic.SideOn, a.pic.Side
 			a.setFlatPicture(d.preview)
 			a.pic.Border = border
+			if !a.pic.Hires() {
+				// the side border sprites stay
+				a.pic.SideOn, a.pic.Side = sideOn, side
+			}
 			a.syncMode()
 			a.filePath[a.page] = ""
 			a.updateTitle()

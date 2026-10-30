@@ -33,6 +33,17 @@ type projectFile struct {
 	Mode       string           `json:"mode,omitempty"` // "Hires", "Hires free"; empty = multicolor
 	Layers     []projectLayer   `json:"layers"`
 	Template   *projectTemplate `json:"template,omitempty"`
+	Side       *projectSide     `json:"sideBorder,omitempty"`
+}
+
+// projectSide: the sprites in the opened side border (multicolor only).
+// Pixels: 12×200 per side, 0 = transparent, 1..16 = C64 color + 1.
+type projectSide struct {
+	On     bool       `json:"on"`
+	MC1    uint8      `json:"multicolor1"`
+	MC2    uint8      `json:"multicolor2"`
+	Colors [2][]uint8 `json:"colors"` // per side: the color of the 10 sprites
+	Pixels [2][]byte  `json:"pixels"` // left, right
 }
 
 // projectLayer: 160×200 bytes (hires: 320×200), 0 = transparent, 1..16 = C64 color + 1,
@@ -68,6 +79,14 @@ func (a *App) encodeProjectOf(p *c64.Picture) ([]byte, error) {
 		px := make([]byte, p.Width()*c64.H)
 		copy(px, p.L[l][:])
 		f.Layers = append(f.Layers, projectLayer{Name: layerName(l), Visible: !p.Hide[l], Pixels: px})
+	}
+	if !p.Hires() && (p.SideOn || p.SidePixels() > 0) {
+		sd := &projectSide{On: p.SideOn, MC1: p.Side.MC1, MC2: p.Side.MC2}
+		for s := 0; s < c64.SideCount; s++ {
+			sd.Colors[s] = append([]uint8(nil), p.Side.Col[s][:]...)
+			sd.Pixels[s] = append([]byte(nil), p.Side.Pix[s][:]...)
+		}
+		f.Side = sd
 	}
 	if a.tpl.src != nil {
 		var buf bytes.Buffer
@@ -145,6 +164,24 @@ func decodeProject(data []byte) (*c64.Picture, *projectTemplate, image.Image, er
 		p.Active = c64.LayerCount - 1 - p.Active
 	}
 	p.Recomposite()
+	if sd := f.Side; sd != nil && !p.Hires() {
+		p.SideOn = sd.On
+		p.Side.MC1, p.Side.MC2 = sd.MC1&15, sd.MC2&15
+		for s := 0; s < c64.SideCount; s++ {
+			if len(sd.Pixels[s]) != c64.SideW*c64.H || len(sd.Colors[s]) != c64.SideRows {
+				return nil, nil, nil, fmt.Errorf("damaged project file (side border)")
+			}
+			for i, c := range sd.Colors[s] {
+				p.Side.Col[s][i] = c & 15
+			}
+			for i, v := range sd.Pixels[s] {
+				if v > 16 {
+					v = 0
+				}
+				p.Side.Pix[s][i] = v
+			}
+		}
+	}
 	var img image.Image
 	if f.Template != nil && len(f.Template.PNG) > 0 {
 		img, err = png.Decode(bytes.NewReader(f.Template.PNG))

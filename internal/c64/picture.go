@@ -38,6 +38,10 @@ type Picture struct {
 	// pixel in HP (320 × 200); Bits, Screen and ColorRAM are not used.
 	Mode Mode
 	HP   [HW * H]uint8
+
+	// Sprites in the opened side border (side.go, multicolor only).
+	SideOn bool
+	Side   SideSprites
 }
 
 // ConflictMode bestimmt, was passiert, wenn eine Zelle schon vier Farben hat.
@@ -112,6 +116,9 @@ func (p *Picture) ColorAt(x, y int) uint8 {
 		return p.HP[y*HW+x]
 	}
 	if x < 0 || y < 0 || x >= W || y >= H {
+		if side, sx, ok := SideAt(x); ok && p.SideActive() && y >= 0 && y < H {
+			return p.SideColorAt(side, sx, y)
+		}
 		return p.BG
 	}
 	return p.SlotColor(CellOf(x, y), int(p.Bits[y*W+x]))
@@ -236,6 +243,7 @@ func (p *Picture) Clear() {
 	p.Bits = [W * H]uint8{}
 	p.Screen = [Cells]uint8{}
 	p.ColorRAM = [Cells]uint8{}
+	p.ClearSide()
 }
 
 // CleanUnused setzt unbenutzte Bitpaar-Farben auf 0 (rein kosmetisch, ändert nichts Sichtbares).

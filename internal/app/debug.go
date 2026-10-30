@@ -13,6 +13,32 @@ func (a *App) PicToScreenCenter(x, y int) (int, int) {
 // Debug setzt interne Zustände für Tests.
 func (a *App) Debug(what string, v int) {
 	switch what {
+	case "sidedemo":
+		if !a.sideOn() {
+			a.toggleSideBorder()
+		}
+		cols := []uint8{2, 10, 8, 7, 13, 5, 3, 14, 6, 4}
+		a.pic.Side.MC1, a.pic.Side.MC2 = 11, 15
+		for side := 0; side < 2; side++ {
+			for y := 1; y < c64.H; y++ {
+				for sx := 0; sx < c64.SideW; sx++ {
+					c := cols[(y/c64.SpriteH+side*5)%10]
+					switch {
+					case sx == 1 || sx == 10:
+						c = 15
+					case sx == 0 || sx == 11:
+						c = 11
+					case (sx+y)%2 == 0 && (y%c64.SpriteH < 3 || y%c64.SpriteH > 17):
+						c = 11
+					}
+					a.pic.PlotSide(side, sx, y, c, c64.ConflictReplace, a.pal)
+				}
+			}
+		}
+	case "sideprg":
+		a.cmdExportSide(false)
+	case "sidepng":
+		a.cmdExport(exportPNGBorder)
 	case "bg":
 		a.setBG(uint8(v))
 	case "fg":

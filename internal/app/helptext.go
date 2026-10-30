@@ -138,6 +138,44 @@ When you export for the C64 (Art Studio, Doodle, PRG), every cell keeps its two 
 - **C64 program (.prg)**: a viewer for the hires picture (bitmap at $2000, screen RAM at $0400, $D016 = $08). **Space** resets the C64.
 
 Koala and the 160 × 200 PNG are for multicolor pictures only.
+
+-> sideborder | Side border sprites (multicolor, experimental)
+`},
+	{id: "sideborder", title: "Side border sprites (experimental)", body: `
+# Side border sprites (experimental)
+
+**Layer → Side border sprites** opens the side border of a multicolor picture: left and right of the picture you can paint into the border. On the C64 this is done with sprites – a trick from demos. This function is **experimental** and works on **PAL** machines only.
+
+## What you can paint
+
+- Each side has a strip of **12 × 200 multicolor pixels** (24 screen pixels wide, one sprite width) directly next to the picture.
+- Each strip is made of **10 sprites** of 12 × 21 pixels, one below the other. The grid shows these blocks.
+- Every block may use **3 colors**: its own sprite color plus **multicolor 1** and **multicolor 2**, which all sprites share. **Transparent** pixels show the **background color** ($D021) – the open border shows the background, not the border color.
+- Painting with the background color makes pixels transparent; the eraser does the same.
+- A new color first becomes the block's own color. A color that other blocks already use becomes a shared multicolor while one is free. When a block is full, the conflict mode decides (block, replace the block's own color, or use the nearest color), and the block flashes red.
+- The **Side border sprites** section in the side panel shows the two shared colors: click one to set it to color 1 (right click: color 2) – all its pixels change with it. It also shows the color of the block under the mouse.
+- The very **first line of the left strip** cannot be shown by the C64 (the border opens one line later on the left), so it stays empty.
+
+Dots, freehand, lines, curves, shapes, fill, airbrush, eraser and the color picker work in the strips. Selections, gradients, smear, shade, dither and text work in the picture only.
+
+## Saving and exporting
+
+- **Project (.c64dp)** keeps the sprites; closing the side border keeps them too.
+- **File → Export → PNG 384 × 272 with border** shows the open border exactly as the C64 does.
+- **File → Export → C64 program with side border (.prg)** – a program that shows the picture with the open border. Start it like the normal program; **Space** resets the C64.
+- **File → Export → ACME source with side border (.asm)** – the same program as commented assembler source: ` + "`acme --cpu 6510 --format cbm --outfile picture.prg picture.asm`" + `.
+
+Koala, the normal PRG and the other PNGs contain the picture only.
+
+## How the program works
+
+= Memory | VIC bank 1: screen $4000 and a copy at $4400, sprites $4800, bitmap $6000
+= Sprites | sprite 2 at x = 0 (left), sprite 3 at x = 344 (right), both multicolor
+= Multiplexer | both sprites are moved down every 21 lines and get new pointers and colors
+= Timing | a stable raster interrupt starts cycle-exact code for raster lines 29–250
+= Border | in every line ` + "`sty $d016`" + ` switches to 38 columns in cycle 56 and ` + "`stx $d016`" + ` back to 40
+
+On bad lines the processor stops in the middle of ` + "`sty $d016`" + ` and finishes it exactly in cycle 56. The sprite DMA stops the processor at the end of every line, so each line starts again in cycle 3. The program was checked in the emulator VICE (x64sc); please tell us how it runs on your real C64.
 `},
 	{id: "conflict", title: "Color conflicts", body: `
 # Color conflicts
@@ -1135,6 +1173,7 @@ Thank you all for making your work available and letting us use it:
 - **Language:** Go and its standard library (BSD), The Go Authors.
 - **Dithering:** articles and guides on pixelparmesan.com, pixel-editor.com, pixnote.net, divoom.com and pixie.haus.
 - **File formats:** the details of Advanced Art Studio and Amica Paint files from RECOIL by Piotr Fusik.
+- **Side border:** the timing rules of the VIC-II from "The MOS 6567/6569 video controller (VIC-II) and its application in the Commodore 64" by Christian Bauer; the program was checked in **VICE** (x64sc, GPL) and compared with the **ACME** cross assembler (GPL) – no code of either is included.
 - **Import:** the ideas for color matching and cell colors from Retropixels by Michel de Bree (MIT license).
 - **PETSCII editor:** ideas and the "sorted by shape" character order from Petmate by nurpax (MIT license); ideas from petsciirender by gnacu, PETSCII editor by Marq (ventti/petscii, WTFPL) and Image-to-PETSCII by amb (GPL-3, only the idea, no code).
 - **Sprite editor:** ideas from Spritemate by Ingo Hinterding, MagSpriteEd by Magnar Harestad and Sprite Studio 64 by Tobiasz Stamborski (all MIT license).

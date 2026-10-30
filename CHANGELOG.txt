@@ -31,6 +31,21 @@ Better import (compared with Retropixels)
 - The presets are shown as four small previews of your picture - one
   click picks the look you like best.
 
+Side border sprites (experimental)
+- Layer > Side border sprites opens the side border of a multicolor
+  picture: left and right of the picture there is a strip of 12 x 200
+  multicolor pixels made of 10 sprites per side. Each 12 x 21 block has
+  its own color, multicolor 1 and 2 are shared, transparent pixels show
+  the background color.
+- Dots, freehand, lines, curves, shapes, fill, airbrush, eraser and the
+  color picker paint into the strips; a new side panel section sets the
+  shared colors. Projects keep the sprites, the PNG with border shows
+  them.
+- File > Export > C64 program with side border (.prg) and ACME source
+  with side border (.asm): a cycle-exact viewer with a stable raster and
+  a sprite multiplexer that opens the border in every line (PAL only,
+  checked in VICE x64sc).
+
 Safety and comfort
 - Crash recovery: changed pictures are saved quietly every minute. After
   a crash the next start offers to restore them; a normal quit removes
