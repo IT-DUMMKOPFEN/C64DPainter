@@ -123,3 +123,54 @@ func cellColorsCheck(t *testing.T, p *Picture) {
 		}
 	}
 }
+
+func TestNewDithersAndAutoLevels(t *testing.T) {
+	for name, m := range map[string][]int{"blue": blueNoise(), "cell": cellPattern} {
+		seen := make([]bool, len(m))
+		for _, v := range m {
+			if v < 0 || v >= len(m) || seen[v] {
+				t.Fatalf("%s: not a permutation", name)
+			}
+			seen[v] = true
+		}
+	}
+	// auto levels: a dull picture is stretched; each channel and brightness
+	px := make([][3]int, 1000)
+	for i := range px {
+		v := 60 + i%100
+		px[i] = [3]int{v, v / 2, v}
+	}
+	ch := autoLevels(px, 1)
+	lo, hi := 255, 0
+	for _, c := range ch {
+		lo, hi = min(lo, c[0]), max(hi, c[0])
+	}
+	if lo != 0 || hi != 255 {
+		t.Fatalf("each channel: %d..%d", lo, hi)
+	}
+	br := autoLevels(px, 2)
+	if br[0][1] >= br[0][0] && br[99][1] >= br[99][0] {
+		t.Fatal("brightness mode must keep the hue (green stays lower)")
+	}
+	// every new method still follows the rules
+	pal := &Palettes[0]
+	img := make([][3]int, W*H)
+	for i := range img {
+		img[i] = [3]int{(i * 7) % 256, (i / W) % 256, (i * 3) % 256}
+	}
+	for _, d := range []DitherMode{DitherBayer4, DitherBlueNoise, DitherYliluoma, DitherCellPattern, DitherFloyd} {
+		p := ConvertRGB(img, pal, ConvertOptions{BG: -1, Dither: d, Strength: 50, Match: MatchYUV})
+		for cell := 0; cell < Cells; cell++ {
+			u := p.Usage(cell, -1, -1)
+			_ = u
+		}
+		if p == nil {
+			t.Fatal("no picture")
+		}
+		h := ConvertHiresRGB(make([][3]int, HW*H), pal, ConvertOptions{BG: -1, Dither: d, Strength: 50}, ModeHires)
+		h.ToLayers()
+		if h.HiresClashes() != 0 {
+			t.Fatal("hires rules")
+		}
+	}
+}

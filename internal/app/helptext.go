@@ -695,7 +695,18 @@ The **File** menu lists the last 8 files you opened or saved. A click opens the 
 	{id: "import", title: "Import & convert", body: `
 # Import & convert
 
-**File → Import image …** (` + "`Ctrl+I`" + `) turns any PNG, BMP, JPG or GIF image into a C64 multicolor picture. A live preview shows the result while you change the settings: **Multicolor**, **Original** or **Split** (left original, right result). Hold the mouse button on the preview to see the original.
+**File → Import image …** (` + "`Ctrl+I`" + `) turns any PNG, BMP, JPG or GIF image into a C64 picture in the mode of the current picture (multicolor, hires or hires free). A live preview shows the result while you change the settings: **Multicolor**, **Original** or **Split** (left original, right result). Hold the mouse button on the preview to see the original.
+
+## Presets
+
+One click sets dithering, color matching, cell colors and the automatic contrast together:
+
+= Recommended | Bayer 4 × 4, YUV, best fit, automatic contrast – calm patterns and true colors (the default)
+= Retropixels look | as the web version of Retropixels: Bayer 2 × 2, YUV, most frequent colors
+= Smooth | Floyd–Steinberg error diffusion – soft transitions
+= Sharp | no dithering – flat areas, good for graphics and logos
+
+After a preset you can change every single setting.
 
 ## Use as
 
@@ -708,18 +719,23 @@ The **File** menu lists the last 8 files you opened or saved. A click opens the 
 
 ## Adjustments
 
-Brightness, contrast, saturation, hue and gamma – often a little more contrast and saturation helps a lot with the 16 C64 colors.
+- **Automatic contrast** stretches the picture to the full range first, as "normalize" in Retropixels. **Each channel** stretches red, green and blue from their darkest to their brightest value – best for dull or dark photos (default). **Brightness** stretches only the brightness, so the colors keep their hue. **Off** leaves the picture as it is – images of exactly 320 × 200 or 160 × 200 pixels (usually C64 pictures already) start with it off.
+- Brightness, contrast, saturation, hue and gamma – often a little more contrast and saturation helps a lot with the 16 C64 colors. **Reset adjustments** keeps the automatic contrast.
 
 ## Dithering
 
-13 methods: ordered patterns (Bayer 2 × 2, 4 × 4, 8 × 8, clustered dot, line pattern, noise) and error diffusion (Floyd–Steinberg, Atkinson, Jarvis-Judice-Ninke, Stucki, Burkes, Sierra, Sierra Lite). **Strength** sets how much is dithered.
+16 methods, in three families:
+
+- **Ordered patterns**: Bayer 2 × 2, 4 × 4, 8 × 8, clustered dot, line pattern, noise, **blue noise** (no visible grid, organic) and **cell pattern** (a 4 × 8 pattern that sits exactly on the color cells). As in Retropixels the pattern shifts the brightness of every pixel before the nearest color is chosen, so flat areas get calm, regular patterns. **Strength** 50 % is the amount Retropixels uses.
+- **Error diffusion**: Floyd–Steinberg, Atkinson, Jarvis-Judice-Ninke, Stucki, Burkes, Sierra, Sierra Lite. The colors of the cells are chosen from the picture itself and the spread error is limited, so no stray colors appear.
+- **Yliluoma (2 colors)**: for every pixel the two palette colors whose mix comes closest are found and laid out in a pattern – good for smooth color gradients.
 
 ## Color matching
 
 How "the most similar C64 color" is measured. Each method suits other images – just try them in the preview:
 
-= RGB | weighted RGB distance – quick and good for most images (default)
-= YUV | brightness and color difference as on a TV – keeps brightness steps
+= RGB | weighted RGB distance – quick and good for many images
+= YUV | brightness and color difference as on a TV – keeps brightness steps and blue skies (used by the presets)
 = XYZ | CIE XYZ – physical light, good for photos
 = Lab | CIE Lab – close to how the eye sees differences
 = OkLab | modern, even perception of hue and brightness
@@ -735,7 +751,9 @@ How "the most similar C64 color" is measured. Each method suits other images –
 
 **A** chooses it automatically (the program tries the most frequent colors), or pick one of the 16 colors.
 
-> The result always follows the multicolor rules. The ideas for color matching and cell colors come from **Retropixels** by Michel de Bree.
+In hires the cells have two colors (8 × 8); in hires free every pixel gets the nearest color.
+
+> The result always follows the rules of the mode. The ideas for color matching, cell colors, the automatic contrast and the brightness patterns come from **Retropixels** by Michel de Bree (MIT license). Blue noise: void-and-cluster method by Robert Ulichney; Yliluoma: the pattern dithering idea by Joel Yliluoma.
 
 -> dither | Dithering (Auto dither and Dither brush)
 -> formats | Saving & file formats

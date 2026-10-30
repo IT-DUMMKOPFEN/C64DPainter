@@ -14,6 +14,21 @@ sent ideas!
 About
 - A little firework left and right of the icon in Help > About.
 
+Better import (compared with Retropixels)
+- Automatic contrast before converting (each color channel, as the
+  "normalize" of Retropixels, or only the brightness).
+- Ordered dithering as in Retropixels: the pattern shifts the brightness,
+  then the nearest color is taken - calm, regular patterns instead of
+  scattered dots. The cell colors are chosen from the patterned picture.
+- Error diffusion without stray colors: the cell colors come from the
+  picture itself and the spread error is limited.
+- New dithering: blue noise, Yliluoma (2 colors) and a cell pattern that
+  sits on the 4 x 8 color cells.
+- Presets: Recommended (Bayer 4x4, YUV, best fit, automatic contrast -
+  the new default), Retropixels look, Smooth and Sharp.
+- The same improvements for hires and hires free imports; the PETSCII
+  converter got the automatic contrast too.
+
 Graphics modes: hires and hires free
 - At the start and with File > New a window asks for the mode:
   Multicolor (160 x 200, 4 x 8 cells, background + 3 colors), Hires

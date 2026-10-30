@@ -909,7 +909,7 @@ func (a *App) petOpenConvert() {
 }
 
 func (d *petConvertDialog) Title() string          { return "Convert to PETSCII" }
-func (d *petConvertDialog) Size(a *App) (int, int) { return 1000, min(640, a.H-20) }
+func (d *petConvertDialog) Size(a *App) (int, int) { return 1000, min(670, a.H-20) }
 func (d *petConvertDialog) Key(a *App, k KeyEvent) {
 	if k.Key == KeyEnter {
 		d.apply(a)
@@ -941,6 +941,7 @@ func (d *petConvertDialog) loadImage(a *App) {
 		if err2 == nil {
 			d.src = c64.ResampleScreen(img, c64.FitContain)
 			d.name = filepath.Base(p)
+			d.adj.AutoLevels = 1 // photos usually gain from it; C64 pictures not
 			d.key = ""
 			return
 		}
@@ -976,6 +977,7 @@ func (d *petConvertDialog) Draw(a *App, r gfx.Rect) {
 	m.Text(font.UI, r.X, pr.Bottom()+28, "Every 8 × 8 cell gets the character and color that fit it best.", th.TextDim)
 	if u.Button("pc_src0", gfx.Rect{X: r.X, Y: pr.Bottom() + 52, W: 200, H: 24}, "Use the multicolor picture") {
 		d.src, d.name, d.key = a.pictureRGB(), "the multicolor picture", ""
+		d.adj.AutoLevels = 0
 	}
 	if u.Button("pc_src1", gfx.Rect{X: r.X + 206, Y: pr.Bottom() + 52, W: 160, H: 24}, "Load an image …") {
 		a.later(func() { d.loadImage(a) })
@@ -1024,6 +1026,10 @@ func (d *petConvertDialog) Draw(a *App, r gfx.Rect) {
 	}
 	y += 56
 	hdr("Adjustments")
+	if v := row("pc_al", c64.AutoLevelNames, d.adj.AutoLevels); v >= 0 {
+		d.adj.AutoLevels = v
+	}
+	u.Tip("pc_al1", gfx.Rect{X: x + (w-8)/3 + 4, Y: y - 28, W: (w - 8) / 3, H: 22}, "Automatic contrast: stretch every color channel")
 	d.adj.Brightness = u.Slider("pc_br", gfx.Rect{X: x, Y: y, W: w, H: 22}, "Brightness", d.adj.Brightness, -100, 100, "")
 	y += 26
 	d.adj.Contrast = u.Slider("pc_co", gfx.Rect{X: x, Y: y, W: w, H: 22}, "Contrast", d.adj.Contrast, -100, 100, "")

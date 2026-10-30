@@ -9,6 +9,36 @@ import (
 	"c64dpainter/internal/gfx"
 )
 
+// importPreset is a ready-made combination of the converter settings.
+type importPreset struct {
+	name, tip string
+	opts      func(c64.ConvertOptions) c64.ConvertOptions
+}
+
+// importPresets: the first one is the default.
+var importPresets = []importPreset{
+	{"Recommended", "Bayer 4×4, YUV, best fit, automatic contrast – calm patterns, true colors", func(o c64.ConvertOptions) c64.ConvertOptions {
+		o.Dither, o.Strength, o.Match, o.Cells, o.Serpentine = c64.DitherBayer4, 50, c64.MatchYUV, c64.CellsBestFit, true
+		o.Adjust.AutoLevels = 1
+		return o
+	}},
+	{"Retropixels look", "As the web version of Retropixels: Bayer 2×2, YUV, most frequent colors, automatic contrast", func(o c64.ConvertOptions) c64.ConvertOptions {
+		o.Dither, o.Strength, o.Match, o.Cells, o.Serpentine = c64.DitherBayer2, 50, c64.MatchYUV, c64.CellsFrequent, true
+		o.Adjust.AutoLevels = 1
+		return o
+	}},
+	{"Smooth", "Floyd–Steinberg error diffusion, YUV, best fit, automatic contrast – soft transitions", func(o c64.ConvertOptions) c64.ConvertOptions {
+		o.Dither, o.Strength, o.Match, o.Cells, o.Serpentine = c64.DitherFloyd, 60, c64.MatchYUV, c64.CellsBestFit, true
+		o.Adjust.AutoLevels = 1
+		return o
+	}},
+	{"Sharp", "No dithering, YUV, best fit, automatic contrast – flat areas, good for graphics and logos", func(o c64.ConvertOptions) c64.ConvertOptions {
+		o.Dither, o.Strength, o.Match, o.Cells = c64.DitherNone, 0, c64.MatchYUV, c64.CellsBestFit
+		o.Adjust.AutoLevels = 1
+		return o
+	}},
+}
+
 // importDialog converts PNG/BMP images (ideally 320×200) to multicolor with a
 // live preview, image adjustments and a choice of dithering methods.
 type importDialog struct {
@@ -30,6 +60,10 @@ type importDialog struct {
 
 func newImportDialog(a *App, img image.Image, name string) *importDialog {
 	d := &importDialog{img: img, name: name, opts: a.lastImport}
+	if b := img.Bounds(); (b.Dx() == 320 || b.Dx() == 160) && b.Dy() == 200 {
+		// most likely already a C64 picture: do not change its colors
+		d.opts.Adjust.AutoLevels = 0
+	}
 	d.screenFit = -1
 	return d
 }
@@ -199,6 +233,17 @@ func (d *importDialog) Draw(a *App, r gfx.Rect) {
 		y += 30
 		return res
 	}
+	hdr("Presets")
+	pbw := (w - 4) / 2
+	for i, ps := range importPresets {
+		br := gfx.Rect{X: cx + (i%2)*(pbw+4), Y: y + (i/2)*28, W: pbw, H: 24}
+		cur := ps.opts(d.opts) == d.opts
+		if u.ButtonEx("im_ps"+itoa(i), br, ps.name, cur, d.target != 1) {
+			d.opts = ps.opts(d.opts)
+		}
+		u.Tip("im_ps"+itoa(i), br, ps.tip)
+	}
+	y += ((len(importPresets)+1)/2)*28 + 4
 	hdr("Use as")
 	if v := row3("im_t", []string{"C64 picture", "Template", "Both"}, d.target, true); v >= 0 {
 		d.target = v
@@ -218,13 +263,23 @@ func (d *importDialog) Draw(a *App, r gfx.Rect) {
 		y += 26
 	}
 	ad := &d.opts.Adjust
+	m.Text(font.UI, cx, y+5, "Automatic contrast", th.Text)
+	y += 22
+	if v := row3("im_al", c64.AutoLevelNames, ad.AutoLevels, true); v >= 0 {
+		ad.AutoLevels = v
+	}
+	alTips := []string{"No automatic contrast", "Stretch every color channel from its darkest to its brightest value (as Retropixels) – best for dull photos", "Stretch only the brightness – the colors keep their hue"}
+	for i, tip := range alTips {
+		bw := (w - 8) / 3
+		u.Tip("im_al"+itoa(i), gfx.Rect{X: cx + i*(bw+4), Y: y - 30, W: bw, H: 24}, tip)
+	}
 	sl("im_br", "Brightness", &ad.Brightness, -100, 100, "")
 	sl("im_co", "Contrast", &ad.Contrast, -100, 100, "")
 	sl("im_sa", "Saturation", &ad.Saturation, -100, 100, "")
 	sl("im_hu", "Hue", &ad.Hue, -180, 180, "°")
 	sl("im_ga", "Gamma", &ad.Gamma, -100, 100, "")
-	if u.ButtonEx("im_rst", gfx.Rect{X: cx, Y: y, W: w, H: 22}, "Reset adjustments", false, *ad != (c64.Adjust{})) {
-		*ad = c64.Adjust{}
+	if u.ButtonEx("im_rst", gfx.Rect{X: cx, Y: y, W: w, H: 22}, "Reset adjustments", false, *ad != (c64.Adjust{AutoLevels: ad.AutoLevels})) {
+		*ad = c64.Adjust{AutoLevels: ad.AutoLevels}
 	}
 	y += 30
 	hdr("Dithering")
@@ -241,7 +296,21 @@ func (d *importDialog) Draw(a *App, r gfx.Rect) {
 	}
 	y += ((len(c64.DitherNames)+cols-1)/cols)*25 + 6
 	d.opts.Strength = u.Slider("im_ds", gfx.Rect{X: cx, Y: y, W: w, H: 22}, "Strength", d.opts.Strength, 0, 100, " %")
-	y += 26
+	y += 24
+	dinfo := ""
+	switch {
+	case d.opts.Dither.Ordered():
+		dinfo = "Pattern shifts the brightness (50 % = Retropixels)"
+	case d.opts.Dither.Diffusion():
+		dinfo = "Error diffusion, limited so no stray colors appear"
+	case d.opts.Dither == c64.DitherYliluoma:
+		dinfo = "Mixes the two best palette colors in a pattern"
+	}
+	if dinfo != "" {
+		m.Text(font.UI, cx, y, gfx.Elide(font.UI, dinfo, w), th.TextDim)
+		y += 18
+	}
+	y += 2
 	if d.opts.Dither >= c64.DitherFloyd {
 		d.opts.Serpentine = u.Checkbox("im_serp", gfx.Rect{X: cx, Y: y, W: w, H: 20}, "Serpentine scanning (fewer streaks)", d.opts.Serpentine)
 		y += 24

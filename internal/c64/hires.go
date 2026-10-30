@@ -562,14 +562,7 @@ func ConvertHiresRGB(px [][3]int, pal *Palette, o ConvertOptions, mode Mode) *Pi
 		setResult(ditherPassW(px, HW, &pr, o, func(x, y int) []int { return all16 }))
 		return p
 	}
-	ref := px
-	if o.Dither != DitherNone && o.Strength > 0 {
-		free := ditherPassW(px, HW, &pr, o, func(x, y int) []int { return all16 })
-		ref = make([][3]int, len(px))
-		for i, k := range free {
-			ref[i] = pr[k]
-		}
-	}
+	ref := cellReference(px, HW, &pr, o)
 	metric := colorMetric(o.Match)
 	dist := make([][16]int, HW*H)
 	near := make([]uint8, HW*H)

@@ -5,6 +5,7 @@ import (
 	"image/draw"
 	"math"
 	"sort"
+	"sync"
 )
 
 // FitMode controls how an image is mapped onto the 320×200 screen.
@@ -43,6 +44,9 @@ const (
 	DitherBurkes
 	DitherSierra
 	DitherSierraLite
+	DitherBlueNoise   // ordered, void-and-cluster blue noise (no visible grid)
+	DitherYliluoma    // pattern dithering that mixes two palette colors
+	DitherCellPattern // ordered pattern aligned to the color cells
 	ditherCount
 )
 
@@ -50,10 +54,16 @@ const (
 var DitherNames = [ditherCount]string{
 	"None", "Bayer 2×2", "Bayer 4×4", "Bayer 8×8", "Clustered dot", "Line pattern", "Noise",
 	"Floyd–Steinberg", "Atkinson", "Jarvis-Judice-Ninke", "Stucki", "Burkes", "Sierra", "Sierra Lite",
+	"Blue noise", "Yliluoma (2 colors)", "Cell pattern",
 }
 
 // DitherOrdered reports whether a method is an ordered (pattern) dither.
-func (d DitherMode) Ordered() bool { return d >= DitherBayer2 && d <= DitherNoise }
+func (d DitherMode) Ordered() bool {
+	return (d >= DitherBayer2 && d <= DitherNoise) || d == DitherBlueNoise || d == DitherCellPattern
+}
+
+// Diffusion reports whether a method is an error diffusion.
+func (d DitherMode) Diffusion() bool { return d >= DitherFloyd && d <= DitherSierraLite }
 
 // Adjust holds image adjustments. The zero value changes nothing.
 type Adjust struct {
@@ -62,6 +72,65 @@ type Adjust struct {
 	Saturation int // -100..100 (-100 = grey, +100 = double)
 	Hue        int // -180..180 degrees
 	Gamma      int // -100..100 (positive = brighter mid-tones)
+	// AutoLevels stretches the picture to the full range first (as
+	// "normalize" in Retropixels): 0 off, 1 each color channel, 2 brightness.
+	AutoLevels int
+}
+
+// AutoLevelNames are the display names of the automatic contrast modes.
+var AutoLevelNames = []string{"Off", "Each channel", "Brightness"}
+
+// autoLevels stretches the colors to the full range.
+func autoLevels(px [][3]int, mode int) [][3]int {
+	if mode <= 0 || len(px) == 0 {
+		return px
+	}
+	bounds := func(val func(c [3]int) int, cut int) (float64, float64) {
+		var h [256]int
+		for _, c := range px {
+			h[clamp(val(c))]++
+		}
+		lo, hi, n := 0, 255, 0
+		for lo < 255 && n+h[lo] <= cut {
+			n += h[lo]
+			lo++
+		}
+		n = 0
+		for hi > 0 && n+h[hi] <= cut {
+			n += h[hi]
+			hi--
+		}
+		if hi-lo < 16 { // nearly flat: leave it
+			return 0, 255
+		}
+		return float64(lo), float64(hi)
+	}
+	out := make([][3]int, len(px))
+	if mode == 1 {
+		var lo, hi [3]float64
+		for ch := 0; ch < 3; ch++ {
+			ch := ch
+			// each channel from its darkest to its brightest value (as the
+			// "normalize" of Retropixels); ignoring a few pixels here would
+			// shift the colors of pictures with a color cast
+			lo[ch], hi[ch] = bounds(func(c [3]int) int { return c[ch] }, 0)
+		}
+		for i, c := range px {
+			for ch := 0; ch < 3; ch++ {
+				out[i][ch] = clamp(int(math.Round((float64(c[ch]) - lo[ch]) * 255 / (hi[ch] - lo[ch]))))
+			}
+		}
+		return out
+	}
+	// brightness: the darkest and brightest 0.1 % are ignored, so single
+	// pixels do not spoil it; the colors keep their hue
+	lo, hi := bounds(func(c [3]int) int { return (c[0]*299 + c[1]*587 + c[2]*114) / 1000 }, len(px)/1000)
+	for i, c := range px {
+		for ch := 0; ch < 3; ch++ {
+			out[i][ch] = clamp(int(math.Round((float64(c[ch]) - lo) * 255 / (hi - lo))))
+		}
+	}
+	return out
 }
 
 // ConvertOptions controls converting PNG/BMP images to multicolor.
@@ -176,6 +245,8 @@ func ResamplePairs(src image.Image, fit FitMode, pair PairMode) [][3]int {
 
 // ApplyAdjust applies brightness, contrast, saturation, hue and gamma.
 func ApplyAdjust(px [][3]int, a Adjust) [][3]int {
+	px = autoLevels(px, a.AutoLevels)
+	a.AutoLevels = 0
 	out := make([][3]int, len(px))
 	if a == (Adjust{}) {
 		copy(out, px)
@@ -256,8 +327,134 @@ func threshold(d DitherMode, x, y int) float64 {
 		h = (h ^ (h >> 13)) * 1274126177
 		h ^= h >> 16
 		return float64(h&0xFFFF)/65536 - 0.5
+	case DitherBlueNoise:
+		m := blueNoise()
+		return (float64(m[(y&31)*32+(x&31)])+0.5)/1024 - 0.5
+	case DitherCellPattern:
+		return (float64(cellPattern[(y&7)*4+(x&3)])+0.5)/32 - 0.5
 	}
 	return 0
+}
+
+// cellPattern: a 4 × 8 ordered matrix (one multicolor cell): the even
+// columns of the 8 × 8 Bayer matrix, ranked 0..31.
+var cellPattern = func() []int {
+	vals := make([]int, 32)
+	for y := 0; y < 8; y++ {
+		for x := 0; x < 4; x++ {
+			vals[y*4+x] = bayer8[y*8+x*2]
+		}
+	}
+	idx := make([]int, 32)
+	for i := range idx {
+		idx[i] = i
+	}
+	sort.Slice(idx, func(a, b int) bool { return vals[idx[a]] < vals[idx[b]] })
+	out := make([]int, 32)
+	for r, i := range idx {
+		out[i] = r
+	}
+	return out
+}()
+
+var (
+	blueOnce sync.Once
+	blueMat  []int
+)
+
+// blueNoise returns a 32 × 32 blue noise matrix (ranks 0..1023), made with
+// the void-and-cluster method (Ulichney 1993).
+func blueNoise() []int {
+	blueOnce.Do(func() { blueMat = voidAndCluster(32, 1.5) })
+	return blueMat
+}
+
+func voidAndCluster(n int, sigma float64) []int {
+	size := n * n
+	// toroidal Gaussian kernel
+	kern := make([]float64, size)
+	for y := 0; y < n; y++ {
+		for x := 0; x < n; x++ {
+			dx, dy := min(x, n-x), min(y, n-y)
+			kern[y*n+x] = math.Exp(-float64(dx*dx+dy*dy) / (2 * sigma * sigma))
+		}
+	}
+	energy := make([]float64, size)
+	on := make([]bool, size)
+	add := func(i int, sgn float64) {
+		ix, iy := i%n, i/n
+		for y := 0; y < n; y++ {
+			for x := 0; x < n; x++ {
+				energy[y*n+x] += sgn * kern[((y-iy+n)%n)*n+(x-ix+n)%n]
+			}
+		}
+	}
+	// initial pattern: ~10 % points from a fixed pseudo random sequence
+	h := uint32(12345)
+	count := 0
+	for count < size/10 {
+		h = h*1664525 + 1013904223
+		i := int(h>>8) % size
+		if !on[i] {
+			on[i] = true
+			add(i, 1)
+			count++
+		}
+	}
+	tightest := func() int {
+		best, be := -1, -1.0
+		for i := 0; i < size; i++ {
+			if on[i] && energy[i] > be {
+				best, be = i, energy[i]
+			}
+		}
+		return best
+	}
+	largestVoid := func() int {
+		best, be := -1, math.Inf(1)
+		for i := 0; i < size; i++ {
+			if !on[i] && energy[i] < be {
+				best, be = i, energy[i]
+			}
+		}
+		return best
+	}
+	// relax: move points from clusters into voids until stable
+	for iter := 0; iter < size; iter++ {
+		c := tightest()
+		on[c] = false
+		add(c, -1)
+		v := largestVoid()
+		if v == c {
+			on[c] = true
+			add(c, 1)
+			break
+		}
+		on[v] = true
+		add(v, 1)
+	}
+	rank := make([]int, size)
+	proto := append([]bool(nil), on...)
+	protoE := append([]float64(nil), energy...)
+	// phase 1: remove points from the tightest clusters
+	r := count - 1
+	for r >= 0 {
+		c := tightest()
+		on[c] = false
+		add(c, -1)
+		rank[c] = r
+		r--
+	}
+	// phase 2 + 3: fill the largest voids
+	copy(on, proto)
+	copy(energy, protoE)
+	for r = count; r < size; r++ {
+		v := largestVoid()
+		on[v] = true
+		add(v, 1)
+		rank[v] = r
+	}
+	return rank
 }
 
 // error diffusion kernels: dx, dy, weight; divisor
@@ -315,7 +512,12 @@ func ditherPassW(px [][3]int, W int, pr *[16][3]int, o ConvertOptions, allowed f
 			}
 			cr, cg, cb := clamp(int(c[0]+0.5)), clamp(int(c[1]+0.5)), clamp(int(c[2]+0.5))
 			if o.Dither.Ordered() && strength > 0 {
-				out[y*W+x] = uint8(mixPick(cr, cg, cb, pr, allowed(x, y), threshold(o.Dither, x, y)+0.5, strength, dist))
+				// as in Retropixels: the pattern shifts the brightness, then the
+				// nearest allowed color is taken – calm, regular patterns
+				off := int(math.Round(threshold(o.Dither, x, y) * strength * 64))
+				cr, cg, cb = clamp(cr+off), clamp(cg+off), clamp(cb+off)
+			} else if o.Dither == DitherYliluoma && strength > 0 {
+				out[y*W+x] = uint8(mixPick(cr, cg, cb, pr, allowed(x, y), threshold(DitherBayer4, x, y)+0.5, strength, dist))
 				continue
 			}
 			best, bd := 0, 1<<62
@@ -327,10 +529,13 @@ func ditherPassW(px [][3]int, W int, pr *[16][3]int, o ConvertOptions, allowed f
 			}
 			out[y*W+x] = uint8(best)
 			if diffuse && strength > 0 {
+				// the error is limited, so single far-off pixels do not throw
+				// stray colors into the neighbourhood
+				lim := 24 + 40*strength
 				er := [3]float64{
-					(math.Max(0, math.Min(255, c[0])) - float64(pr[best][0])) * strength,
-					(math.Max(0, math.Min(255, c[1])) - float64(pr[best][1])) * strength,
-					(math.Max(0, math.Min(255, c[2])) - float64(pr[best][2])) * strength,
+					math.Max(-lim, math.Min(lim, (math.Max(0, math.Min(255, c[0]))-float64(pr[best][0]))*strength)),
+					math.Max(-lim, math.Min(lim, (math.Max(0, math.Min(255, c[1]))-float64(pr[best][1]))*strength)),
+					math.Max(-lim, math.Min(lim, (math.Max(0, math.Min(255, c[2]))-float64(pr[best][2]))*strength)),
 				}
 				for _, tp := range k.taps {
 					dx := tp[0]
@@ -410,6 +615,37 @@ func mixPick(r, g, b int, pr *[16][3]int, allowed []int, t, strength float64, di
 
 var all16 = []int{0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15}
 
+// cellReference returns the picture the cell colors are chosen from:
+//   - ordered dithering: the picture with the pattern added (as Retropixels
+//     does), so the colors of the pattern win the cells;
+//   - Yliluoma: the picture dithered freely with all 16 colors (mixed colors
+//     survive);
+//   - error diffusion and no dithering: the picture itself – choosing the
+//     cells from a freely diffused picture brought stray colors into them.
+func cellReference(px [][3]int, w int, pr *[16][3]int, o ConvertOptions) [][3]int {
+	if o.Dither == DitherNone || o.Strength <= 0 {
+		return px
+	}
+	switch {
+	case o.Dither.Ordered():
+		s := float64(clamp100(o.Strength)) / 100
+		ref := make([][3]int, len(px))
+		for i, c := range px {
+			off := int(math.Round(threshold(o.Dither, i%w, i/w) * s * 64))
+			ref[i] = [3]int{clamp(c[0] + off), clamp(c[1] + off), clamp(c[2] + off)}
+		}
+		return ref
+	case o.Dither == DitherYliluoma:
+		free := ditherPassW(px, w, pr, o, func(x, y int) []int { return all16 })
+		ref := make([][3]int, len(px))
+		for i, k := range free {
+			ref[i] = pr[k]
+		}
+		return ref
+	}
+	return px
+}
+
 // ConvertRGB converts 160×200 RGB values into a multicolor picture.
 //
 // With dithering, the picture is first dithered freely with all 16 colors; the
@@ -422,15 +658,7 @@ func ConvertRGB(px [][3]int, pal *Palette, o ConvertOptions) *Picture {
 	for i, c := range pal.Colors {
 		pr[i] = [3]int{int(c >> 16 & 255), int(c >> 8 & 255), int(c & 255)}
 	}
-	dithering := o.Dither != DitherNone && o.Strength > 0
-	ref := px
-	if dithering {
-		free := ditherPass(px, &pr, o, func(x, y int) []int { return all16 })
-		ref = make([][3]int, len(px))
-		for i, k := range free {
-			ref[i] = pr[k]
-		}
-	}
+	ref := cellReference(px, W, &pr, o)
 	metric := colorMetric(o.Match)
 	dist := make([][16]int, W*H)
 	near := make([]uint8, W*H)

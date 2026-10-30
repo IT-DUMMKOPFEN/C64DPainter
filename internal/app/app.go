@@ -264,7 +264,7 @@ func New(host Host) *App {
 	a.fitPending = true
 	a.tpl.opacity = 50
 	a.tpl.visible = true
-	a.lastImport = c64.ConvertOptions{BG: -1, Fit: c64.FitContain, Strength: 60, Serpentine: true}
+	a.lastImport = importPresets[0].opts(c64.ConvertOptions{BG: -1, Fit: c64.FitContain})
 	a.ui.in = &a.in
 	a.buildMenus()
 	a.updateTitle()
