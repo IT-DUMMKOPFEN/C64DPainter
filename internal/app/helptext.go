@@ -1254,7 +1254,7 @@ Thank you all for making your work available and letting us use it:
 - **Windows:** rsrc by akavel (MIT) – the program icon resource.
 - **Language:** Go and its standard library (BSD), The Go Authors.
 - **Dithering:** articles and guides on pixelparmesan.com, pixel-editor.com, pixnote.net, divoom.com and pixie.haus.
-- **File formats:** the details of Advanced Art Studio and Amica Paint files from RECOIL by Piotr Fusik.
+- **File formats:** the layouts of Advanced Art Studio, Amica Paint, Koala compressed, Drazpaint, Image System, Vidcom 64, Blazing Paddles, Saracen Paint, Run Paint, Interpaint, Face Painter, Hi-Eddi and Doodle compressed files from RECOIL by Piotr Fusik (MIT license).
 - **Side border:** the timing rules of the VIC-II from "The MOS 6567/6569 video controller (VIC-II) and its application in the Commodore 64" by Christian Bauer; the program was checked in **VICE** (x64sc, GPL) and compared with the **ACME** cross assembler (GPL) – no code of either is included.
 - **Import:** the ideas for color matching and cell colors from Retropixels by Michel de Bree (MIT license).
 - **PETSCII editor:** ideas and the "sorted by shape" character order from Petmate by nurpax (MIT license); ideas from petsciirender by gnacu, PETSCII editor by Marq (ventti/petscii, WTFPL) and Image-to-PETSCII by amb (GPL-3, only the idea, no code).

@@ -154,7 +154,7 @@ Licenses and credits of ideas and data:
 | [PETSCII editor](https://github.com/ventti/petscii) by Marq | WTFPL | ideas |
 | [Image-to-PETSCII](https://github.com/amb/Image-to-PETSCII) by amb | GPL-3 | the idea of matching cells against characters, no code |
 | [Retropixels](https://github.com/micheldebree/retropixels) by Michel de Bree | MIT | ideas for color matching, cell colors, automatic contrast and brightness-shifting ordered dithering |
-| [RECOIL](https://github.com/pfusik/recoil) by Piotr Fusik | MIT | format details of Advanced Art Studio and Amica Paint |
+| [RECOIL](https://github.com/pfusik/recoil) by Piotr Fusik | MIT | file layouts of all the other C64 formats (OCP, AMI, GG, DRZ, ISM, VID, PI, SAR, RPM, IPT, FPT, HED, JJ …) |
 | VIC-II article by Christian Bauer | – | timing rules for the side border program |
 | [VICE](https://github.com/VICE-Team/svn-mirror) (x64sc) | GPL-2 | testing the side border program, no code included |
 | [ACME](https://github.com/meonwax/acme) cross assembler | GPL-2 | checking the built-in assembler, no code included |
