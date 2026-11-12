@@ -35,7 +35,7 @@ func (a *App) buildMenus() {
 	a.menus = []*Menu{
 		{Title: "File", Items: append(append([]MenuItem{
 			item("New", "Ctrl+N", func() { a.later(a.cmdNew) }),
-			item("Open … (C64DP, KLA, OCP, AMI, ART, DD, PNG, BMP)", "Ctrl+O", func() { a.later(a.cmdOpen) }),
+			item("Open … (C64DP, KLA, ART, DD, OCP, AMI, DRZ, GG, HED, JJ … PNG, BMP)", "Ctrl+O", func() { a.later(a.cmdOpen) }),
 			item("Import image (320×200) …", "Ctrl+I", func() { a.later(a.cmdImport) }),
 			item("Save", "Ctrl+S", func() { a.later(func() { a.cmdSave() }) }),
 			item("Save as …", "Ctrl+Shift+S", func() { a.later(func() { a.cmdSaveAs() }) }),
@@ -50,6 +50,8 @@ func (a *App) buildMenus() {
 			{Label: "Koala Painter (.kla) …", Action: func() { a.later(func() { a.cmdExport(exportKLA) }) }, Enabled: func() bool { return !a.hires() }},
 			{Label: "Art Studio hires (.art) …", Action: func() { a.later(func() { a.cmdExport(exportART) }) }, Enabled: a.hires},
 			{Label: "Doodle hires (.dd) …", Action: func() { a.later(func() { a.cmdExport(exportDD) }) }, Enabled: a.hires},
+			item("Other C64 formats (OCP, AMI, DRZ, GG, HED, JJ …) …", "", func() { a.later(a.openFormatsDialog) }),
+			item("Raw data + ACME source (.bin, .asm) …", "", func() { a.later(func() { a.cmdExport(exportRaw) }) }),
 			item("C64 program (.prg) …", "Ctrl+E", func() { a.later(func() { a.cmdExport(exportPRG) }) }),
 			item("PNG 320×200 …", "", func() { a.later(func() { a.cmdExport(exportPNG320) }) }),
 			{Label: "PNG 160×200 (native pixels) …", Action: func() { a.later(func() { a.cmdExport(exportPNG160) }) }, Enabled: func() bool { return !a.hires() }},

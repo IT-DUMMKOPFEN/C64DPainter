@@ -58,6 +58,20 @@ Font editor
   lines for the character set, map and colors) and a ready PRG. The
   built-in assembler gives the same bytes as ACME.
 
+More file formats
+- Save and load: Advanced Art Studio (.ocp), Amica Paint (.ami),
+  Koala compressed (.gg), Drazpaint (.drz, packed), Image System
+  (.ism), Vidcom 64 (.vid), Blazing Paddles (.pi) and, for hires,
+  Hi-Eddi (.hed) and Doodle compressed (.jj).
+- Load only: Saracen Paint (.sar), Run Paint (.rpm, .rph), Interpaint
+  (.ipt, .iph), Face Painter (.fpt), Image System hires (.ish).
+- File > Export > Other C64 formats ... lists the formats for the
+  current mode; they are also in Save as.
+- Raw data + ACME source: bitmap, screen RAM and color RAM as .bin files
+  plus an .asm file that includes them.
+- Font editor, Picture -> chars: a box in the window lists what the
+  export saves (font, map, color map, colors).
+
 Fixes
 - Large brushes (for example a brush made from a big selection) are now
   shown completely and scaled down in the brush preview of the side panel

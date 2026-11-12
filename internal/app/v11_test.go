@@ -1,6 +1,7 @@
 package app
 
 import (
+	"bytes"
 	"os"
 	"path/filepath"
 	"testing"
@@ -286,4 +287,49 @@ func TestFontPictureImport(t *testing.T) {
 	if a.fnt.f.Multi != cm.Font.Multi {
 		t.Log("mode differs (ok)")
 	}
+}
+
+func TestMoreFormatsApp(t *testing.T) {
+	a, h := setup(t)
+	for y := 0; y < 200; y++ {
+		for x := 0; x < 160; x++ {
+			if (x/4+y/8)%3 == 0 {
+				a.plot(a.pic, x, y, uint8(2+x%5))
+			}
+		}
+	}
+	want := a.pic.KLABytes()
+	for _, ext := range []string{".drz", ".gg", ".ocp", ".ami", ".ism", ".vid", ".pi"} {
+		p := filepath.Join(h.dir, "m"+ext)
+		if !a.saveTo(p) {
+			t.Fatalf("save %s", ext)
+		}
+		a.pic = c64.NewPicture(0, 0)
+		a.openPath(p)
+		if !bytes.Equal(a.pic.KLABytes(), want) {
+			t.Fatalf("%s: picture differs after loading", ext)
+		}
+		if a.filePath[a.page] != p {
+			t.Fatalf("%s: file path", ext)
+		}
+	}
+	// hires format refused for a multicolor picture
+	if a.saveTo(filepath.Join(h.dir, "x.hed")) {
+		t.Fatal("hed saved from multicolor")
+	}
+	// raw data
+	h.save = filepath.Join(h.dir, "my pic.asm")
+	a.cmdExport(exportRaw)
+	for _, f := range []string{"my_pic.asm", "my_pic_bitmap.bin", "my_pic_screen.bin", "my_pic_color.bin"} {
+		if st, err := os.Stat(filepath.Join(h.dir, f)); err != nil || st.Size() == 0 {
+			t.Fatalf("%s missing", f)
+		}
+	}
+	if st, _ := os.Stat(filepath.Join(h.dir, "my_pic_bitmap.bin")); st.Size() != 8000 {
+		t.Fatal("bitmap size")
+	}
+	// the formats dialog draws
+	a.openFormatsDialog()
+	step(a)
+	a.closeModal(false)
 }

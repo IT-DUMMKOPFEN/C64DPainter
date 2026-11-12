@@ -753,9 +753,31 @@ PNGs are saved with the currently selected palette and 16 indexed colors.
 
 A **runnable program** with a built-in viewer. See "Running the C64 program".
 
+## Other C64 formats
+
+**File → Export → Other C64 formats …** lists the formats for the current mode; you can also pick them in **Save as** or type the file extension. They can be loaded again, and ` + "`Ctrl+S`" + ` saves in the same format.
+
+= Advanced Art Studio (.ocp) | multicolor, 10 018 bytes, keeps the border color
+= Amica Paint (.ami) | multicolor, packed
+= Koala compressed (.gg) | multicolor, packed (load address $6000)
+= Drazpaint (.drz) | multicolor, packed ("DRAZPAINT 1.4"); unpacked files are read too
+= Image System (.ism) | multicolor, 10 218 bytes
+= Vidcom 64 (.vid) | multicolor, 10 050 bytes
+= Blazing Paddles (.pi) | multicolor, 10 242 bytes
+= Hi-Eddi (.hed) | hires, 9 218 bytes
+= Doodle compressed (.jj) | hires, packed
+
+Only read: **Saracen Paint (.sar)**, **Run Paint (.rpm, .rph)**, **Interpaint (.ipt, .iph)**, **Face Painter (.fpt)** and **Image System hires (.ish)**.
+
+The file layouts follow RECOIL by Piotr Fusik.
+
+## Raw data for programmers
+
+**File → Export → Raw data + ACME source …** saves the picture as plain data without load addresses: ` + "`name_bitmap.bin`" + ` (8000 bytes), ` + "`name_screen.bin`" + ` (1000 bytes) and, for multicolor, ` + "`name_color.bin`" + ` (1000 bytes for $D800), plus ` + "`name.asm`" + ` with the border and background color and ` + "`!binary`" + ` lines that include the files.
+
 ## Loading
 
-**C64 DPainter projects (.c64dp)**, **PNG**, **BMP** (1/4/8/16/24/32 bit, also RLE compressed), **KLA/KOA**, **Advanced Art Studio (.ocp)**, **Amica Paint (.ami)** and the hires formats **Art Studio hires (.art)** and **Doodle (.dd)** (see "Graphics modes"). KLA, OCP, AMI, PNG and BMP go into layer 2. OCP and AMI files are only read: save the picture as project, KLA, PNG or PRG.
+**C64 DPainter projects (.c64dp)**, **PNG**, **BMP** (1/4/8/16/24/32 bit, also RLE compressed), **KLA/KOA**, the hires formats **Art Studio hires (.art)** and **Doodle (.dd)** (see "Graphics modes") and all formats of the list above. Multicolor files, PNG and BMP go into layer 2.
 
 ## Recent files
 

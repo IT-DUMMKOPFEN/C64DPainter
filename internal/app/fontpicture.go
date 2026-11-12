@@ -206,6 +206,34 @@ func (d *fntPicDialog) Draw(a *App, r gfx.Rect) {
 	if u.Button("fp_reset", gfx.Rect{X: x, Y: y, W: w, H: 22}, "Reset adjustments") {
 		d.adj = c64.Adjust{}
 	}
+	y += 36
+	// what the export writes
+	by0 := r.Bottom() - 30 - 10
+	if by0-y >= 120 {
+		box := gfx.Rect{X: x, Y: y, W: w, H: min(by0-y, 176)}
+		m.Frame(box, th.Border)
+		tx, ty := box.X+10, box.Y+8
+		line := func(f *font.Face, s string, c uint32) {
+			if ty+16 <= box.Bottom() {
+				m.Text(f, tx, ty, gfx.Elide(f, s, box.W-20), c)
+			}
+			ty += 18
+		}
+		mode := "hires"
+		if d.o.Multi {
+			mode = "multicolor"
+		}
+		line(font.UIB, "Export ASM + PRG saves", th.Text)
+		line(font.UI, fmt.Sprintf("• Font: %d characters, %d bytes (%s)", d.cm.Used, d.cm.Used*8, mode), th.Text)
+		line(font.UI, "• Map: 40 × 25 screen codes, 1000 bytes", th.Text)
+		line(font.UI, "• Color map: 1000 bytes for $D800", th.Text)
+		if d.o.Multi {
+			line(font.UI, "• Colors: $D021, $D022, $D023", th.Text)
+		} else {
+			line(font.UI, "• Colors: $D021", th.Text)
+		}
+		line(font.UI, "name.asm · name_data.asm · name.prg", th.TextDim)
+	}
 	// buttons
 	by := r.Bottom() - 30
 	if u.Button("fp_cancel", gfx.Rect{X: r.Right() - 470, Y: by, W: 110, H: 30}, "Cancel") {
