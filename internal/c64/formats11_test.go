@@ -100,3 +100,25 @@ func LoadAMIRoundTrip(p *Picture) []byte {
 	}
 	return q.KLABytes()
 }
+
+func TestBitmapACME(t *testing.T) {
+	pal := &Palettes[0]
+	for _, p := range []*Picture{randomPicture(7), NewHiresPicture(ModeHires, 6, 14)} {
+		p.Border = 3
+		prg, err := p.BitmapACMEPRG(pal)
+		if err != nil {
+			t.Fatal(err)
+		}
+		if prg[0] != 0x01 || prg[1] != 0x08 {
+			t.Fatal("load address")
+		}
+		mem := func(addr int) []byte { return prg[2+addr-0x0801:] }
+		bm, scr, col, _ := p.RawParts(pal, "x")
+		if !bytes.Equal(mem(0x2000)[:8000], bm) || !bytes.Equal(mem(0x2000 + 8000)[:1000], scr) {
+			t.Fatal("bitmap / screen at the wrong place")
+		}
+		if col != nil && !bytes.Equal(mem(0x2000 + 9000)[:1000], col) {
+			t.Fatal("colors")
+		}
+	}
+}

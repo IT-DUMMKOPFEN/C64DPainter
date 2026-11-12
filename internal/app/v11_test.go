@@ -2,11 +2,15 @@ package app
 
 import (
 	"bytes"
+	"image"
+	"image/color"
 	"os"
 	"path/filepath"
+	"strings"
 	"testing"
 
 	"c64dpainter/internal/c64"
+	"c64dpainter/internal/gfx"
 )
 
 func TestLayersUIAndFreeExport(t *testing.T) {
@@ -332,4 +336,69 @@ func TestMoreFormatsApp(t *testing.T) {
 	a.openFormatsDialog()
 	step(a)
 	a.closeModal(false)
+}
+
+func TestImportIntoFormat(t *testing.T) {
+	a, h := setup(t)
+	img := image.NewRGBA(image.Rect(0, 0, 320, 200))
+	for y := 0; y < 200; y++ {
+		for x := 0; x < 320; x++ {
+			img.Set(x, y, color.RGBA{uint8(x * 3 / 4), uint8(y), uint8((x + y) / 3), 255})
+		}
+	}
+	tg := importTargets()
+	pick := func(name string) int {
+		for i, t := range tg {
+			if strings.HasPrefix(t.label, name) {
+				return i
+			}
+		}
+		t.Fatalf("no target %s", name)
+		return 0
+	}
+	for _, c := range []struct {
+		target, file string
+		hires        bool
+	}{{"Drazpaint", "a.drz", false}, {"Hi-Eddi", "b.hed", true}, {"Koala", "c.kla", false}} {
+		a.modal = newImportDialog(a, img, "photo")
+		d := a.modal.(*importDialog)
+		step(a)
+		// choose the target with the arrow button until it is selected
+		want := pick(c.target)
+		d.saveAs = want
+		if t2 := tg[d.saveAs]; !t2.fits(d.mode) {
+			if t2.mode == 1 {
+				d.mode = c64.ModeHires
+			} else {
+				d.mode = c64.ModeMulti
+			}
+		}
+		step(a)
+		h.save = filepath.Join(h.dir, c.file)
+		w, hh := d.Size(a)
+		r := a.modalRect(d, min(w, a.W-16), min(hh, a.H-16))
+		content := gfx.Rect{X: r.X + 16, Y: r.Y + 31 + 12, W: r.W - 32, H: r.H - 31 - 24}
+		tclick(a, content.Right()-60, content.Bottom()-14, 0)
+		step(a)
+		if a.modal != nil {
+			t.Fatalf("%s: dialog still open", c.target)
+		}
+		if a.hires() != c.hires {
+			t.Fatalf("%s: mode", c.target)
+		}
+		if a.filePath[a.page] != h.save {
+			t.Fatalf("%s: file not adopted: %q", c.target, a.filePath[a.page])
+		}
+		if st, err := os.Stat(h.save); err != nil || st.Size() < 1000 {
+			t.Fatalf("%s: file missing", c.target)
+		}
+	}
+	// ACME program + data
+	h.save = filepath.Join(h.dir, "show.asm")
+	a.cmdExport(exportACME)
+	for _, f := range []string{"show.asm", "show_data.asm", "show.prg"} {
+		if _, err := os.Stat(filepath.Join(h.dir, f)); err != nil {
+			t.Fatalf("%s missing", f)
+		}
+	}
 }

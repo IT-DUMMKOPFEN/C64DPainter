@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"errors"
 	"fmt"
+	"strings"
 )
 
 // --- More C64 picture formats (1.2) --------------------------------------------------
@@ -350,4 +351,100 @@ func (p *Picture) RawParts(pal *Palette, name string) (bm, scr, col []byte, src 
 		fmt.Fprintf(&b, "%s_color   !binary \"%s_color.bin\"    ; 1000 bytes, copy to $d800\n", name, name)
 	}
 	return bm, scr, col, b.String()
+}
+
+// --- ACME viewer program + data ------------------------------------------------------
+
+// BitmapDataACME returns the data file: colors, then the bitmap at $2000,
+// the screen RAM and (multicolor) the color RAM.
+func (p *Picture) BitmapDataACME(pal *Palette, name string) string {
+	var w strings.Builder
+	bm, scr, col, _ := p.RawParts(pal, name)
+	mode := "multicolor"
+	multi := 1
+	if p.Hires() {
+		mode, multi = "hires", 0
+	}
+	fmt.Fprintf(&w, "; %s – %s bitmap, screen RAM and colors (made with C64 DPainter)\n\n", name, mode)
+	fmt.Fprintf(&w, "pic_border = %d\npic_bg = %d\npic_multi = %d\n\n", p.Border&15, p.BG&15, multi)
+	w.WriteString("* = $2000\n")
+	asmBytes(&w, "pic_bitmap", "8000 bytes bitmap", bm, 16)
+	w.WriteString("\n")
+	asmBytes(&w, "pic_screen", "1000 bytes screen RAM (colors of the cells)", scr, 40)
+	if col != nil {
+		w.WriteString("\n")
+		asmBytes(&w, "pic_colors", "1000 bytes for the color RAM ($d800)", col, 40)
+	}
+	return w.String()
+}
+
+// BitmapProgramACME returns the viewer; it includes the data file with
+// !source (inline: the data text is put in its place).
+func (p *Picture) BitmapProgramACME(name, dataFile, inline string) string {
+	var w strings.Builder
+	fmt.Fprintf(&w, "; %s – shows a C64 bitmap picture (made with C64 DPainter)\n", name)
+	fmt.Fprintf(&w, "; assemble: acme --cpu 6510 --format cbm --outfile %s.prg %s.asm\n", name, name)
+	w.WriteString("; Space resets the C64.\n\n!cpu 6510\n* = $0801\n")
+	w.WriteString("        !byte $0b,$08,$ea,$07,$9e,$32,$30,$36,$31,$00,$00,$00 ; 2026 SYS2061\n\n* = $080d\n")
+	w.WriteString(`start   sei
+        lda #pic_border
+        sta $d020
+        lda #pic_bg
+        sta $d021
+        ldx #0
+copy    lda pic_screen,x      ; screen RAM to $0400
+        sta $0400,x
+        lda pic_screen+$100,x
+        sta $0500,x
+        lda pic_screen+$200,x
+        sta $0600,x
+        lda pic_screen+$2e8,x
+        sta $06e8,x
+`)
+	if !p.Hires() {
+		w.WriteString(`        lda pic_colors,x      ; color RAM
+        sta $d800,x
+        lda pic_colors+$100,x
+        sta $d900,x
+        lda pic_colors+$200,x
+        sta $da00,x
+        lda pic_colors+$2e8,x
+        sta $dae8,x
+`)
+	}
+	d016 := "$18          ; multicolor"
+	if p.Hires() {
+		d016 = "$08          ; hires"
+	}
+	fmt.Fprintf(&w, `        inx
+        bne copy
+        lda $dd00
+        and #%%11111100
+        ora #%%00000011       ; VIC bank 0
+        sta $dd00
+        lda #$3b              ; bitmap mode
+        sta $d011
+        lda #%s
+        sta $d016
+        lda #$18              ; screen $0400, bitmap $2000
+        sta $d018
+wait    lda #$7f              ; Space pressed?
+        sta $dc00
+        lda $dc01
+        and #$10
+        bne wait
+        jmp $fce2             ; reset
+
+`, d016)
+	if inline != "" {
+		w.WriteString(inline)
+	} else {
+		fmt.Fprintf(&w, "        !source \"%s\"\n", dataFile)
+	}
+	return w.String()
+}
+
+// BitmapACMEPRG assembles the viewer with the data.
+func (p *Picture) BitmapACMEPRG(pal *Palette) ([]byte, error) {
+	return Assemble(p.BitmapProgramACME("pic", "", p.BitmapDataACME(pal, "pic")))
 }

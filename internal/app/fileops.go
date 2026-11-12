@@ -30,6 +30,7 @@ const (
 	exportPNG2x
 	exportPNG4x
 	exportRaw
+	exportACME
 	// exportFmt + i: c64.Formats[i]
 	exportFmt = 100
 )
@@ -486,7 +487,7 @@ func (a *App) usesLayers() bool {
 // c64Format: a file format with the C64 color rules (free layers must be
 // converted first).
 func c64Format(kind int) bool {
-	return kind == exportKLA || kind == exportPRG || kind == exportART || kind == exportDD || kind == exportRaw || kind >= exportFmt
+	return kind == exportKLA || kind == exportPRG || kind == exportART || kind == exportDD || kind == exportRaw || kind == exportACME || kind >= exportFmt
 }
 
 func (a *App) writeExport(p string, kind int) bool {
@@ -512,6 +513,8 @@ func (a *App) writeExportOf(pic *c64.Picture, p string, kind int) bool {
 		data = pic.SaveDD(a.pal)
 	case exportRaw:
 		return a.writeRaw(pic, p)
+	case exportACME:
+		return a.writeACME(pic, p)
 	case exportPNG320:
 		data, err = a.pic.SavePNG(a.pal, c64.PNG320)
 	case exportPNG160:
@@ -540,7 +543,16 @@ func (a *App) writeExportOf(pic *c64.Picture, p string, kind int) bool {
 	return true
 }
 
-func (a *App) cmdExport(kind int) {
+func (a *App) cmdExport(kind int) { a.exportWith(kind, false) }
+
+// fileKind: the export writes a picture file that can be loaded again.
+func fileKind(kind int) bool {
+	return kind == exportKLA || kind == exportART || kind == exportDD || kind >= exportFmt
+}
+
+// exportWith asks for a file name and exports; with adopt a picture file
+// becomes the file of the page (Ctrl+S saves there).
+func (a *App) exportWith(kind int, adopt bool) {
 	a.commitOrCancelForHistory()
 	base := "picture"
 	if a.filePath[a.page] != "" {
@@ -569,6 +581,8 @@ func (a *App) cmdExport(kind int) {
 		f, name, ext, title = []Filter{{"Doodle (*.dd)", "*.dd"}}, base+".dd", "dd", "Export as Doodle"
 	case exportRaw:
 		f, name, ext, title = []Filter{{"ACME source + raw data (*.asm)", "*.asm"}}, base+".asm", "asm", "Export raw data for programmers"
+	case exportACME:
+		f, name, ext, title = []Filter{{"ACME source (*.asm)", "*.asm"}}, base+".asm", "asm", "Export ACME program + data (.asm, _data.asm, .prg)"
 	default:
 		if kind >= exportFmt {
 			ff := &c64.Formats[kind-exportFmt]
@@ -587,8 +601,12 @@ func (a *App) cmdExport(kind int) {
 	}
 	if a.writeExport(p, kind) {
 		a.rememberDir(p)
-		if kind == exportKLA || kind == exportART || kind == exportDD || kind >= exportFmt {
+		if fileKind(kind) {
 			a.dirty[a.page] = false
+			if adopt {
+				a.filePath[a.page] = p
+				a.addRecent(p)
+			}
 			a.updateTitle()
 		}
 	}

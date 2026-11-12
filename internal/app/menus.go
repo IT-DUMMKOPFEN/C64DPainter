@@ -51,6 +51,7 @@ func (a *App) buildMenus() {
 			{Label: "Art Studio hires (.art) …", Action: func() { a.later(func() { a.cmdExport(exportART) }) }, Enabled: a.hires},
 			{Label: "Doodle hires (.dd) …", Action: func() { a.later(func() { a.cmdExport(exportDD) }) }, Enabled: a.hires},
 			item("Other C64 formats (OCP, AMI, DRZ, GG, HED, JJ …) …", "", func() { a.later(a.openFormatsDialog) }),
+			item("ACME program + data (.asm, .prg) …", "", func() { a.later(func() { a.cmdExport(exportACME) }) }),
 			item("Raw data + ACME source (.bin, .asm) …", "", func() { a.later(func() { a.cmdExport(exportRaw) }) }),
 			item("C64 program (.prg) …", "Ctrl+E", func() { a.later(func() { a.cmdExport(exportPRG) }) }),
 			item("PNG 320×200 …", "", func() { a.later(func() { a.cmdExport(exportPNG320) }) }),

@@ -67,6 +67,13 @@ More file formats
   (.ipt, .iph), Face Painter (.fpt), Image System hires (.ish).
 - File > Export > Other C64 formats ... lists the formats for the
   current mode; they are also in Save as.
+- Import & convert: "Convert to" (multicolor, hires, hires free) and
+  "Then save as": the imported picture is saved at once in the chosen
+  format (all formats above, Koala, Art Studio, Doodle, PRG, ACME or raw
+  data); Ctrl+S then saves into this file.
+- ACME program + data: name.asm (viewer), name_data.asm (colors,
+  bitmap, screen RAM, color RAM as !byte lines) and name.prg - for every
+  picture, whatever format it came from. Same bytes as ACME.
 - Raw data + ACME source: bitmap, screen RAM and color RAM as .bin files
   plus an .asm file that includes them.
 - Font editor, Picture -> chars: a box in the window lists what the

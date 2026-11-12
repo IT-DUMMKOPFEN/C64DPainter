@@ -771,6 +771,10 @@ Only read: **Saracen Paint (.sar)**, **Run Paint (.rpm, .rph)**, **Interpaint (.
 
 The file layouts follow RECOIL by Piotr Fusik.
 
+## C64 program and ACME program with data
+
+Every picture – whatever file format it came from – can also be saved as a **C64 program (.prg)** with a viewer, or as **ACME program + data**: ` + "`name.asm`" + ` (the viewer), ` + "`name_data.asm`" + ` (colors, bitmap at $2000, screen RAM and color RAM as ` + "`!byte`" + ` lines) and ` + "`name.prg`" + ` (ready to run). ` + "`acme --cpu 6510 --format cbm --outfile name.prg name.asm`" + ` builds the same program. Both are in **File → Export** and in the window **Other C64 formats**.
+
 ## Raw data for programmers
 
 **File → Export → Raw data + ACME source …** saves the picture as plain data without load addresses: ` + "`name_bitmap.bin`" + ` (8000 bytes), ` + "`name_screen.bin`" + ` (1000 bytes) and, for multicolor, ` + "`name_color.bin`" + ` (1000 bytes for $D800), plus ` + "`name.asm`" + ` with the border and background color and ` + "`!binary`" + ` lines that include the files.
@@ -797,7 +801,7 @@ Independent of the auto backup, changed pictures (both pages) are saved quietly 
 	{id: "import", title: "Import & convert", body: `
 # Import & convert
 
-**File → Import image …** (` + "`Ctrl+I`" + `) turns any PNG, BMP, JPG or GIF image into a C64 picture in the mode of the current picture (multicolor, hires or hires free). A live preview shows the result while you change the settings: **Multicolor**, **Original** or **Split** (left original, right result). Hold the mouse button on the preview to see the original.
+**File → Import image …** (` + "`Ctrl+I`" + `) turns any PNG, BMP, JPG or GIF image into a C64 picture – in multicolor, hires or hires free, and on request straight into a file format. A live preview shows the result while you change the settings: **Multicolor**, **Original** or **Split** (left original, right result). Hold the mouse button on the preview to see the original.
 
 ## Presets
 
@@ -809,6 +813,13 @@ Four small previews show the picture with each preset. One click on a preview se
 = Sharp | no dithering – flat areas, good for graphics and logos
 
 After a preset you can change every single setting. The program keeps your import settings for the next start (brightness, contrast and the other picture adjustments start at 0 for every new image).
+
+## Convert to and save as
+
+Below the preview:
+
+- **Convert to**: Multicolor, Hires or Hires free. It starts with the mode of the current picture; another mode changes the picture's mode when you import.
+- **Then save as** (**<** / **>** or a click on the name): after **Import** the picture is saved in this format at once – Koala, Advanced Art Studio, Amica Paint, Koala compressed, Drazpaint, Image System, Vidcom 64, Blazing Paddles, Art Studio hires, Doodle, Hi-Eddi, Doodle compressed, a C64 program, an ACME program with data or raw data. A file format chooses the matching mode by itself (Hi-Eddi → hires). The program asks for the file name; after that ` + "`Ctrl+S`" + ` saves into this file. **Only into the editor** saves nothing.
 
 ## Use as
 

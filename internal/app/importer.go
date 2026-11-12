@@ -62,10 +62,50 @@ type importDialog struct {
 	thumbW   int
 	thumbH   int
 	autoWas  int // automatic contrast before it was switched off for a C64-sized image
+
+	mode   c64.Mode // the mode of the result
+	saveAs int      // index into importTargets (0: only into the editor)
+}
+
+// hires: the result is a hires picture.
+func (d *importDialog) hires() bool { return d.mode != c64.ModeMulti }
+
+// importTarget is a file the imported picture can be saved to at once.
+type importTarget struct {
+	label string
+	kind  int // -1: nothing
+	mode  int // -1: any mode, 0: multicolor, 1: hires (also hires free)
+}
+
+func importTargets() []importTarget {
+	t := []importTarget{{"Only into the editor", -1, -1}, {"Koala Painter (.kla)", exportKLA, 0}}
+	add := func(hires bool) {
+		m := 0
+		if hires {
+			m = 1
+		}
+		for i, f := range c64.Formats {
+			if f.Save != nil && f.Hires == hires {
+				t = append(t, importTarget{f.Name + " (" + f.Exts[0] + ")", exportFmt + i, m})
+			}
+		}
+	}
+	add(false)
+	t = append(t, importTarget{"Art Studio hires (.art)", exportART, 1}, importTarget{"Doodle (.dd)", exportDD, 1})
+	add(true)
+	return append(t,
+		importTarget{"C64 program (.prg)", exportPRG, -1},
+		importTarget{"ACME program + data (.asm)", exportACME, -1},
+		importTarget{"Raw data + ACME include", exportRaw, -1})
+}
+
+// fits reports whether a target can hold a picture of mode m.
+func (t importTarget) fits(m c64.Mode) bool {
+	return t.mode < 0 || (t.mode == 1) == (m != c64.ModeMulti)
 }
 
 func newImportDialog(a *App, img image.Image, name string) *importDialog {
-	d := &importDialog{img: img, name: name, opts: a.lastImport}
+	d := &importDialog{img: img, name: name, opts: a.lastImport, mode: a.pic.Mode}
 	if b := img.Bounds(); (b.Dx() == 320 || b.Dx() == 160) && b.Dy() == 200 {
 		// most likely already a C64 picture: do not change its colors
 		d.autoWas = d.opts.Adjust.AutoLevels
@@ -122,14 +162,14 @@ func (d *importDialog) update(a *App) {
 }
 
 func (d *importDialog) keyOf(a *App, o c64.ConvertOptions) string {
-	return fmt.Sprintf("%v/%d/%d", o, a.palIdx, a.pic.Mode)
+	return fmt.Sprintf("%v/%d/%d", o, a.palIdx, d.mode)
 }
 
 // convert turns the resampled source into a picture with the given options.
 func (d *importDialog) convert(a *App, o c64.ConvertOptions) *c64.Picture {
-	if a.hires() {
-		// hires: the picture keeps its mode (two colors per 8×8 cell or free)
-		return c64.ConvertHiresRGB(c64.ApplyAdjust(d.screen, o.Adjust), a.pal, o, a.pic.Mode)
+	if d.hires() {
+		// hires: two colors per 8×8 cell, or free
+		return c64.ConvertHiresRGB(c64.ApplyAdjust(d.screen, o.Adjust), a.pal, o, d.mode)
 	}
 	px := c64.ApplyAdjust(c64.MergePairs(d.screen, o.Pair), o.Adjust)
 	return c64.ConvertRGB(px, a.pal, o)
@@ -201,7 +241,7 @@ func (d *importDialog) Draw(a *App, r gfx.Rect) {
 		scale = 1
 	}
 	vx := r.X
-	tabs := []string{c64.ModeNames[a.pic.Mode], "Original", "Split"}
+	tabs := []string{c64.ModeNames[d.mode], "Original", "Split"}
 	for i, t := range tabs {
 		if u.ButtonEx("im_v"+itoa(i), gfx.Rect{X: vx + i*104, Y: r.Y, W: 100, H: 24}, t, d.view == i, true) {
 			d.view = i
@@ -246,12 +286,12 @@ func (d *importDialog) Draw(a *App, r gfx.Rect) {
 		info += " – will be scaled to 320 × 200"
 	}
 	m.Text(font.UI, r.X, iy, info, th.Text)
-	if d.target != 1 && !a.hires() {
+	if d.target != 1 && !d.hires() {
 		m.Text(font.UI, r.X, iy+18, fmt.Sprintf("Background: %s  ·  cells using all 4 colors: %d of 1000  ·  palette: %s",
 			c64.ColorNames[d.preview.BG], d.preview.FullCells(), a.pal.Name), th.TextDim)
 	} else if d.target != 1 {
 		m.Text(font.UI, r.X, iy+18, fmt.Sprintf("Mode: %s  ·  paper color: %s  ·  palette: %s",
-			c64.ModeNames[a.pic.Mode], c64.ColorNames[d.preview.BG], a.pal.Name), th.TextDim)
+			c64.ModeNames[d.mode], c64.ColorNames[d.preview.BG], a.pal.Name), th.TextDim)
 	}
 	cellText := []string{
 		"Every 4×8 cell gets the background color plus the three colors that fit best.",
@@ -259,19 +299,74 @@ func (d *importDialog) Draw(a *App, r gfx.Rect) {
 		"The whole picture uses the background color plus the same three colors.",
 	}[clampI(int(d.opts.Cells), 0, 2)]
 	rules := "The result always follows the multicolor rules."
-	if a.pic.Mode == c64.ModeHires {
+	if d.mode == c64.ModeHires {
 		cellText = []string{
 			"Every 8×8 cell gets the two colors that fit best.",
 			"Every 8×8 cell gets its two most frequent colors.",
 			"The whole picture uses the same two colors.",
 		}[clampI(int(d.opts.Cells), 0, 2)]
 		rules = "The result always follows the hires rules (2 colors per cell)."
-	} else if a.pic.Mode == c64.ModeFree {
+	} else if d.mode == c64.ModeFree {
 		cellText = "Hires free: every pixel gets the nearest of all 16 colors."
 		rules = "Cells may have more than 2 colors; they are reduced when you export for the C64."
 	}
 	m.Text(font.UI, r.X, iy+40, cellText, th.TextDim)
 	m.Text(font.UI, r.X, iy+56, rules, th.TextDim)
+
+	// ---- target: mode and file (below the preview) ----
+	{
+		ty := iy + 86
+		lw := 110
+		m.Text(font.UIB, r.X, ty+5, "Convert to", th.Text)
+		bw := (pr.W - lw - 8) / 3
+		for i, l := range c64.ModeNames {
+			if u.ButtonEx("im_mode"+itoa(i), gfx.Rect{X: r.X + lw + i*(bw+4), Y: ty, W: bw, H: 24}, l, int(d.mode) == i, d.target != 1) && c64.Mode(i) != d.mode {
+				d.mode = c64.Mode(i)
+				if tg := importTargets(); !tg[d.saveAs].fits(d.mode) {
+					d.saveAs = 0
+				}
+			}
+		}
+		ty += 32
+		m.Text(font.UIB, r.X, ty+5, "Then save as", th.Text)
+		tg := importTargets()
+		ab := 28
+		lr := gfx.Rect{X: r.X + lw, Y: ty, W: ab, H: 24}
+		mid := gfx.Rect{X: lr.Right() + 4, Y: ty, W: pr.W - lw - 2*ab - 8, H: 24}
+		rr := gfx.Rect{X: mid.Right() + 4, Y: ty, W: ab, H: 24}
+		stp := 0
+		if u.ButtonEx("im_sv_l", lr, "<", false, d.target != 1) {
+			stp = -1
+		}
+		if u.ButtonEx("im_sv_r", rr, ">", false, d.target != 1) {
+			stp = 1
+		}
+		if c, _ := u.press("im_sv_m", mid, 0); c && d.target != 1 {
+			stp = 1
+		}
+		if stp != 0 {
+			d.saveAs = (d.saveAs + stp + len(tg)) % len(tg)
+			// a file format picks its mode
+			if t := tg[d.saveAs]; !t.fits(d.mode) {
+				if t.mode == 1 {
+					d.mode = c64.ModeHires
+				} else {
+					d.mode = c64.ModeMulti
+				}
+			}
+		}
+		m.Fill(mid, th.Btn)
+		m.Frame(mid, th.Border)
+		col := th.Text
+		if d.target == 1 {
+			col = th.TextDim
+		}
+		m.TextC(font.UI, mid, gfx.Elide(font.UI, tg[d.saveAs].label, mid.W-8), col)
+		tip := "After \"Import\" the picture is saved in this format at once (the file name is asked)"
+		u.Tip("im_sv_l", lr, tip)
+		u.Tip("im_sv_r", rr, tip)
+		u.Tip("im_sv_m", mid, tip)
+	}
 
 	// ---- settings (right, scrollable) ----
 	cx := r.Right() - colW
@@ -352,7 +447,7 @@ func (d *importDialog) Draw(a *App, r gfx.Rect) {
 	if v := row3("im_f", []string{"Stretch", "Fit", "Fill"}, int(d.opts.Fit), !exact); v >= 0 {
 		d.opts.Fit = c64.FitMode(v)
 	}
-	if v := row3("im_p", []string{"Average", "Left pixel", "Right pixel"}, int(d.opts.Pair), d.target != 1 && !a.hires()); v >= 0 {
+	if v := row3("im_p", []string{"Average", "Left pixel", "Right pixel"}, int(d.opts.Pair), d.target != 1 && !d.hires()); v >= 0 {
 		d.opts.Pair = c64.PairMode(v)
 	}
 	u.Tip("im_p0", gfx.Rect{X: cx, Y: y - 30, W: w, H: 24}, "Two screen pixels become one wide multicolor pixel")
@@ -439,7 +534,7 @@ func (d *importDialog) Draw(a *App, r gfx.Rect) {
 		u.Tip("im_c"+itoa(i), gfx.Rect{X: cx + i*(bw+4), Y: y - 30, W: bw, H: 24}, tip)
 	}
 	y += 4
-	if a.hires() {
+	if d.hires() {
 		hdr("Paper color (empty pixels)")
 	} else {
 		hdr("Background color ($D021)")
@@ -490,6 +585,7 @@ func (d *importDialog) Draw(a *App, r gfx.Rect) {
 			a.lastImport.Adjust.AutoLevels = d.autoWas
 		}
 		a.rememberImport()
+		saveKind := importTargets()[d.saveAs].kind
 		if d.target != 1 {
 			a.commitOrCancelForHistory()
 			a.sel.state = selNone
@@ -506,6 +602,9 @@ func (d *importDialog) Draw(a *App, r gfx.Rect) {
 			a.filePath[a.page] = ""
 			a.updateTitle()
 			a.setStatus("Image converted: " + d.name)
+			if saveKind >= 0 {
+				a.later(func() { a.exportWith(saveKind, true) })
+			}
 		}
 		if d.target >= 1 {
 			a.setTemplate(d.img, d.name)

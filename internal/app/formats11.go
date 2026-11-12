@@ -43,6 +43,32 @@ func (a *App) writeRaw(pic *c64.Picture, p string) bool {
 	return true
 }
 
+// writeACME saves name.asm (viewer), name_data.asm (!byte data) and
+// name.prg.
+func (a *App) writeACME(pic *c64.Picture, p string) bool {
+	stem := strings.TrimSuffix(p, filepath.Ext(p))
+	label := acmeLabel(filepath.Base(stem))
+	stem = filepath.Join(filepath.Dir(p), label)
+	data := pic.BitmapDataACME(a.pal, label)
+	prog := pic.BitmapProgramACME(label, label+"_data.asm", "")
+	prg, err := pic.BitmapACMEPRG(a.pal)
+	for _, f := range []struct {
+		path string
+		b    []byte
+	}{{stem + ".asm", []byte(prog)}, {stem + "_data.asm", []byte(data)}, {stem + ".prg", prg}} {
+		if err != nil {
+			break
+		}
+		err = a.host.WriteFile(f.path, f.b)
+	}
+	if err != nil {
+		a.host.Info(AppName, "Saving failed:\n"+err.Error())
+		return false
+	}
+	a.setStatus(fmt.Sprintf("Saved %s.asm, %s_data.asm and %s.prg", label, label, label))
+	return true
+}
+
 // acmeLabel turns a file name into a valid ACME label.
 func acmeLabel(s string) string {
 	var b strings.Builder
@@ -72,7 +98,7 @@ func (a *App) openFormatsDialog() { a.modal = &formatsDialog{} }
 
 func (d *formatsDialog) Title() string { return "Export in another C64 format" }
 func (d *formatsDialog) Size(a *App) (int, int) {
-	n := 1
+	n := 3
 	for _, f := range c64.Formats {
 		if f.Save != nil && f.Hires == a.hires() {
 			n++
@@ -106,6 +132,8 @@ func (d *formatsDialog) Draw(a *App, r gfx.Rect) {
 		i := i
 		row("fx"+itoa(i), f.Name+" …", "*"+strings.Join(f.Exts, ", *")+fmtInfo(f.Name), func() { a.cmdExport(exportFmt + i) })
 	}
+	row("fxprg", "C64 program (.prg) …", "runs on the C64 – Space resets", func() { a.cmdExport(exportPRG) })
+	row("fxacme", "ACME program + data …", ".asm, _data.asm (!byte) and .prg", func() { a.cmdExport(exportACME) })
 	row("fxraw", "Raw data + ACME source …", ".bin files for your own programs", func() { a.cmdExport(exportRaw) })
 	if u.Button("fx_close", gfx.Rect{X: r.Right() - 100, Y: r.Bottom() - 28, W: 100, H: 28}, "Close") {
 		a.closeModal(false)
