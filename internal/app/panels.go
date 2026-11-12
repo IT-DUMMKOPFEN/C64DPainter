@@ -297,6 +297,9 @@ func (a *App) drawPanel() {
 	y := r.Y - a.panelScroll
 	x := r.X + 10
 	w := r.W - 22
+	if a.tool == ToolSelect {
+		y = a.panelSelectTool(x, y, w)
+	}
 	if a.tool == ToolSelect && (a.sel.state == selSelected || a.sel.state == selFloating) {
 		y = a.panelSelection(x, y, w)
 	}
@@ -421,27 +424,37 @@ func (a *App) panelBrush(x, y, w int) int {
 		y += 24
 	}
 	// Vorschau
-	pr := gfx.Rect{X: x, Y: y, W: w, H: 54}
+	ph := 54
+	if a.brushShape == BrushCustom && a.custom != nil {
+		ph = 96 // room for large brushes (always shown completely)
+	}
+	pr := gfx.Rect{X: x, Y: y, W: w, H: ph}
 	a.img.Fill(pr, a.pal.Colors[a.pic.BG])
 	a.img.Frame(pr, a.th.BtnBorder)
 	st := a.stamp()
-	ps := 3
-	for st.W*2*ps > pr.W-8 || st.H*ps > pr.H-8 {
-		ps--
-		if ps == 1 {
-			break
-		}
+	// the brush as a small picture, always shown completely
+	grid := make([]int, st.W*st.H)
+	for i := range grid {
+		grid[i] = -1
 	}
-	cx := pr.X + pr.W/2 - st.W*ps*asp/2
-	cy := pr.Y + pr.H/2 - st.H*ps/2
 	for i, o := range st.Offs {
-		c := a.pal.Colors[a.fg]
-		if st.Cols != nil && a.customOwnColor {
-			c = a.pal.Colors[st.Cols[i]]
+		x, y := o.X+st.HX, o.Y+st.HY
+		if x < 0 || y < 0 || x >= st.W || y >= st.H {
+			continue
 		}
-		a.img.Fill(gfx.Rect{X: cx + (o.X+st.HX)*asp*ps, Y: cy + (o.Y+st.HY)*ps, W: asp * ps, H: ps}, c)
+		c := int(a.fg)
+		if st.Cols != nil && a.customOwnColor {
+			c = int(st.Cols[i])
+		}
+		grid[y*st.W+x] = c & 15
 	}
-	y += 60
+	a.drawPixelsFit(pr.Inset(4), st.W, st.H, 3, func(x, y int) (uint32, bool) {
+		if v := grid[y*st.W+x]; v >= 0 {
+			return a.pal.Colors[v], true
+		}
+		return 0, false
+	})
+	y += ph + 6
 	if !a.hires() {
 		a.set.AspectBrush = u.Checkbox("baspect", gfx.Rect{X: x, Y: y, W: w, H: 20}, "Round on screen (2:1)", a.set.AspectBrush)
 		u.Tip("baspect", gfx.Rect{X: x, Y: y, W: w, H: 20}, "Multicolor pixels are twice as wide as high")
@@ -464,16 +477,42 @@ func (a *App) panelPattern(x, y, w int) int {
 		return y
 	}
 	cols := 7
-	cw := (w - (cols - 1)) / cols
+	cw := (w - 10 - (cols - 1)) / cols
 	ch := 20
-	for i := range patterns {
-		br := gfx.Rect{X: x + (i%cols)*(cw+1), Y: y + (i/cols)*(ch+1), W: cw, H: ch}
-		c1 := a.pal.Colors[a.fg]
-		c0 := a.pal.Colors[a.pic.BG]
+	n := patternCount()
+	rows := (n + cols - 1) / cols
+	visRows := 5
+	box := gfx.Rect{X: x, Y: y, W: w, H: visRows*(ch+1) - 1}
+	maxScroll := max(0, rows*(ch+1)-box.H)
+	if u.hover(box) && a.in.Wheel != 0 && !u.wheelUsed {
+		a.patScroll -= a.in.Wheel * (ch + 1)
+		u.wheelUsed = true
+	}
+	a.patScroll = clampI(a.patScroll, 0, maxScroll)
+	old := m.SetClip(box.Intersect(m.Clip))
+	c1 := a.pal.Colors[a.fg]
+	c0 := a.pal.Colors[a.pic.BG]
+	for i := 0; i < n; i++ {
+		br := gfx.Rect{X: x + (i%cols)*(cw+1), Y: y + (i/cols)*(ch+1) - a.patScroll, W: cw, H: ch}
+		if br.Bottom() < box.Y || br.Y > box.Bottom() {
+			continue
+		}
+		big := bigPatternAt(i)
 		for yy := 0; yy < ch-2; yy++ {
 			for xx := 0; xx < cw-2; xx++ {
+				var on bool
+				if big != nil {
+					// show the middle of large patterns at half size
+					k := 1
+					if big.S >= 32 {
+						k = 2
+					}
+					on = big.at(xx*k, yy*k)
+				} else {
+					on = patBit(i, xx/2, yy)
+				}
 				c := c0
-				if patBit(i, xx/2, yy) {
+				if on {
 					c = c1
 				}
 				m.Set(br.X+1+xx, br.Y+1+yy, c)
@@ -486,12 +525,39 @@ func (a *App) panelPattern(x, y, w int) int {
 			m.Frame(br, a.th.BtnBorder)
 		}
 		id := "pat" + itoa(i)
-		if c, _ := u.press(id, br, 0); c {
-			a.pattern = i
+		if box.Contains(a.in.MX, a.in.MY) {
+			if c, _ := u.press(id, br.Intersect(box), 0); c {
+				a.pattern = i
+			}
+			if c, _ := u.press(id+"r", br.Intersect(box), 1); c {
+				a.pattern = i
+				a.later(func() { a.openPatternEditorFor(i) })
+			}
+			u.Tip(id, br.Intersect(box), "Pattern: "+patternName(i)+"  ·  right click: edit")
 		}
-		u.Tip(id, br, "Pattern: "+patternNames[i])
 	}
-	return y + ((len(patterns)+cols-1)/cols)*(ch+1) + 8
+	m.SetClip(old)
+	// scroll bar
+	sb := gfx.Rect{X: x + w - 7, Y: box.Y, W: 6, H: box.H}
+	m.Fill(sb, a.th.Track)
+	if maxScroll > 0 {
+		th := max(16, box.H*box.H/(rows*(ch+1)))
+		ty := box.Y + (box.H-th)*a.patScroll/maxScroll
+		m.Fill(gfx.Rect{X: sb.X, Y: ty, W: 6, H: th}, a.th.Accent)
+		if c, held := u.press("pat_sb", sb.Inset(-2), 0); c || held {
+			a.patScroll = clampI((a.in.MY-box.Y-th/2)*maxScroll/max(1, box.H-th), 0, maxScroll)
+		}
+	}
+	y = box.Bottom() + 6
+	bw := (w - 4) / 2
+	if u.Button("pat_new", gfx.Rect{X: x, Y: y, W: bw, H: 22}, "New pattern …") {
+		a.later(func() { a.openPatternEditor(nil) })
+	}
+	if u.Button("pat_edit", gfx.Rect{X: x + bw + 4, Y: y, W: bw, H: 22}, "Edit …") {
+		i := a.pattern
+		a.later(func() { a.openPatternEditorFor(i) })
+	}
+	return y + 30
 }
 
 func (a *App) panelColors(x, y, w int) int {
@@ -693,6 +759,27 @@ func (a *App) panelNavigator(x, y, w int) int {
 }
 
 // panelSelection zeigt die Transformationsregler der Auswahl.
+// panelSelectTool: options of the select tool (also without a selection).
+func (a *App) panelSelectTool(x, y, w int) int {
+	u := &a.ui
+	y = a.section(x, y, w, "Select tool")
+	if a.collapsed["Select tool"] {
+		return y
+	}
+	r := gfx.Rect{X: x, Y: y, W: w, H: 20}
+	if on := u.Checkbox("st_snap", r, "Snap to grid", a.set.SelSnap); on != a.set.SelSnap {
+		a.set.SelSnap = on
+		a.saveSettings()
+	}
+	u.Tip("st_snap", r, fmt.Sprintf("The selection covers whole grid cells (grid %d × %d, View → Grid settings)", a.set.GridW, a.set.GridH))
+	y += 24
+	if u.Button("st_copy", gfx.Rect{X: x, Y: y, W: w, H: 22}, "Copy into other page") {
+		a.copyIntoOtherPage()
+	}
+	u.Tip("st_copy", gfx.Rect{X: x, Y: y, W: w, H: 22}, "Copies the selection (or the whole picture) of the active layer to the same place on the other page – background pixels are left out")
+	return y + 30
+}
+
 func (a *App) panelSelection(x, y, w int) int {
 	y = a.section(x, y, w, "Selection")
 	if a.collapsed["Selection"] {
@@ -767,6 +854,7 @@ func (a *App) transformControls(x, y, w int, idp string) int {
 	if on := u.Checkbox(idp+"persp", pr, "Perspective (handles)", s.persp.on); on != s.persp.on {
 		s.persp.on = on
 		if on {
+			s.bend.on = false
 			a.selEnsureFloating()
 		}
 	}
@@ -789,6 +877,37 @@ func (a *App) transformControls(x, y, w int, idp string) int {
 				a.selRender()
 			}
 			u.Tip(idp+"pd"+itoa(i), br, []string{"The corners of the top and bottom edge move left and right", "The corners of the left and right edge move up and down"}[i])
+		}
+		y += 28
+	}
+	// bend
+	br0 := gfx.Rect{X: x, Y: y, W: w, H: 20}
+	if on := u.Checkbox(idp+"bend", br0, "Bend (handles)", s.bend.on); on != s.bend.on {
+		s.bend.on = on
+		if on {
+			if s.bend.apex == 0 {
+				s.bend.apex = 0.5
+			}
+			s.persp.on = false
+			a.selEnsureFloating()
+		}
+	}
+	u.Tip(idp+"bend", br0, "Bend the whole selection: drag a handle across to bend it, along the edge to move the highest point")
+	y += 24
+	if s.bend.on {
+		for i, l := range []string{"Horizontal", "Vertical"} {
+			br := gfx.Rect{X: x + i*(bw2+4), Y: y, W: bw2, H: 22}
+			if u.ButtonEx(idp+"bd"+itoa(i), br, l, s.bend.vert == (i == 1), true) && s.bend.vert != (i == 1) {
+				s.bend.vert = i == 1
+				s.bend.reset()
+				a.selRender()
+			}
+			u.Tip(idp+"bd"+itoa(i), br, []string{"The columns move up or down: an arch (handles on the top and bottom edge)", "The rows move left or right (handles on the left and right edge)"}[i])
+		}
+		y += 26
+		if u.ButtonEx(idp+"bdr", gfx.Rect{X: x, Y: y, W: w, H: 22}, "Straighten", false, s.bend.active()) {
+			s.bend.reset()
+			a.selRender()
 		}
 		y += 28
 	}

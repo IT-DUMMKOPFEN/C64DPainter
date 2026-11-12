@@ -251,15 +251,65 @@ func (d *myBrushesDialog) use(a *App) {
 
 // drawBrushThumb draws a brush scaled into a box.
 func (a *App) drawBrushThumb(b *CustomBrush, r gfx.Rect) {
-	s := max(1, min(r.W/(b.W*asp), r.H/b.H))
-	w, h := b.W*asp*s, b.H*s
-	ox, oy := r.X+(r.W-w)/2, r.Y+(r.H-h)/2
-	old := a.img.SetClip(r.Intersect(a.img.Clip))
-	defer a.img.SetClip(old)
-	for y := 0; y < b.H; y++ {
-		for x := 0; x < b.W; x++ {
-			if v := b.Pix[y*b.W+x]; v >= 0 {
-				a.img.Fill(gfx.Rect{X: ox + x*asp*s, Y: oy + y*s, W: asp * s, H: s}, a.pal.Colors[v&15])
+	a.drawPixelsFit(r, b.W, b.H, 8, func(x, y int) (uint32, bool) {
+		if v := b.Pix[y*b.W+x]; v >= 0 {
+			return a.pal.Colors[v&15], true
+		}
+		return 0, false
+	})
+}
+
+// drawPixelsFit draws w × h picture pixels (asp screen pixels wide) centered
+// into r: enlarged by a whole factor (at most maxScale) when they fit, else
+// reduced smoothly so the whole brush is always visible.
+func (a *App) drawPixelsFit(r gfx.Rect, w, h, maxScale int, get func(x, y int) (uint32, bool)) {
+	if w <= 0 || h <= 0 || r.W <= 0 || r.H <= 0 {
+		return
+	}
+	m := a.img
+	old := m.SetClip(r.Intersect(m.Clip))
+	defer m.SetClip(old)
+	sw := w * asp // width in screen pixels
+	if s := min(maxScale, r.W/sw, r.H/h); s >= 1 {
+		ox, oy := r.X+(r.W-sw*s)/2, r.Y+(r.H-h*s)/2
+		for y := 0; y < h; y++ {
+			for x := 0; x < w; x++ {
+				if c, ok := get(x, y); ok {
+					m.Fill(gfx.Rect{X: ox + x*asp*s, Y: oy + y*s, W: asp * s, H: s}, c)
+				}
+			}
+		}
+		return
+	}
+	// too large: every target pixel averages the area it covers
+	f := min(float64(r.W)/float64(sw), float64(r.H)/float64(h))
+	tw, th := max(1, int(float64(sw)*f)), max(1, int(float64(h)*f))
+	ox, oy := r.X+(r.W-tw)/2, r.Y+(r.H-th)/2
+	for ty := 0; ty < th; ty++ {
+		y0, y1 := ty*h/th, max((ty+1)*h/th, ty*h/th+1)
+		for tx := 0; tx < tw; tx++ {
+			x0, x1 := tx*sw/tw, max((tx+1)*sw/tw, tx*sw/tw+1)
+			var rr, gg, bb, n, all int
+			for y := y0; y < y1; y++ {
+				for x := x0; x < x1; x++ {
+					all++
+					if c, ok := get(x/asp, y); ok {
+						rr += int(c>>16) & 255
+						gg += int(c>>8) & 255
+						bb += int(c) & 255
+						n++
+					}
+				}
+			}
+			if n == 0 {
+				continue
+			}
+			c := gfx.RGB(uint8(rr/n), uint8(gg/n), uint8(bb/n))
+			if n*2 < all {
+				// mostly transparent: blend with what is below
+				m.BlendPix(ox+tx, oy+ty, c, n*256/all)
+			} else {
+				m.Set(ox+tx, oy+ty, c)
 			}
 		}
 	}

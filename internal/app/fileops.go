@@ -401,6 +401,10 @@ func (a *App) saveTo(p string) bool {
 		a.host.Info(AppName, "A multicolor picture cannot be saved as a hires file. Choose .c64dp, .kla, .png or .prg.")
 		return false
 	}
+	if c64Format(kind) && a.pic.HasFreeLayers() {
+		a.later(func() { a.openFreeConvert(p, kind, true) })
+		return false
+	}
 	if !a.writeExport(p, kind) {
 		return false
 	}
@@ -420,7 +424,7 @@ func (a *App) saveTo(p string) bool {
 // one painted layer, a hidden layer or a template.
 func (a *App) usesLayers() bool {
 	n := 0
-	for l := 0; l < c64.LayerCount; l++ {
+	for l := 0; l < a.pic.LayerCount(); l++ {
 		if a.pic.LayerPixels(l) > 0 {
 			n++
 			if a.pic.Hide[l] {
@@ -431,23 +435,33 @@ func (a *App) usesLayers() bool {
 	return n > 1 || a.tpl.src != nil
 }
 
+// c64Format: a file format with the C64 color rules (free layers must be
+// converted first).
+func c64Format(kind int) bool {
+	return kind == exportKLA || kind == exportPRG || kind == exportART || kind == exportDD
+}
+
 func (a *App) writeExport(p string, kind int) bool {
+	return a.writeExportOf(a.pic, p, kind)
+}
+
+func (a *App) writeExportOf(pic *c64.Picture, p string, kind int) bool {
 	p = FixDoubleExt(p)
 	var data []byte
 	var err error
 	switch kind {
 	case exportKLA:
-		data = a.pic.SaveKLA()
+		data = pic.SaveKLA()
 	case exportPRG:
-		if a.hires() {
-			data = a.pic.HiresPRG(a.pal)
+		if pic.Hires() {
+			data = pic.HiresPRG(a.pal)
 		} else {
-			data = a.pic.PRG()
+			data = pic.PRG()
 		}
 	case exportART:
-		data = a.pic.SaveART(a.pal)
+		data = pic.SaveART(a.pal)
 	case exportDD:
-		data = a.pic.SaveDD(a.pal)
+		data = pic.SaveDD(a.pal)
 	case exportPNG320:
 		data, err = a.pic.SavePNG(a.pal, c64.PNG320)
 	case exportPNG160:
@@ -505,6 +519,10 @@ func (a *App) cmdExport(kind int) {
 		return
 	}
 	p = FixDoubleExt(p)
+	if c64Format(kind) && a.pic.HasFreeLayers() {
+		a.openFreeConvert(p, kind, false)
+		return
+	}
 	if a.writeExport(p, kind) {
 		a.rememberDir(p)
 		if kind == exportKLA || kind == exportART || kind == exportDD {

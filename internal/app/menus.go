@@ -1,6 +1,7 @@
 package app
 
 import (
+	"c64dpainter/internal/c64"
 	"c64dpainter/internal/font"
 	"c64dpainter/internal/gfx"
 )
@@ -40,6 +41,7 @@ func (a *App) buildMenus() {
 			item("Save as …", "Ctrl+Shift+S", func() { a.later(func() { a.cmdSaveAs() }) }),
 			item("Quick save PNG (numbered)", "F2", a.quickSave),
 			item("Working folder …", "", func() { a.askWorkDir(nil) }),
+			item("Pattern folder …", "", func() { a.later(a.choosePatternDir) }),
 			sep(),
 			head("Recent files"),
 		}, a.recentItems()...), []MenuItem{
@@ -74,6 +76,7 @@ func (a *App) buildMenus() {
 			item("Clear picture", "Shift+K", a.clearPicture),
 			item("Swap page (spare page)", "J", a.swapPage),
 			item("Copy picture to other page", "", a.copyToSpare),
+			item("Copy selection into the other page (background transparent)", "", a.copyIntoOtherPage),
 			sep(),
 			{Label: "Auto dither … (experimental)", Key: "Shift+A", Action: func() { a.later(a.openAutoDither) }, Enabled: func() bool { return !a.hires() }},
 			{Label: "Dither brush (experimental)", Key: "Shift+D", Check: func() bool { return a.tool == ToolDither }, Action: func() { a.setTool(ToolDither) }, Enabled: func() bool { return !a.hires() }},
@@ -96,6 +99,16 @@ func (a *App) buildMenus() {
 			{Label: "Double size", Key: "Shift+H", Action: func() { a.transformQuick(qDouble) }, Enabled: selOrBrush},
 			sep(),
 			{Label: "Rotate, scale, shear, perspective …", Key: "", Action: a.openTransformDialog, Enabled: hasSel},
+			check("Bend handles", "", func() bool { return a.sel.bend.on }, func() {
+				a.sel.bend.on = !a.sel.bend.on
+				if a.sel.bend.on {
+					if a.sel.bend.apex == 0 {
+						a.sel.bend.apex = 0.5
+					}
+					a.sel.persp.on = false
+					a.selEnsureFloating()
+				}
+			}),
 			check("Perspective handles", "", func() bool { return a.sel.persp.on }, func() {
 				a.sel.persp.on = !a.sel.persp.on
 				if a.sel.persp.on {
@@ -108,16 +121,30 @@ func (a *App) buildMenus() {
 			{Label: "Cancel", Key: "Esc", Action: a.escape, Enabled: hasSel},
 			sep(),
 			{Label: "Use selection as brush", Key: "", Action: a.selToBrush, Enabled: hasSel},
+			{Label: "Selection as pattern …", Action: func() { a.later(a.selectionAsPattern) }, Enabled: hasSel},
+			check("Snap to grid", "", func() bool { return a.set.SelSnap }, func() { a.set.SelSnap = !a.set.SelSnap; a.saveSettings() }),
+			item("Copy into the other page (background transparent)", "", a.copyIntoOtherPage),
 			{Label: "Standard brush", Key: "Shift+B", Action: a.restoreBrush, Enabled: func() bool { return a.brushShape == BrushCustom }},
 			check("Background color transparent", "", func() bool { return a.sel.transpBG }, func() { a.sel.transpBG = !a.sel.transpBG }),
 		}},
 		{Title: "Layer", Items: []MenuItem{
-			check("Use layers 3 + 4", "", func() bool { return a.extraLayers }, func() { a.setExtraLayers(!a.extraLayers) }),
+			check("Use the upper layers (3+)", "", func() bool { return a.extraLayers }, func() { a.setExtraLayers(!a.extraLayers) }),
+			sep(),
+			{Label: "New layer", Action: a.addLayer, Enabled: func() bool { return a.pic.LayerCount() < c64.MaxLayers }},
+			{Label: "Duplicate layer", Action: a.duplicateLayer, Enabled: func() bool { return a.pic.LayerCount() < c64.MaxLayers }},
+			{Label: "Delete layer", Action: a.deleteLayer, Enabled: func() bool { return a.pic.LayerCount() > 1 }},
+			{Label: "Move layer up", Action: func() { a.moveLayer(1) }, Enabled: func() bool { return a.pic.Active < a.pic.LayerCount()-1 }},
+			{Label: "Move layer down", Action: func() { a.moveLayer(-1) }, Enabled: func() bool { return a.pic.Active > 0 }},
+			{Label: "Merge layer down", Action: a.mergeLayerDown, Enabled: func() bool { return a.pic.Active > 0 }},
+			item("Rename layer …", "", a.renameLayer),
+			{Label: "Free layer (no color rules)", Action: a.toggleFreeLayer, Check: func() bool { return a.pic.IsFree(a.pic.Active) }, Enabled: func() bool { return a.pic.Mode != c64.ModeFree }},
 			sep(),
 			head("Paint on"),
 			check("Layer 2 (bottom)", "2", func() bool { return a.pic.Active == 0 }, func() { a.setActiveLayer(0) }),
 			check("Layer 3", "3", func() bool { return a.pic.Active == 1 }, func() { a.setActiveLayer(1) }),
-			check("Layer 4 (top)", "4", func() bool { return a.pic.Active == 2 }, func() { a.setActiveLayer(2) }),
+			check("Layer 4", "4", func() bool { return a.pic.Active == 2 }, func() { a.setActiveLayer(2) }),
+			{Label: "Layer above", Action: func() { a.setActiveLayer(a.pic.Active + 1) }, Enabled: func() bool { return a.pic.Active < a.pic.LayerCount()-1 }},
+			{Label: "Layer below", Action: func() { a.setActiveLayer(a.pic.Active - 1) }, Enabled: func() bool { return a.pic.Active > 0 }},
 			sep(),
 			head("Show"),
 			check("Layer 1 (template)", "T", func() bool { return a.tpl.src != nil && a.tpl.visible }, func() {
@@ -127,9 +154,7 @@ func (a *App) buildMenus() {
 					a.tpl.visible = !a.tpl.visible
 				}
 			}),
-			check("Layer 2", "", func() bool { return !a.pic.Hide[0] }, func() { a.toggleLayer(0) }),
-			{Label: "Layer 3", Action: func() { a.toggleLayer(1) }, Check: func() bool { return !a.pic.Hide[1] }, Enabled: func() bool { return a.extraLayers }},
-			{Label: "Layer 4", Action: func() { a.toggleLayer(2) }, Check: func() bool { return !a.pic.Hide[2] }, Enabled: func() bool { return a.extraLayers }},
+			check("Active layer", "", func() bool { return !a.pic.Hide[a.pic.Active] }, func() { a.toggleLayer(a.pic.Active) }),
 			sep(),
 			check("Protect other layers on clashes", "", func() bool { return a.set.ProtectLayers }, func() { a.set.ProtectLayers = !a.set.ProtectLayers; a.saveSettings() }),
 			sep(),
@@ -147,6 +172,14 @@ func (a *App) buildMenus() {
 			sep(),
 			{Label: "Selection as brush", Action: a.selToBrush, Enabled: hasSel},
 			{Label: "Brush as selection (to transform it)", Action: a.brushToSelection, Enabled: func() bool { return a.brushShape == BrushCustom && a.custom != nil }},
+			{Label: "Bend brush …", Action: func() {
+				a.brushToSelection()
+				if a.sel.state == selFloating {
+					a.sel.bend.on, a.sel.persp.on = true, false
+					a.sel.bend.reset()
+					a.setStatus("Bend: drag a handle – then \"Use as brush\" or Apply")
+				}
+			}, Enabled: func() bool { return a.brushShape == BrushCustom && a.custom != nil }},
 			item("Standard brush", "Shift+B", a.restoreBrush),
 			sep(),
 			{Label: "Flip horizontally", Key: "X", Action: func() { a.transformQuick(qFlipX) }, Enabled: selOrBrush},

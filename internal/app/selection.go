@@ -38,6 +38,10 @@ type Selection struct {
 	transpBG  bool
 	persp     perspective
 	perspFrom [4]float64 // offsets at the start of a perspective drag
+	bend      bend
+	bendFrom  bend
+	snapAX    int // first corner of a snapped selection
+	snapAY    int
 }
 
 // xform ist die Transformation der schwebenden Auswahl (in Hires-Einheiten).
@@ -190,6 +194,7 @@ func (a *App) selLift(copy bool) {
 	w, h := x1-x0+1, y1-y0+1
 	s.xf = identity(float64(x0)+float64(w)/2, float64(y0)+float64(h)/2)
 	s.persp.off = [4]float64{}
+	s.bend.reset()
 	s.state = selFloating
 	a.selRender()
 }
@@ -207,7 +212,13 @@ func (a *App) selRender() {
 		s.ox += dx
 		s.oy += dy
 	}
-	*a.pic = *s.under
+	if s.bend.active() {
+		var dx, dy int
+		s.out, dx, dy = warpBend(s.out, &s.bend)
+		s.ox += dx
+		s.oy += dy
+	}
+	a.pic.CopyFrom(s.under)
 	a.noSym = true
 	defer func() { a.noSym = false }()
 	for y := 0; y < s.out.H; y++ {
@@ -234,7 +245,7 @@ func (a *App) selCommit() {
 func (a *App) selCancel() {
 	s := &a.sel
 	if s.state == selFloating && s.before != nil {
-		*a.pic = *s.before
+		a.pic.CopyFrom(s.before)
 	}
 	s.state = selNone
 	s.src, s.under, s.before, s.out = nil, nil, nil, nil
@@ -302,6 +313,9 @@ func (a *App) selHandleAt(sx, sy int) int {
 	if a.sel.state != selFloating && a.sel.state != selSelected {
 		return -1
 	}
+	if a.sel.bend.on && a.sel.state == selFloating {
+		return a.bendHandleAt(sx, sy)
+	}
 	if a.sel.persp.on && a.sel.state == selFloating {
 		return a.perspHandleAt(sx, sy)
 	}
@@ -352,6 +366,11 @@ func (a *App) selectInput(px, py int, over bool) {
 	if over && in.Pressed[0] && s.dragMode == 0 {
 		h := a.selHandleAt(in.MX, in.MY)
 		switch {
+		case h >= hbA:
+			s.dragMode = 5
+			s.handle = h
+			s.bendFrom = s.bend
+			s.dpx, s.dpy = a.screenToPicF(in.MX, in.MY)
 		case h >= hpTL:
 			s.dragMode = 4
 			s.handle = h
@@ -384,7 +403,9 @@ func (a *App) selectInput(px, py int, over bool) {
 			}
 			x, y := clampP(px, py)
 			s.state = selMarking
-			s.x0, s.y0, s.x1, s.y1 = x, y, x, y
+			s.snapAX, s.snapAY = x, y
+			s.x0, s.y0 = a.snapSel(x, y, true)
+			s.x1, s.y1 = a.snapSel(x, y, false)
 			s.dragMode = 1
 		}
 		return
@@ -396,6 +417,15 @@ func (a *App) selectInput(px, py int, over bool) {
 		switch s.dragMode {
 		case 1:
 			s.x1, s.y1 = clampP(px, py)
+			if a.set.SelSnap {
+				// the selection covers whole grid cells (anchor cell + current cell)
+				ax0, ay0 := a.snapSel(s.snapAX, s.snapAY, true)
+				ax1, ay1 := a.snapSel(s.snapAX, s.snapAY, false)
+				bx0, by0 := a.snapSel(s.x1, s.y1, true)
+				bx1, by1 := a.snapSel(s.x1, s.y1, false)
+				s.x0, s.y0 = min(ax0, bx0), min(ay0, by0)
+				s.x1, s.y1 = max(ax1, bx1), max(ay1, by1)
+			}
 		case 2:
 			nx := s.start.cx + float64(px-s.dsx)
 			ny := s.start.cy + float64(py-s.dsy)
@@ -416,6 +446,9 @@ func (a *App) selectInput(px, py int, over bool) {
 			if s.persp.off != old {
 				a.selRender()
 			}
+		case 5:
+			mx, my := a.screenToPicF(in.MX, in.MY)
+			a.bendDrag(s.bendFrom, mx-s.dpx, my-s.dpy)
 		}
 		return
 	}
@@ -425,8 +458,8 @@ func (a *App) selectInput(px, py int, over bool) {
 			s.state = selNone
 		} else {
 			s.state = selSelected
-			if s.persp.on {
-				a.selLift(false) // perspective handles need a floating selection
+			if s.persp.on || s.bend.on {
+				a.selLift(false) // perspective and bend handles need a floating selection
 			}
 		}
 	}
@@ -553,6 +586,7 @@ func (a *App) transformQuick(op int) {
 		applyQuick(&s.xf, op)
 		if op == qReset {
 			s.persp.off = [4]float64{}
+			s.bend.reset()
 		}
 		a.selRender()
 		a.setStatus("Selection: " + quickNames[op])
@@ -641,7 +675,7 @@ func (a *App) selDelete() {
 		}
 		s.state = selNone
 	case selFloating:
-		*a.pic = *s.under
+		a.pic.CopyFrom(s.under)
 		a.pushUndo(s.before)
 		s.state = selNone
 	}
@@ -664,6 +698,7 @@ func (a *App) selPaste() {
 	}
 	s.xf = identity(math.Floor(cx-float64(s.src.W)/2)+float64(s.src.W)/2, math.Floor(cy-float64(s.src.H)/2)+float64(s.src.H)/2)
 	s.persp.off = [4]float64{}
+	s.bend.reset()
 	s.state = selFloating
 	a.selRender()
 	a.setStatus("Pasted – drag to place, Enter applies")
@@ -741,6 +776,11 @@ func (a *App) drawSelection() {
 		h := absI(s.y1-s.y0) + 1
 		lbl := itoa(w) + " × " + itoa(h)
 		a.drawCanvasLabel(r.Right()+6, r.Bottom()+4, lbl)
+		return
+	}
+	if s.state == selFloating && s.bend.on {
+		a.drawBend()
+		a.drawCanvasLabel(r.Right()+8, r.Bottom()+6, itoa(s.out.W)+" × "+itoa(s.out.H)+"  bend")
 		return
 	}
 	if s.state == selFloating && s.persp.on {

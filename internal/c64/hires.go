@@ -91,7 +91,7 @@ func (p *Picture) hPixel(i int) uint8 {
 	if !p.Layered {
 		return p.HP[i]
 	}
-	for l := LayerCount - 1; l >= 0; l-- {
+	for l := len(p.L) - 1; l >= 0; l-- {
 		if p.Hide[l] {
 			continue
 		}
@@ -111,7 +111,10 @@ func (p *Picture) hCellColors(cell, ex, ey int, nv uint8) (cnt [16]int, n int) {
 		for x := cx; x < cx+8; x++ {
 			i := y*HW + x
 			covered := false
-			for l := 0; l < LayerCount; l++ {
+			for l := 0; l < len(p.L); l++ {
+				if p.Free[l] {
+					continue
+				}
 				v := p.L[l][i]
 				if l == p.Active && x == ex && y == ey {
 					v = nv
@@ -153,7 +156,7 @@ func (p *Picture) plotHires(x, y int, c uint8, mode ConflictMode, pal *Palette) 
 	if p.L[p.Active][i] == v {
 		return PlotOK
 	}
-	if p.Mode == ModeFree {
+	if p.Mode == ModeFree || p.IsFree(p.Active) {
 		p.hSet(i, v)
 		return PlotOK
 	}
@@ -169,7 +172,10 @@ func (p *Picture) plotHires(x, y int, c uint8, mode ConflictMode, pal *Palette) 
 		cx, cy := p.CellOrigin(cell)
 		var other [16]int
 		if protect {
-			for l := 0; l < LayerCount; l++ {
+			for l := 0; l < len(p.L); l++ {
+				if p.Free[l] {
+					continue
+				}
 				if l == p.Active {
 					continue
 				}
@@ -194,7 +200,10 @@ func (p *Picture) plotHires(x, y int, c uint8, mode ConflictMode, pal *Palette) 
 		if rare < 0 {
 			return PlotBlocked
 		}
-		for l := 0; l < LayerCount; l++ {
+		for l := 0; l < len(p.L); l++ {
+			if p.Free[l] {
+				continue
+			}
 			for yy := cy; yy < cy+8; yy++ {
 				for xx := cx; xx < cx+8; xx++ {
 					if p.L[l][yy*HW+xx] == uint8(rare)+1 {
@@ -254,7 +263,7 @@ func (p *Picture) hErase(x, y int) {
 	if p.L[p.Active][i] == LayerClear {
 		return
 	}
-	if p.Mode == ModeHires {
+	if p.Mode == ModeHires && !p.IsFree(p.Active) {
 		if _, n := p.hCellColors(p.Cell(x, y), x, y, LayerClear); n > 2 {
 			return
 		}
@@ -273,7 +282,10 @@ func (p *Picture) hReplaceCellColor(cell int, from, to uint8, both bool) int {
 		vt = LayerBG
 	}
 	changed := 0
-	for l := 0; l < LayerCount; l++ {
+	for l := 0; l < len(p.L); l++ {
+		if p.Free[l] {
+			continue
+		}
 		for y := cy; y < cy+8; y++ {
 			for x := cx; x < cx+8; x++ {
 				i := y*HW + x

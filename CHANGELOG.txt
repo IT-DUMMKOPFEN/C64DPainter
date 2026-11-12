@@ -5,6 +5,67 @@ A paint program for Commodore 64 bitmap pictures (multicolor and hires)
 for Windows 11, macOS (Apple silicon and Intel) and Linux.
 
 
+Version 1.1
+-----------
+
+Layers
+- Up to 15 paint layers plus the template (16 in total). New, Delete,
+  Duplicate, Up / Down, Merge down and Rename in the Layers panel and
+  the Layer menu.
+- Free layers ("F"): a free layer ignores the multicolor / hires color
+  rules and never changes the layers below it.
+- Saving a picture with free layers as KLA, Art Studio, Doodle or PRG
+  shows a warning with a preview (converted / picture / split): all
+  layers are merged and every cell gets its most frequent colors.
+- The project file (.c64dp) keeps all layers, their names, order and
+  free flags. Projects without the new features can still be opened
+  by version 1.0.
+
+Selection and brushes
+- Bend: bend a selection or a brush horizontally (an arch) or
+  vertically (sideways) with two handles; the highest point of the
+  curve can be moved. Brushes > Bend brush ...
+- Snap to grid: new selections cover whole cells.
+- Copy into the other page: copies the selection (or the whole
+  picture) of the active layer to the same place and layer on the other
+  page; background-colored pixels are left out, so the other page shows
+  through (for example a logo with a hole over a pattern).
+
+Patterns
+- 42 new large patterns, always square on screen: 16 x 16, 32 x 32 and
+  64 x 64 screen pixels (multicolor 8 x 16, 16 x 32, 32 x 64 pixels).
+- Pattern editor (New pattern ..., Edit ..., right-click a pattern).
+- Selection as pattern (Selection menu).
+- Your own patterns are saved as PNG files in a pattern folder that is
+  asked for once (Options > Pattern folder ...).
+- The pattern list scrolls.
+
+Gradient fill
+- 17 transitions: None, Classic 25/50/75 %, Bayer 2x2/4x4/8x8, Blue
+  noise, Lines, Cluster dots, the artist styles Artist, Scanlines,
+  Checker and Stripes, and Floyd-Steinberg, Stucki, Sierra, Atkinson
+  and Jarvis.
+- Mix width: how wide the transition between two color bands is.
+
+Font editor
+- Picture -> chars: turns a 320 x 200 picture (image file or the current
+  picture) into a character set plus a 40 x 25 map and the colors, in
+  hires or multicolor. Equal characters are stored once; when more than
+  256 (or a lower limit) are needed, a warning appears and the most
+  similar characters are merged. Image adjustments (automatic contrast,
+  brightness, contrast, saturation, hue, gamma), no dithering.
+- Export: the viewer program (.asm), the data (_data.asm with !byte
+  lines for the character set, map and colors) and a ready PRG. The
+  built-in assembler gives the same bytes as ACME.
+
+Fixes
+- Large brushes (for example a brush made from a big selection) are now
+  shown completely and scaled down in the brush preview of the side panel
+  and in the "My brushes" window.
+- The undo memory is limited, so many huge layer changes can no longer
+  use up all memory.
+
+
 Version 1.0
 -----------
 

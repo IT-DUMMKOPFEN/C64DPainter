@@ -158,7 +158,13 @@ var patternNames = []string{
 }
 
 func patBit(p int, x, y int) bool {
-	if p <= 0 || p >= len(patterns) {
+	if p >= len(patterns) {
+		if b := bigPatternAt(p); b != nil {
+			return b.at(x*asp, y) // square on screen: multicolor pixels are 2 wide
+		}
+		return true
+	}
+	if p <= 0 {
 		return true
 	}
 	return patterns[p][y&7]>>(7-uint(x&7))&1 == 1

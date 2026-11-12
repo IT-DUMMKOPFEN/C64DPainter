@@ -306,7 +306,7 @@ func TestReplaceColor(t *testing.T) {
 	}
 	// background is never touched
 	q3 := p.Clone()
-	if n, _ := q3.ReplaceColor(0, 2, false); n != 0 || *q3 != *p {
+	if n, _ := q3.ReplaceColor(0, 2, false); n != 0 || !q3.Equal(p) {
 		t.Fatal("background must not be replaced")
 	}
 	if n, _ := q3.ReplaceColor(2, 0, true); n != 0 {
@@ -385,7 +385,7 @@ func TestProtectLayers(t *testing.T) {
 	}
 	// layer 3: a fourth color replaces the rarest – normally in layer 2 too
 	p.Active = 1
-	q := *p
+	q := *p.Clone()
 	if r := q.Plot(3, 1, 1, ConflictReplace, nil); r != PlotReplaced {
 		t.Fatal("replace without protection")
 	}
@@ -393,7 +393,7 @@ func TestProtectLayers(t *testing.T) {
 		t.Fatalf("without protection layer 2 changes: %d", c)
 	}
 	// with protection every color belongs to layer 2: blocked
-	q = *p
+	q = *p.Clone()
 	if r := q.Plot(3, 1, 1, ConflictReplace|ConflictProtect, nil); r != PlotBlocked {
 		t.Fatal("protected: blocked")
 	}

@@ -129,13 +129,26 @@ type GradientSettings struct {
 	Shape   int     `json:"shape"`
 	Dir     int     `json:"dir"`
 	Reverse bool    `json:"reverse"`
-	Dither  bool    `json:"dither"`
+	Dither  bool    `json:"dither"` // up to 1.0
+	Method  int     `json:"ditherMethod"`
+	Width   int     `json:"transitionWidth"` // percent of a band
+	V11     bool    `json:"v11"`
 	Custom3 []uint8 `json:"custom3"` // the user's own ramps, light → dark
 	Custom4 []uint8 `json:"custom4"`
 	Custom5 []uint8 `json:"custom5"`
 }
 
 func (g *GradientSettings) clamp() {
+	if !g.V11 {
+		// up to 1.0: one switch for 25 / 50 / 75 % transitions
+		g.V11 = true
+		g.Width = 50
+		if g.Dither {
+			g.Method = 1
+		}
+	}
+	g.Method = clampI(g.Method, 0, len(gradMethods)-1)
+	g.Width = clampI(g.Width, 0, 100)
 	if g.Version < 2 {
 		// version 1 had three tabs: 3 colors, dark-light-dark, light-dark-light
 		if g.Group == 1 || g.Group == 2 {
@@ -354,11 +367,14 @@ func (a *App) gradientFill(region []int, sx, sy, ex, ey float64, drag bool) {
 	if length < 1 {
 		length = 1
 	}
-	for _, i := range region {
+	ts := make([]float64, len(region))
+	for k, i := range region {
 		px, py := pos(i)
-		t := metric(px, py) / length
-		x, y := i%picW, i/picW
-		a.plot(a.pic, x, y, gradientColorAt(cols, t, g.Dither, x, y))
+		ts[k] = metric(px, py) / length
+	}
+	for k, c := range gradientRender(cols, g.Method, g.Width, region, ts, picW) {
+		i := region[k]
+		a.plot(a.pic, i%picW, i/picW, c)
 	}
 }
 
@@ -396,7 +412,7 @@ func (a *App) gradientMove(px, py int) {
 
 func (a *App) gradientRedraw() {
 	g := &a.grad
-	*a.pic = *a.drag.base
+	a.pic.CopyFrom(a.drag.base)
 	sx, sy := gradPos(g.sx, g.sy)
 	ex, ey := gradPos(g.ex, g.ey)
 	a.gradientFill(g.region, sx, sy, ex, ey, g.dragging)
@@ -599,8 +615,8 @@ func (d *gradientDialog) Draw(a *App, r gfx.Rect) {
 	y += 32
 	d.g.Reverse = u.Checkbox("gr_rev", gfx.Rect{X: lx, Y: y, W: lw, H: 20}, "Reverse colors", d.g.Reverse)
 	y += 24
-	d.g.Dither = u.Checkbox("gr_dit", gfx.Rect{X: lx, Y: y, W: lw, H: 20}, "Dithered transitions (25 / 50 / 75 %)", d.g.Dither)
-	y += 28
+	y = a.gradDitherUI("gr", lx, y, lw, &d.g)
+	y += 4
 	for _, ln := range wrapText(font.UI, "Click into an area: the gradient starts at the click point. Click and drag: the drag sets direction and width.", lw) {
 		m.Text(font.UI, lx, y, ln, th.TextDim)
 		y += font.UI.Height + 2
@@ -654,12 +670,17 @@ func (d *gradientDialog) drawPreview(a *App, r gfx.Rect) {
 	for _, c := range [][2]float64{{0, 0}, {float64(w * 2), 0}, {0, float64(h)}, {float64(w * 2), float64(h)}} {
 		maxm = math.Max(maxm, metric(c[0], c[1]))
 	}
+	pts := make([]int, 0, w*h)
+	ts := make([]float64, 0, w*h)
 	for y := 0; y < h; y++ {
 		for x := 0; x < w; x++ {
-			t := metric(float64(x)*2+1, float64(y)+0.5) / math.Max(1, maxm)
-			c := gradientColorAt(cols, t, d.g.Dither, x, y)
-			m.Fill(gfx.Rect{X: r.X + x*4, Y: r.Y + y*2, W: 4, H: 2}, a.pal.Colors[c])
+			pts = append(pts, y*w+x)
+			ts = append(ts, metric(float64(x)*2+1, float64(y)+0.5)/math.Max(1, maxm))
 		}
+	}
+	for k, c := range gradientRender(cols, d.g.Method, d.g.Width, pts, ts, w) {
+		x, y := pts[k]%w, pts[k]/w
+		m.Fill(gfx.Rect{X: r.X + x*4, Y: r.Y + y*2, W: 4, H: 2}, a.pal.Colors[c])
 	}
 	m.Frame(gfx.Rect{X: r.X - 1, Y: r.Y - 1, W: w*4 + 2, H: h*2 + 2}, a.th.Border)
 }
@@ -711,8 +732,7 @@ func (a *App) panelGradient(x, y, w int) int {
 	y += 28
 	g.Reverse = u.Checkbox("gp_rev", gfx.Rect{X: x, Y: y, W: w, H: 20}, "Reverse colors", g.Reverse)
 	y += 24
-	g.Dither = u.Checkbox("gp_dit", gfx.Rect{X: x, Y: y, W: w, H: 20}, "Dithered transitions", g.Dither)
-	y += 26
+	y = a.gradDitherUI("gp", x, y, w, g)
 	if u.Button("gp_open", gfx.Rect{X: x, Y: y, W: w, H: 22}, "Choose gradient …") {
 		a.later(a.openGradientDialog)
 	}

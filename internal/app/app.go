@@ -12,7 +12,7 @@ import (
 )
 
 const AppName = "C64 DPainter"
-const AppVersion = "1.0"
+const AppVersion = "1.1"
 
 // AppAuthor and AppLicense appear on the About page.
 const AppAuthor = "IT-Dummköpfen"
@@ -193,6 +193,7 @@ type App struct {
 	panelScroll, panelContentH              int
 	needAnim                                bool
 	mouseSide                               bool // mouse over a side border strip
+	patScroll                               int
 	sideFlash                               map[[2]int]int64
 	quitting                                bool
 	lastImport                              c64.ConvertOptions
@@ -269,6 +270,7 @@ func New(host Host) *App {
 	a.tpl.opacity = 50
 	a.tpl.visible = true
 	a.lastImport = a.savedImport()
+	a.loadUserPatterns()
 	a.ui.in = &a.in
 	a.buildMenus()
 	a.updateTitle()
@@ -527,6 +529,17 @@ func (a *App) pushUndo(snapshot *c64.Picture) {
 	if len(*u) > 100 {
 		*u = (*u)[1:]
 	}
+	// many layers: keep the undo memory below about 600 MB per page
+	for len(*u) > 10 {
+		total := 0
+		for _, q := range *u {
+			total += q.LayerCount()*64000 + 140000
+		}
+		if total < 600<<20 {
+			break
+		}
+		*u = (*u)[1:]
+	}
 	a.redos[a.page] = nil
 	a.markDirty()
 }
@@ -573,11 +586,11 @@ func (a *App) commitOrCancelForHistory() {
 		a.selCommit()
 	}
 	if a.curve.stage != 0 {
-		*a.pic = *a.curve.base
+		a.pic.CopyFrom(a.curve.base)
 		a.curve.stage = 0
 	}
 	if a.drag.active && a.drag.base != nil {
-		*a.pic = *a.drag.base
+		a.pic.CopyFrom(a.drag.base)
 	}
 	a.drag.active = false
 }
@@ -855,7 +868,7 @@ func (a *App) drawStatus() {
 		text = toolNames[a.tool] + ": " + toolHints[a.tool]
 	}
 	// rechts: Zoom, Palette, Konfliktmodus
-	right := fmt.Sprintf("%s   ·   Zoom %d×   ·   %s   ·   %s", layerName(a.pic.Active), a.zoom, a.pal.Name, conflictNames[a.set.Conflict])
+	right := fmt.Sprintf("%s   ·   Zoom %d×   ·   %s   ·   %s", a.layerName(a.pic.Active), a.zoom, a.pal.Name, conflictNames[a.set.Conflict])
 	rw := f.Width(right)
 	a.img.TextL(f, gfx.Rect{X: r.Right() - rw - 10, Y: r.Y, W: rw, H: r.H}, right, th.TextDim)
 	// Mitte: Position
@@ -1108,11 +1121,11 @@ func (a *App) charShortcut(c rune) {
 func (a *App) escape() {
 	switch {
 	case a.curve.stage != 0:
-		*a.pic = *a.curve.base
+		a.pic.CopyFrom(a.curve.base)
 		a.curve.stage = 0
 	case a.drag.active:
 		if a.drag.base != nil {
-			*a.pic = *a.drag.base
+			a.pic.CopyFrom(a.drag.base)
 		}
 		a.drag.active = false
 	case a.sel.state == selFloating:
@@ -1185,7 +1198,7 @@ func (a *App) copyToSpare() {
 	a.commitOrCancelForHistory()
 	other := 1 - a.page
 	a.undos[other] = append(a.undos[other], a.pages[other].Clone())
-	*a.pages[other] = *a.pic
+	a.pages[other].CopyFrom(a.pic)
 	a.dirty[other] = true
 	a.setStatus(fmt.Sprintf("Picture copied to page %d", other+1))
 }

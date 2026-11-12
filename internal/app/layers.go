@@ -2,38 +2,61 @@ package app
 
 import (
 	"fmt"
+	"strings"
 
 	"c64dpainter/internal/c64"
 	"c64dpainter/internal/font"
 	"c64dpainter/internal/gfx"
 )
 
-// Layers in the user interface (listed from 1 at the top to 4 at the bottom):
+// Layers in the user interface (listed from 1 at the top):
 //
-//	Layer 1    the template (any image, colors do not matter)
-//	Layer 2–4  the paint layers of the picture (c64.Picture.L[0..2]); layer 2
-//	           is in front, layer 4 at the back; the multicolor rules apply
-//	           to all three together
+//	Layer 1     the template (any image, colors do not matter)
+//	Layer 2 ... the paint layers of the picture (c64.Picture.L[0..]); layer 2
+//	            is at the bottom, the last one on top. Up to 15 paint layers.
+//	            The color rules apply to all normal layers together; a
+//	            "free" layer ignores them (it does not change the others).
 //
-// Layers 3 and 4 have a common on/off switch (off at the start). While it is
-// off they are hidden and cannot be chosen; their colors still count for
-// the cell rules. Visibility and the active layer belong to the view: undo
-// does not change them.
+// The switch next to "Layers" turns the layers above layer 2 on or off (off
+// at the start). While it is off they are hidden and cannot be chosen; their
+// colors still count for the cell rules. Visibility and the active layer
+// belong to the view: undo does not change them (unless layers were added
+// or removed).
 
-// layerName returns the display name of paint layer l (0..2).
-func layerName(l int) string { return fmt.Sprintf("Layer %d", l+2) }
+// layerNameOf returns the display name of paint layer l.
+func layerNameOf(p *c64.Picture, l int) string {
+	if l >= 0 && l < len(p.Names) && p.Names[l] != "" {
+		return p.Names[l]
+	}
+	return fmt.Sprintf("Layer %d", l+2)
+}
+
+func (a *App) layerName(l int) string { return layerNameOf(a.pic, l) }
+
+// usesExtraLayers: a picture that needs the layers above layer 2.
+func usesExtraLayers(p *c64.Picture) bool {
+	if p.Active > 0 || p.LayerCount() != c64.DefaultLayers {
+		return true
+	}
+	for l := 1; l < p.LayerCount(); l++ {
+		if p.LayerPixels(l) > 0 && !p.Hide[l] {
+			return true
+		}
+	}
+	return false
+}
 
 // setFlatPicture replaces the picture by a plain C64 picture, which goes into
-// layer 2; layers 3 and 4 become empty.
+// layer 2; the other layers become empty.
 func (a *App) setFlatPicture(p *c64.Picture) {
-	q := *p
+	q := p.Clone()
 	q.Layered = false
 	q.ToLayers()
-	*a.pic = q
+	a.pic.CopyFrom(q)
 	a.syncExtraLayers()
 }
 
-// syncExtraLayers applies the switch for layers 3 and 4 to the picture.
+// syncExtraLayers applies the switch for the upper layers to the picture.
 func (a *App) syncExtraLayers() {
 	if a.extraLayers {
 		return
@@ -41,14 +64,20 @@ func (a *App) syncExtraLayers() {
 	if a.pic.Active != 0 {
 		a.pic.Active = 0
 	}
-	if !a.pic.Hide[1] || !a.pic.Hide[2] {
-		a.pic.Hide[1], a.pic.Hide[2] = true, true
+	changed := false
+	for l := 1; l < a.pic.LayerCount(); l++ {
+		if !a.pic.Hide[l] {
+			a.pic.Hide[l] = true
+			changed = true
+		}
+	}
+	if changed {
 		a.pic.Recomposite()
 	}
 	a.ditherRes = nil
 }
 
-// setExtraLayers switches layers 3 and 4 on or off.
+// setExtraLayers switches the layers above layer 2 on or off.
 func (a *App) setExtraLayers(on bool) {
 	if a.extraLayers == on {
 		return
@@ -56,18 +85,20 @@ func (a *App) setExtraLayers(on bool) {
 	a.commitOrCancelForHistory()
 	a.extraLayers = on
 	if on {
-		a.pic.Hide[1], a.pic.Hide[2] = false, false
+		for l := 1; l < a.pic.LayerCount(); l++ {
+			a.pic.Hide[l] = false
+		}
 		a.pic.Recomposite()
 		a.ditherRes = nil
-		a.setStatus("Layers 3 and 4 switched on")
+		a.setStatus("Upper layers switched on")
 		return
 	}
 	a.syncExtraLayers()
-	a.setStatus("Layers 3 and 4 switched off – their colors still count for the cell rules")
+	a.setStatus("Upper layers switched off – their colors still count for the cell rules")
 }
 
 func (a *App) setActiveLayer(l int) {
-	if l < 0 || l >= c64.LayerCount || a.pic.Active == l {
+	if l < 0 || l >= a.pic.LayerCount() || a.pic.Active == l {
 		return
 	}
 	if l > 0 && !a.extraLayers {
@@ -76,7 +107,10 @@ func (a *App) setActiveLayer(l int) {
 	a.commitOrCancelForHistory()
 	a.pic.Active = l
 	a.ditherRes = nil
-	msg := "Painting on " + layerName(l)
+	msg := "Painting on " + a.layerName(l)
+	if a.pic.IsFree(l) {
+		msg += " (free layer – no color rules)"
+	}
 	if a.pic.Hide[l] {
 		msg += " (hidden – show it to see what you paint)"
 	}
@@ -84,20 +118,20 @@ func (a *App) setActiveLayer(l int) {
 }
 
 func (a *App) toggleLayer(l int) {
-	if l < 0 || l >= c64.LayerCount {
+	if l < 0 || l >= a.pic.LayerCount() {
 		return
 	}
 	if l > 0 && !a.extraLayers {
-		a.setStatus("Layers 3 and 4 are switched off – use the switch next to \"Layers\"")
+		a.setStatus("The upper layers are switched off – use the switch next to \"Layers\"")
 		return
 	}
 	a.commitOrCancelForHistory()
 	a.pic.SetLayerHidden(l, !a.pic.Hide[l])
 	a.ditherRes = nil
 	if a.pic.Hide[l] {
-		a.setStatus(layerName(l) + " hidden – its colors still count for the cell rules")
+		a.setStatus(a.layerName(l) + " hidden – its colors still count for the cell rules")
 	} else {
-		a.setStatus(layerName(l) + " shown")
+		a.setStatus(a.layerName(l) + " shown")
 	}
 }
 
@@ -105,23 +139,159 @@ func (a *App) clearActiveLayer() {
 	a.commitOrCancelForHistory()
 	a.sel.state = selNone
 	if a.pic.LayerPixels(a.pic.Active) == 0 {
-		a.setStatus(layerName(a.pic.Active) + " is already empty")
+		a.setStatus(a.layerName(a.pic.Active) + " is already empty")
 		return
 	}
 	a.pushUndo(a.pic.Clone())
 	a.pic.ClearLayer(a.pic.Active)
-	a.setStatus(layerName(a.pic.Active) + " cleared")
+	a.setStatus(a.layerName(a.pic.Active) + " cleared")
+}
+
+// layerOp runs a change of the layer list with undo.
+func (a *App) layerOp(name string, f func(p *c64.Picture) bool) {
+	a.commitOrCancelForHistory()
+	a.sel.state = selNone
+	before := a.pic.Clone()
+	if !f(a.pic) {
+		return
+	}
+	a.pushUndo(before)
+	if !a.extraLayers && usesExtraLayers(a.pic) {
+		a.extraLayers = true
+		for l := 1; l < a.pic.LayerCount(); l++ {
+			a.pic.Hide[l] = false
+		}
+		a.pic.Recomposite()
+	}
+	a.ditherRes = nil
+	a.setStatus(name)
+}
+
+func (a *App) addLayer() {
+	if a.pic.LayerCount() >= c64.MaxLayers {
+		a.setStatus(fmt.Sprintf("At most %d paint layers (plus the template)", c64.MaxLayers))
+		return
+	}
+	a.layerOp("New layer – it is the active layer now", func(p *c64.Picture) bool {
+		ok := p.InsertLayer(p.Active + 1)
+		p.Recomposite()
+		return ok
+	})
+}
+
+func (a *App) deleteLayer() {
+	if a.pic.LayerCount() <= 1 {
+		return
+	}
+	name := a.layerName(a.pic.Active)
+	if a.pic.LayerPixels(a.pic.Active) > 0 && a.host.Ask(AppName, "Delete "+name+" with all its pixels?") != 0 {
+		return
+	}
+	a.layerOp(name+" deleted", func(p *c64.Picture) bool { return p.DeleteLayer(p.Active) })
+}
+
+func (a *App) moveLayer(dir int) {
+	a.layerOp(a.layerName(a.pic.Active)+map[int]string{1: " moved up", -1: " moved down"}[dir], func(p *c64.Picture) bool {
+		return p.MoveLayer(p.Active, dir)
+	})
+}
+
+func (a *App) duplicateLayer() {
+	if a.pic.LayerCount() >= c64.MaxLayers {
+		a.setStatus(fmt.Sprintf("At most %d paint layers (plus the template)", c64.MaxLayers))
+		return
+	}
+	a.layerOp(a.layerName(a.pic.Active)+" duplicated", func(p *c64.Picture) bool { return p.DuplicateLayer(p.Active) })
+}
+
+func (a *App) mergeLayerDown() {
+	a.layerOp(a.layerName(a.pic.Active)+" merged into the layer below", func(p *c64.Picture) bool { return p.MergeDown(p.Active, a.pal) })
+}
+
+func (a *App) toggleFreeLayer() {
+	if a.pic.Mode == c64.ModeFree {
+		a.setStatus("In hires free every layer is free anyway")
+		return
+	}
+	l := a.pic.Active
+	free := !a.pic.IsFree(l)
+	msg := a.layerName(l) + " is free now: it ignores the color rules (C64 files convert the picture when saving)"
+	if !free {
+		msg = a.layerName(l) + " follows the color rules again – colors that did not fit took the nearest color of their cell"
+	}
+	a.layerOp(msg, func(p *c64.Picture) bool { p.SetFree(l, free, a.pal); return true })
+}
+
+func (a *App) renameLayer() {
+	l := a.pic.Active
+	a.modal = &promptDialog{title: "Rename layer", label: "Name", tf: newTextField(a.layerName(l), 24), ok: func(s string) {
+		a.layerOp("Layer renamed", func(p *c64.Picture) bool {
+			if l >= p.LayerCount() {
+				return false
+			}
+			p.Names[l] = strings.TrimSpace(s)
+			if p.Names[l] == fmt.Sprintf("Layer %d", l+2) {
+				p.Names[l] = ""
+			}
+			return true
+		})
+	}}
+	a.modal.(*promptDialog).tf.SelectAll()
 }
 
 // restoreKeepingView restores a picture (undo/redo) but keeps the current
-// visibility of the layers and the active layer.
+// visibility of the layers and the active layer (when the list is the same).
 func (a *App) restoreKeepingView(p *c64.Picture) {
-	hide, act := a.pic.Hide, a.pic.Active
-	*a.pic = *p
+	if p.LayerCount() != a.pic.LayerCount() {
+		a.pic.CopyFrom(p)
+		return
+	}
+	hide := append([]bool(nil), a.pic.Hide...)
+	act := a.pic.Active
+	a.pic.CopyFrom(p)
 	a.pic.Active = act
-	if a.pic.Hide != hide {
-		a.pic.Hide = hide
+	same := true
+	for l := range hide {
+		if a.pic.Hide[l] != hide[l] {
+			same = false
+		}
+	}
+	if !same {
+		copy(a.pic.Hide, hide)
 		a.pic.Recomposite()
+	}
+}
+
+// promptDialog asks for one line of text.
+type promptDialog struct {
+	title, label string
+	tf           *textField
+	ok           func(string)
+}
+
+func (d *promptDialog) Title() string          { return d.title }
+func (d *promptDialog) Size(a *App) (int, int) { return 420, 150 }
+func (d *promptDialog) Char(a *App, r rune)    { d.tf.Char(r) }
+func (d *promptDialog) Key(a *App, k KeyEvent) {
+	if k.Key == KeyEnter {
+		a.closeModal(false)
+		d.ok(d.tf.String())
+		return
+	}
+	d.tf.Key(k)
+}
+func (d *promptDialog) Draw(a *App, r gfx.Rect) {
+	u := &a.ui
+	a.img.Text(font.UI, r.X, r.Y+6, d.label, a.th.Text)
+	d.tf.focus = true
+	d.tf.Draw(a, "pd_field", gfx.Rect{X: r.X + 60, Y: r.Y, W: r.W - 60, H: 28})
+	by := r.Bottom() - 28
+	if u.Button("pd_cancel", gfx.Rect{X: r.Right() - 210, Y: by, W: 100, H: 28}, "Cancel") {
+		a.closeModal(false)
+	}
+	if u.ButtonEx("pd_ok", gfx.Rect{X: r.Right() - 100, Y: by, W: 100, H: 28}, "OK", true, true) {
+		a.closeModal(false)
+		d.ok(d.tf.String())
 	}
 }
 
@@ -156,9 +326,9 @@ func (a *App) panelLayers(x, y, w int) int {
 	y = a.section(x, y, w, "Layers")
 	// switch for layers 3 and 4 next to the title
 	sw := gfx.Rect{X: x + w - 34, Y: hy + 5, W: 30, H: 14}
-	lbl := "Layers 3 + 4"
+	lbl := "Layers 3+"
 	m.TextR(font.UI, gfx.Rect{X: sw.X - 110, Y: hy, W: 104, H: 24}, lbl, th.Text)
-	if on := a.drawSwitch("ly_extra", sw, a.extraLayers, "Switch layers 3 and 4 on or off"); on != a.extraLayers {
+	if on := a.drawSwitch("ly_extra", sw, a.extraLayers, "Switch the layers above layer 2 on or off"); on != a.extraLayers {
 		a.setExtraLayers(on)
 	}
 	if a.collapsed["Layers"] {
@@ -195,7 +365,7 @@ func (a *App) panelLayers(x, y, w int) int {
 		if enabled {
 			u.Tip(id+"_eye", eye, "Show / hide")
 		} else {
-			u.Tip(id+"_eye", eye, "Switch on layers 3 + 4 first")
+			u.Tip(id+"_eye", eye, "Switch on the upper layers first (switch next to \"Layers\")")
 		}
 		body := gfx.Rect{X: r.X + 30, Y: r.Y, W: r.W - 30, H: r.H}
 		if choose != nil {
@@ -214,7 +384,7 @@ func (a *App) panelLayers(x, y, w int) int {
 	}
 	row("lv_tpl", "Layer 1 · Template", tname, a.tpl.visible && a.tpl.src != nil, false, true,
 		func() { a.tpl.visible = !a.tpl.visible }, nil)
-	for l := 0; l < c64.LayerCount; l++ {
+	for l := 0; l < a.pic.LayerCount(); l++ {
 		l := l
 		n := a.pic.LayerPixels(l)
 		sub := "empty"
@@ -223,8 +393,11 @@ func (a *App) panelLayers(x, y, w int) int {
 		}
 		if l == 0 {
 			sub += " · bottom"
-		} else if l == c64.LayerCount-1 {
+		} else if l == a.pic.LayerCount()-1 {
 			sub += " · top"
+		}
+		if a.pic.IsFree(l) {
+			sub = "FREE · " + sub
 		}
 		if a.pic.Active == l {
 			sub = "active · " + sub
@@ -233,9 +406,45 @@ func (a *App) panelLayers(x, y, w int) int {
 		if !enabled {
 			sub = "switched off"
 		}
-		row(fmt.Sprintf("lv_l%d", l), layerName(l), sub, !a.pic.Hide[l], a.pic.Active == l, enabled,
+		row(fmt.Sprintf("lv_l%d", l), a.layerName(l), sub, !a.pic.Hide[l], a.pic.Active == l, enabled,
 			func() { a.toggleLayer(l) }, func() { a.setActiveLayer(l) })
+		// free switch per layer (not in hires free, where everything is free)
+		if a.pic.Mode != c64.ModeFree && enabled {
+			fr := gfx.Rect{X: x + w - 30, Y: y - 36 + 8, W: 24, H: 18}
+			free := a.pic.IsFree(l)
+			col := a.th.TextDim
+			if free {
+				m.RoundRect(fr, 4, a.th.Accent)
+				col = 0xFFFFFF
+			} else {
+				m.Frame(fr, a.th.Border)
+			}
+			m.TextC(font.UIB, fr, "F", col)
+			if c, _ := u.press(fmt.Sprintf("lv_free%d", l), fr.Inset(-2), 0); c {
+				a.setActiveLayer(l)
+				a.toggleFreeLayer()
+			}
+			u.Tip(fmt.Sprintf("lv_free%d", l), fr.Inset(-2), "Free layer: ignores the multicolor/hires color rules (the other layers keep them). C64 files then convert the picture.")
+		}
 	}
+	// layer list tools
+	bw3 := (w - 8) / 3
+	lb := func(id string, i, row int, label, tip string, enabled bool, f func()) {
+		r := gfx.Rect{X: x + i*(bw3+4), Y: y + row*26, W: bw3, H: 22}
+		if u.ButtonEx(id, r, label, false, enabled) {
+			f()
+		}
+		u.Tip(id, r, tip)
+	}
+	cnt, act := a.pic.LayerCount(), a.pic.Active
+	lb("ly_add", 0, 0, "+ New", "Add an empty layer above the active one", cnt < c64.MaxLayers, a.addLayer)
+	lb("ly_del", 1, 0, "Delete", "Delete the active layer", cnt > 1, a.deleteLayer)
+	lb("ly_dup", 2, 0, "Duplicate", "Copy the active layer", cnt < c64.MaxLayers, a.duplicateLayer)
+	lb("ly_up", 0, 1, "↑ Up", "Move the active layer up", act < cnt-1, func() { a.moveLayer(1) })
+	lb("ly_down", 1, 1, "↓ Down", "Move the active layer down", act > 0, func() { a.moveLayer(-1) })
+	lb("ly_merge", 2, 1, "Merge ↓", "Merge the active layer into the layer below", act > 0, a.mergeLayerDown)
+	lb("ly_ren", 0, 2, "Rename …", "Give the active layer a name", true, a.renameLayer)
+	y += 3*26 + 2
 	y += 2
 	pr := gfx.Rect{X: x, Y: y, W: w, H: 20}
 	if on := u.Checkbox("ly_protect", pr, "Protect other layers on clashes", a.set.ProtectLayers); on != a.set.ProtectLayers {
@@ -244,7 +453,7 @@ func (a *App) panelLayers(x, y, w int) int {
 	}
 	u.Tip("ly_protect", pr, "When a cell is full, only colors of the active layer may be replaced – the other layers stay as they are")
 	y += 26
-	if u.ButtonEx("lyclear", gfx.Rect{X: x, Y: y, W: w, H: 22}, "Clear "+layerName(a.pic.Active), false, a.pic.LayerPixels(a.pic.Active) > 0) {
+	if u.ButtonEx("lyclear", gfx.Rect{X: x, Y: y, W: w, H: 22}, "Clear "+a.layerName(a.pic.Active), false, a.pic.LayerPixels(a.pic.Active) > 0) {
 		a.clearActiveLayer()
 	}
 	y += 28

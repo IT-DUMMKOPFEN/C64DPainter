@@ -134,7 +134,7 @@ func (a *App) offerRecovery() bool {
 		if err != nil {
 			continue
 		}
-		*a.pages[pg] = *p
+		a.pages[pg].CopyFrom(p)
 		a.filePath[pg] = info.Paths[pg]
 		a.dirty[pg] = true
 		restored++
@@ -149,7 +149,7 @@ func (a *App) offerRecovery() bool {
 		a.page = 1 - a.page
 	}
 	a.pic = a.pages[a.page]
-	a.extraLayers = (a.pic.LayerPixels(1) > 0 && !a.pic.Hide[1]) || (a.pic.LayerPixels(2) > 0 && !a.pic.Hide[2]) || a.pic.Active > 0
+	a.extraLayers = usesExtraLayers(a.pic)
 	a.syncExtraLayers()
 	a.syncMode()
 	a.fitPending = true

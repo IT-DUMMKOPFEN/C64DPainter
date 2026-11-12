@@ -315,10 +315,14 @@ func (a *App) cmdExportSide(source bool) {
 	p = FixDoubleExt(p)
 	var data []byte
 	var err error
+	src := a.pic
+	if src.HasFreeLayers() {
+		src = src.Flattened(a.pal) // free layers: merged and fitted to the rules
+	}
 	if source {
-		data = []byte(a.pic.SideBorderACME(trimExt(filepath.Base(p))))
+		data = []byte(src.SideBorderACME(trimExt(filepath.Base(p))))
 	} else {
-		data, err = a.pic.SideBorderPRG()
+		data, err = src.SideBorderPRG()
 	}
 	if err == nil {
 		err = a.host.WriteFile(p, data)

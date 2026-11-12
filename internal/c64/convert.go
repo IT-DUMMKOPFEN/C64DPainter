@@ -998,3 +998,28 @@ func fixedTriple(dist [][16]int, hist [16]int, bg int) ([3]int, int) {
 	}
 	return best, bestE
 }
+
+// Threshold returns the ordered dither threshold (-0.5 .. 0.5) of a method
+// at a pixel (0 for methods without a matrix).
+func Threshold(d DitherMode, x, y int) float64 { return threshold(d, x, y) }
+
+// DiffusionKernel returns the error diffusion taps (dx, dy, weight) and the
+// divisor of a method.
+func DiffusionKernel(d DitherMode) ([][3]int, int, bool) {
+	k, ok := kernels[d]
+	return k.taps, k.div, ok
+}
+
+// StyleThreshold returns the threshold (-0.5 .. 0.5) of an ordered dither
+// style (Artist, Scanlines, Checker, Stripes) at a pixel.
+func StyleThreshold(s DitherStyle, x, y int) float64 {
+	m := styleMatrix[s]
+	if m == nil {
+		m = styleMatrix[StyleArtist]
+	}
+	n := 1
+	for n*n < len(m) {
+		n++
+	}
+	return (float64(m[((y%n+n)%n)*n+(x%n+n)%n])+0.5)/float64(len(m)) - 0.5
+}

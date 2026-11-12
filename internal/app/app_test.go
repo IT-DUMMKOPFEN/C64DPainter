@@ -259,7 +259,7 @@ func TestSelectionMoveFlipBrush(t *testing.T) {
 	step(a)
 	a.Char('u')
 	step(a)
-	if *a.pic != *snap {
+	if !a.pic.Equal(snap) {
 		t.Fatal("Rückgängig nach Drehen stellt nicht her")
 	}
 }
@@ -874,7 +874,7 @@ func TestProjectRoundTrip(t *testing.T) {
 	b.dirty[b.page] = false
 	b.later(b.cmdOpen)
 	step(b)
-	if b.pic.L != want.L || b.pic.Hide != want.Hide || b.pic.Active != want.Active || b.pic.BG != want.BG {
+	if !b.pic.Equal(want) {
 		t.Fatal("layers, visibility or active layer lost")
 	}
 	if b.pic.Bits != want.Bits {

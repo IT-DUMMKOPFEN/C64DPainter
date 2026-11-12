@@ -84,7 +84,7 @@ func (a *App) toolInput(px, py int, over bool) {
 	// Kurve, Stufe 2: Biegen und Klick zum Festlegen
 	if a.curve.stage == 2 {
 		if in.Moved || in.Pressed[0] || in.Pressed[1] {
-			*a.pic = *a.curve.base
+			a.pic.CopyFrom(a.curve.base)
 			a.drawCurve(a.pic, a.curve.a, a.curve.b, pt{px, py}, a.curve.btn)
 		}
 		if over && (in.Pressed[0] || in.Pressed[1]) {
@@ -199,7 +199,7 @@ func (a *App) toolInput(px, py int, over bool) {
 		a.grad = gradientDrag{}
 	case ToolCurve:
 		if d.sx == px && d.sy == py {
-			*a.pic = *d.base
+			a.pic.CopyFrom(d.base)
 			a.dab(a.pic, px, py, d.btn)
 			a.pushUndo(d.base)
 		} else {
@@ -228,7 +228,7 @@ func (a *App) shapePreview(px, py int) {
 	if d.base == nil {
 		return
 	}
-	*a.pic = *d.base
+	a.pic.CopyFrom(d.base)
 	x0, y0 := d.sx, d.sy
 	x1, y1 := px, py
 	shift := a.in.Mods.Shift
@@ -461,7 +461,7 @@ func (a *App) cellSwapInput(px, py int, over bool) {
 		}
 		return
 	}
-	if *a.pic != *d.base {
+	if !a.pic.Equal(d.base) {
 		a.pushUndo(d.base)
 	}
 	d.active = false
@@ -490,7 +490,7 @@ func (a *App) straightLine(px, py int) bool {
 	if a.in.Mods.Shift {
 		ex, ey = constrain45(d.lsx, d.lsy, px, py)
 	}
-	*a.pic = *d.lineBase
+	a.pic.CopyFrom(d.lineBase)
 	a.lineDabs(a.pic, d.lsx, d.lsy, ex, ey, d.btn)
 	d.lx, d.ly = ex, ey
 	d.moved = true

@@ -10,6 +10,7 @@ import (
 	"testing"
 
 	"c64dpainter/internal/c64"
+	"c64dpainter/internal/gfx"
 )
 
 type askHost struct {
@@ -214,5 +215,35 @@ func TestSideBorderEditor(t *testing.T) {
 	a.newPicture(c64.ModeHires)
 	if a.sideOn() {
 		t.Fatal("hires has no side border")
+	}
+}
+
+func TestBigBrushPreviewFits(t *testing.T) {
+	a, _ := setup(t)
+	b := &CustomBrush{W: 150, H: 120, Pix: make([]int8, 150*120)}
+	for i := range b.Pix {
+		b.Pix[i] = 1
+	}
+	a.useBrush(b, true, "big")
+	step(a)
+	// draw a huge brush into a small box: nothing outside, the box is covered
+	m := a.img
+	r := gfx.Rect{X: 100, Y: 100, W: 120, H: 50}
+	for y := 80; y < 180; y++ {
+		for x := 80; x < 260; x++ {
+			m.Set(x, y, 0x123456)
+		}
+	}
+	a.drawBrushThumb(b, r)
+	for y := 80; y < 180; y++ {
+		for x := 80; x < 260; x++ {
+			if !r.Contains(x, y) && m.Pix[y*m.W+x] != 0x123456 {
+				t.Fatalf("drawn outside the box at %d,%d", x, y)
+			}
+		}
+	}
+	white := a.pal.Colors[1]
+	if m.Pix[(r.Y+r.H/2)*m.W+r.X+r.W/2] != white {
+		t.Fatal("brush not drawn in the box")
 	}
 }

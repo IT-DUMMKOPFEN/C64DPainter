@@ -30,6 +30,8 @@ var fntToolNames = [fntToolCount]string{"Pencil", "Line", "Rectangle", "Fill"}
 var fntToolKeys = [fntToolCount]string{"D", "L", "R", "F"}
 
 type fntEditor struct {
+	cmap       *c64.CharMap // map and colors from "Picture → characters"
+	cmapName   string
 	open       bool
 	f          *c64.Font
 	undo, redo []c64.Font
@@ -429,12 +431,23 @@ func (a *App) fntFrame() {
 	a.toolTopBar("Font editor", []toolButton{
 		{"fe_new", "New …", "Empty character set or the C64 font", func() { a.modal = &fntNewDialog{} }},
 		{"fe_imp", "Import …", "Take characters from the picture, a 320 × 200 image or the C64 font", a.fntOpenImport},
+		{"fe_pic", "Picture → chars …", "Turn a 320 × 200 picture into a character set plus a 40 × 25 map (equal characters only once)", a.fntOpenPicImport},
 		{"fe_open", "Open …", "Open a font project (.c64font) or a raw character set (.bin, .64c) – Ctrl+O", a.fntOpen},
 		{"fe_save", "Save …", "Save the font project (.c64font) – Ctrl+S", a.fntSave},
 		{},
 		{"fe_asm", "Export ASM …", "Source code for the ACME assembler", func() { a.fntExport("asm") }},
 		{"fe_bin", "Export BIN …", "Raw character set, 2048 bytes", func() { a.fntExport("bin") }},
 		{"fe_png", "Export PNG …", "All 256 characters as a picture", func() { a.fntExport("png") }},
+		{"fe_map", "Export picture …", "The picture made of characters: program .asm, data .asm and PRG (after \"Picture → chars\")", func() {
+			if e.cmap == nil {
+				a.setStatus("First use \"Picture → chars\" to make a map")
+				return
+			}
+			cm := *e.cmap
+			f := *e.f
+			cm.Font = &f // with the edited characters
+			a.fntExportCharMap(&cm, e.cmapName)
+		}},
 		{},
 		{"fe_undo", "Undo", "Ctrl+Z", e.doUndo},
 		{"fe_redo", "Redo", "Ctrl+Y", e.doRedo},

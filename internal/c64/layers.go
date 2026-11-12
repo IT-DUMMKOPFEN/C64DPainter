@@ -13,8 +13,55 @@ package c64
 // export work as before. A picture without layers (Layered == false) is a
 // plain C64 picture and behaves exactly as before.
 
-// LayerCount is the number of paint layers.
-const LayerCount = 3
+// DefaultLayers is the number of paint layers of a new picture, MaxLayers
+// the most a picture can have (the template layer of the editor makes 16).
+const (
+	DefaultLayers = 3
+	MaxLayers     = 15
+)
+
+// LayerCount returns the number of paint layers.
+func (p *Picture) LayerCount() int { return len(p.L) }
+
+// IsFree reports whether layer l ignores the color rules.
+func (p *Picture) IsFree(l int) bool { return l >= 0 && l < len(p.Free) && p.Free[l] }
+
+// HasFreeLayers reports whether a visible layer with pixels ignores the rules
+// (the picture then has to be converted for C64 formats).
+func (p *Picture) HasFreeLayers() bool {
+	if !p.Layered {
+		return false
+	}
+	for l := range p.L {
+		if p.Free[l] && !p.Hide[l] && p.LayerPixels(l) > 0 {
+			return true
+		}
+	}
+	return false
+}
+
+// ensureLayers makes sure the layer slices exist and have the same length.
+func (p *Picture) ensureLayers() {
+	if len(p.L) == 0 {
+		p.L = make([][HW * H]uint8, DefaultLayers)
+	}
+	for len(p.Hide) < len(p.L) {
+		p.Hide = append(p.Hide, false)
+	}
+	for len(p.Free) < len(p.L) {
+		p.Free = append(p.Free, false)
+	}
+	for len(p.Names) < len(p.L) {
+		p.Names = append(p.Names, "")
+	}
+	p.Hide, p.Free, p.Names = p.Hide[:len(p.L)], p.Free[:len(p.L)], p.Names[:len(p.L)]
+	if p.Active >= len(p.L) {
+		p.Active = len(p.L) - 1
+	}
+	if p.Active < 0 {
+		p.Active = 0
+	}
+}
 
 // Layer pixel values.
 const (
@@ -26,6 +73,10 @@ const (
 // into the front layer (index 0; background pixels become transparent), the
 // other layers are empty and all layers are visible.
 func (p *Picture) ToLayers() {
+	if !p.Layered {
+		p.L, p.Hide, p.Free, p.Names = nil, nil, nil, nil
+	}
+	p.ensureLayers()
 	for l := range p.L {
 		p.L[l] = [HW * H]uint8{}
 	}
@@ -38,7 +89,9 @@ func (p *Picture) ToLayers() {
 			}
 		}
 		p.Layered = true
-		p.Hide = [LayerCount]bool{}
+		for l := range p.Hide {
+			p.Hide[l] = false
+		}
 		p.Active = 0
 		p.hRecomposite()
 		return
@@ -54,7 +107,9 @@ func (p *Picture) ToLayers() {
 		}
 	}
 	p.Layered = true
-	p.Hide = [LayerCount]bool{}
+	for l := range p.Hide {
+		p.Hide[l] = false
+	}
 	p.Active = 0
 	p.Recomposite()
 }
@@ -72,7 +127,7 @@ func (p *Picture) layerColor(v uint8) (c uint8, opaque bool) {
 
 // LayerColorAt returns the color of a layer pixel and whether it is opaque.
 func (p *Picture) LayerColorAt(l, x, y int) (uint8, bool) {
-	if l < 0 || l >= LayerCount || x < 0 || y < 0 || x >= p.Width() || y >= H {
+	if l < 0 || l >= len(p.L) || x < 0 || y < 0 || x >= p.Width() || y >= H {
 		return 0, false
 	}
 	return p.layerColor(p.L[l][y*p.Width()+x])
@@ -93,7 +148,10 @@ func (p *Picture) LayerPixels(l int) int {
 // layers in a cell. The pixel (ex, ey) of the active layer is left out.
 func (p *Picture) cellUnion(cell, ex, ey int) (cnt [16]int, n int) {
 	cx, cy := (cell%Cols)*4, (cell/Cols)*8
-	for l := 0; l < LayerCount; l++ {
+	for l := 0; l < len(p.L); l++ {
+		if p.Free[l] {
+			continue
+		}
 		for y := cy; y < cy+8; y++ {
 			for x := cx; x < cx+4; x++ {
 				if l == p.Active && x == ex && y == ey {
@@ -149,8 +207,8 @@ func (p *Picture) rebuildCell(cell int) {
 		for x := cx; x < cx+4; x++ {
 			i := y*W + x
 			bits := uint8(0)
-			for l := LayerCount - 1; l >= 0; l-- { // the highest index is on top
-				if p.Hide[l] {
+			for l := len(p.L) - 1; l >= 0; l-- { // the highest index is on top
+				if p.Hide[l] || p.Free[l] {
 					continue
 				}
 				c, ok := p.layerColor(p.L[l][i])
@@ -183,7 +241,7 @@ func (p *Picture) Recomposite() {
 
 // SetLayerHidden shows or hides a layer.
 func (p *Picture) SetLayerHidden(l int, hide bool) {
-	if l < 0 || l >= LayerCount || p.Hide[l] == hide {
+	if l < 0 || l >= len(p.L) || p.Hide[l] == hide {
 		return
 	}
 	p.Hide[l] = hide
@@ -212,12 +270,14 @@ func (p *Picture) Erase(x, y int) {
 		return
 	}
 	p.L[p.Active][i] = LayerClear
-	p.rebuildCell(CellOf(x, y))
+	if !p.Free[p.Active] {
+		p.rebuildCell(CellOf(x, y))
+	}
 }
 
 // ClearLayer makes a whole layer transparent.
 func (p *Picture) ClearLayer(l int) {
-	if !p.Layered || l < 0 || l >= LayerCount {
+	if !p.Layered || l < 0 || l >= len(p.L) {
 		return
 	}
 	p.L[l] = [HW * H]uint8{}
@@ -256,6 +316,10 @@ func (p *Picture) plotLayer(x, y int, c uint8, mode ConflictMode, pal *Palette) 
 	if p.L[p.Active][i] == v {
 		return PlotOK
 	}
+	if p.Free[p.Active] {
+		p.L[p.Active][i] = v // free layer: no rules
+		return PlotOK
+	}
 	if v == LayerBG {
 		p.L[p.Active][i] = v
 		p.rebuildCell(cell)
@@ -273,8 +337,8 @@ func (p *Picture) plotLayer(x, y int, c uint8, mode ConflictMode, pal *Palette) 
 		cx, cy := (cell%Cols)*4, (cell/Cols)*8
 		var other [16]int // pixels of the other layers per color
 		if protect {
-			for l := 0; l < LayerCount; l++ {
-				if l == p.Active {
+			for l := 0; l < len(p.L); l++ {
+				if l == p.Active || p.Free[l] {
 					continue
 				}
 				for yy := cy; yy < cy+8; yy++ {
@@ -295,7 +359,10 @@ func (p *Picture) plotLayer(x, y int, c uint8, mode ConflictMode, pal *Palette) 
 		if rare < 0 {
 			return PlotBlocked // every color is used by another layer
 		}
-		for l := 0; l < LayerCount; l++ {
+		for l := 0; l < len(p.L); l++ {
+			if p.Free[l] {
+				continue
+			}
 			for yy := cy; yy < cy+8; yy++ {
 				for xx := cx; xx < cx+4; xx++ {
 					if p.L[l][yy*W+xx] == uint8(rare)+1 {
@@ -344,7 +411,10 @@ func (p *Picture) usageLayers(cell, ex, ey int) [4]int {
 				continue
 			}
 			any := false
-			for l := 0; l < LayerCount; l++ {
+			for l := 0; l < len(p.L); l++ {
+				if p.Free[l] {
+					continue
+				}
 				c, ok := p.layerColor(p.L[l][y*W+x])
 				if !ok {
 					continue
@@ -374,7 +444,10 @@ func (p *Picture) usageLayers(cell, ex, ey int) [4]int {
 func (p *Picture) replaceCellColorLayers(cell int, from, to uint8, both bool) int {
 	cx, cy := (cell%Cols)*4, (cell/Cols)*8
 	changed := 0
-	for l := 0; l < LayerCount; l++ {
+	for l := 0; l < len(p.L); l++ {
+		if p.Free[l] {
+			continue
+		}
 		for y := cy; y < cy+8; y++ {
 			for x := cx; x < cx+4; x++ {
 				i := y*W + x
@@ -419,4 +492,171 @@ func (p *Picture) HiddenOnly(cell int) (hidden [4]bool) {
 		hidden[s] = u[s] > 0 && vis[s] == 0
 	}
 	return
+}
+
+// --- layer list operations (1.1) ----------------------------------------------
+
+// InsertLayer adds an empty layer at index at (0 = bottom). The new layer
+// becomes the active one.
+func (p *Picture) InsertLayer(at int) bool {
+	p.ensureLayers()
+	if len(p.L) >= MaxLayers || at < 0 || at > len(p.L) {
+		return false
+	}
+	p.L = append(p.L, [HW * H]uint8{})
+	copy(p.L[at+1:], p.L[at:])
+	p.L[at] = [HW * H]uint8{}
+	p.Hide = append(p.Hide[:at], append([]bool{false}, p.Hide[at:]...)...)
+	p.Free = append(p.Free[:at], append([]bool{false}, p.Free[at:]...)...)
+	p.Names = append(p.Names[:at], append([]string{""}, p.Names[at:]...)...)
+	p.Active = at
+	return true
+}
+
+// DeleteLayer removes a layer (at least one stays).
+func (p *Picture) DeleteLayer(l int) bool {
+	if len(p.L) <= 1 || l < 0 || l >= len(p.L) {
+		return false
+	}
+	p.L = append(p.L[:l], p.L[l+1:]...)
+	p.Hide = append(p.Hide[:l], p.Hide[l+1:]...)
+	p.Free = append(p.Free[:l], p.Free[l+1:]...)
+	p.Names = append(p.Names[:l], p.Names[l+1:]...)
+	if p.Active >= len(p.L) || p.Active > l {
+		p.Active--
+	}
+	p.Active = max(0, min(p.Active, len(p.L)-1))
+	p.Recomposite()
+	return true
+}
+
+// MoveLayer moves layer l one step up (dir = 1) or down (dir = -1).
+func (p *Picture) MoveLayer(l, dir int) bool {
+	k := l + dir
+	if l < 0 || k < 0 || l >= len(p.L) || k >= len(p.L) {
+		return false
+	}
+	p.L[l], p.L[k] = p.L[k], p.L[l]
+	p.Hide[l], p.Hide[k] = p.Hide[k], p.Hide[l]
+	p.Free[l], p.Free[k] = p.Free[k], p.Free[l]
+	p.Names[l], p.Names[k] = p.Names[k], p.Names[l]
+	switch p.Active {
+	case l:
+		p.Active = k
+	case k:
+		p.Active = l
+	}
+	p.Recomposite()
+	return true
+}
+
+// DuplicateLayer copies layer l to a new layer above it.
+func (p *Picture) DuplicateLayer(l int) bool {
+	if l < 0 || l >= len(p.L) || !p.InsertLayer(l+1) {
+		return false
+	}
+	p.L[l+1] = p.L[l]
+	p.Hide[l+1] = p.Hide[l]
+	p.Free[l+1] = p.Free[l]
+	if p.Names[l] != "" {
+		p.Names[l+1] = p.Names[l] + " copy"
+	}
+	p.Recomposite()
+	return true
+}
+
+// reapplyRules paints the pixels of layer l again with the color rules
+// (used when a free layer becomes a normal one); colors that do not fit
+// take the nearest color of the cell.
+func (p *Picture) reapplyRules(l int, pal *Palette) {
+	px := p.L[l]
+	p.L[l] = [HW * H]uint8{}
+	p.Free[l] = false
+	act := p.Active
+	p.Active = l
+	p.Recomposite()
+	w := p.Width()
+	for i, v := range px {
+		if v == LayerClear {
+			continue
+		}
+		c := p.BG
+		if v != LayerBG {
+			c = v - 1
+		}
+		p.Plot(i%w, i/w, c, ConflictNearest, pal)
+	}
+	p.Active = act
+	p.Recomposite()
+}
+
+// SetFree switches the color rules of a layer off (free) or on again.
+func (p *Picture) SetFree(l int, free bool, pal *Palette) {
+	if l < 0 || l >= len(p.L) || p.Free[l] == free || p.Mode == ModeFree {
+		return
+	}
+	if free {
+		p.Free[l] = true
+		p.Recomposite()
+		return
+	}
+	p.reapplyRules(l, pal)
+}
+
+// MergeDown paints layer l onto the layer below it and removes l. A normal
+// layer below keeps its color rules (colors that do not fit take the
+// nearest color of the cell).
+func (p *Picture) MergeDown(l int, pal *Palette) bool {
+	if l <= 0 || l >= len(p.L) {
+		return false
+	}
+	below := l - 1
+	top := p.L[l]
+	wasFree := p.Free[l]
+	p.DeleteLayer(l)
+	if p.Free[below] || !wasFree {
+		for i, v := range top {
+			if v != LayerClear {
+				p.L[below][i] = v
+			}
+		}
+		if !p.Free[below] {
+			// merged rule pixels: check the cells again
+			px := p.L[below]
+			p.L[below] = [HW * H]uint8{}
+			p.Recomposite()
+			act := p.Active
+			p.Active = below
+			w := p.Width()
+			for i, v := range px {
+				if v == LayerClear {
+					continue
+				}
+				c := p.BG
+				if v != LayerBG {
+					c = v - 1
+				}
+				p.Plot(i%w, i/w, c, ConflictNearest, pal)
+			}
+			p.Active = act
+		}
+	} else {
+		act := p.Active
+		p.Active = below
+		w := p.Width()
+		for i, v := range top {
+			if v == LayerClear {
+				continue
+			}
+			c := p.BG
+			if v != LayerBG {
+				c = v - 1
+			}
+			p.Plot(i%w, i/w, c, ConflictNearest, pal)
+		}
+		p.Active = act
+	}
+	p.Active = below
+	p.Recomposite()
+	return true
 }

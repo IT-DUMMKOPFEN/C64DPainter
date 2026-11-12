@@ -52,9 +52,9 @@ File, edit, selection, layer and view commands, options (palette, color conflict
 - **Dither brush** / **Smear** / **Shade** / **Gradient fill** (only with these tools): their settings.
 - **Click a section title** (Brush, Patterns, Colors, Layers, Cell under the mouse, Navigator …) to fold the section in and out. That saves space and brings calm; at every start all sections are open.
 - **Brush**: shape (round, square, diamond, custom), size 1–16, preview, airbrush settings.
-- **Patterns**: fill patterns for all tools (hidden for the dither brush).
+- **Patterns**: fill patterns for all tools, a scrollable list with your own patterns at the end (hidden for the dither brush).
 - **Colors**: background ($D021), border ($D020) and the behavior for color conflicts.
-- **Layers**: the template (layer 1) and the paint layers 2–4 (click = paint on it, eye = show/hide); the switch next to the title turns layers 3 and 4 on or off.
+- **Layers**: the template (layer 1) and up to 15 paint layers (click = paint on it, eye = show/hide, **F** = free layer); buttons for new, delete, duplicate, move up/down, merge and rename.
 - **Cell under the mouse**: the four colors of the cell and which bit pairs are free.
 - **Navigator**: the whole picture in small; click or drag to choose the visible area.
 
@@ -275,7 +275,9 @@ In the window you also choose:
 
 - **Shape**: Linear, Circle or Diamond.
 - **Direction** for a single click with the linear shape (8 directions).
-- **Reverse colors** and **Dithered transitions** (25 / 50 / 75 % patterns between the color bands instead of hard edges).
+- **Reverse colors**.
+- **Transition** (the **<** / **>** buttons): how two neighboring color bands blend – None (hard edges), Classic 25/50/75 %, Bayer 2×2, 4×4 and 8×8, Blue noise, Lines, Cluster dots, the artist styles Artist, Scanlines, Checker and Stripes, and the error diffusion methods Floyd-Steinberg, Stucki, Sierra, Atkinson and Jarvis.
+- **Mix width** (0–100 %): how wide the mixed zone between two bands is. 0 % gives narrow transitions, 100 % blends across the whole band.
 
 Close the window with **OK**; the side panel shows the chosen gradient and a button to open the window again.
 
@@ -425,7 +427,18 @@ The panel shows them in six rows of seven:
 
 The density patterns from 1/16 to 15/16 are ideal for gradients with only a few colors. Hover over a pattern to see its name.
 
-> Patterns are fixed to the pixel grid (8 × 8 pixels). That way neighboring areas fit together seamlessly.
+## Large patterns
+
+After the 42 small patterns come **42 large patterns**: 20 of 16 × 16, 12 of 32 × 32 and 10 of 64 × 64 screen pixels (bricks, herringbone, scales, hearts, stars, honeycomb, wood, grass, clouds, chains, fades, rays and more). They are always **square on screen**: in multicolor a pattern is 8 × 16, 16 × 32 or 32 × 64 C64 pixels, in hires 16 × 16, 32 × 32 or 64 × 64. Your own patterns follow at the end of the list. The list scrolls with the mouse wheel.
+
+## Your own patterns
+
+- **New pattern …** (below the list) opens the **pattern editor**: choose the size (16, 32 or 64), paint with the left button, clear with the right button, and use Clear, Invert, flip, shift and rotate. The preview shows the pattern tiled. **Save** keeps it, **Save as new** makes a copy.
+- **Edit …** or a **right-click** on a pattern opens it in the editor (a built-in pattern is saved as a new one).
+- **Selection → Selection as pattern …** turns the selected area into a pattern: every pixel that is not the background color becomes a set pixel.
+- The patterns are saved as small PNG files in a **pattern folder**. The first time you save, the program asks for this folder once and remembers it; **Options → Pattern folder …** changes it. All pictures share these patterns.
+
+> Patterns are fixed to the pixel grid. That way neighboring areas fit together seamlessly.
 `},
 	{id: "swap", title: "Swap colors", body: `
 # Swap colors
@@ -586,6 +599,24 @@ The distortion is a real perspective: the far side becomes narrower and its rows
 
 To distort a **brush**, use **Brushes → Brush as selection**, transform it and click **Use as brush** again.
 
+## Bend
+
+Switch on **Bend (handles)** in the side panel (or **Selection → Bend handles**). Choose **Horizontal** or **Vertical**:
+
+- **Horizontal**: the columns move up or down along a curve – the selection bends like an arch. The two handles sit on the **top and bottom edge**: drag one up or down to set how strong, left or right to move the highest point of the curve.
+- **Vertical**: the rows move left or right – the selection bends sideways. The handles sit on the **left and right edge**: drag left or right for the strength, up or down for the highest point.
+- **Straighten** removes the bend. Bend works together with rotation, size, shear and perspective.
+
+**Brushes → Bend brush …** turns the brush into a selection with the bend handles switched on; click **Use as brush** when you are done.
+
+## Snap to grid
+
+With **Snap to grid** (side panel or Selection menu) a new selection always covers whole cells (8 × 8 pixels on screen) – ideal for copying cells exactly.
+
+## Copy into the other page
+
+**Copy into other page** (side panel, Selection menu or Edit menu) copies the selection – or the whole picture when nothing is selected – of the **active layer** to the **same place** and the **same layer** on the other page (` + "`J`" + `). Pixels in the **background color are left out**, so the other page shows through. Example: draw a logo with a hole in the middle, put a pattern on the other page and copy the logo onto it – the pattern stays visible in the hole. Undo on the other page brings back the old state.
+
 ## Clipboard
 
 ` + "`Ctrl+C`" + ` copies, ` + "`Ctrl+X`" + ` cuts, ` + "`Ctrl+V`" + ` pastes at the mouse position, ` + "`Del`" + ` deletes the content of the selection.
@@ -641,25 +672,31 @@ A separate window shows the picture with its border like on a TV. It does not bl
 	{id: "layers", title: "Layers & template", body: `
 # Layers
 
-A picture has **four layers** (side panel **Layers** or the **Layer** menu). They are listed from 1 at the top to 4 at the bottom, in the order they lie on top of each other:
+A picture has a **template** (layer 1) and up to **15 paint layers** (side panel **Layers** or the **Layer** menu). At the start there are three paint layers (2 at the bottom, 4 on top).
 
 = Layer 1 | the **template**: any image for tracing, its colors do not matter
 = Layer 2 | paint layer **at the bottom** – loaded and imported pictures go here
-= Layer 3 | paint layer above layer 2
-= Layer 4 | paint layer **on top**
+= further layers | each one lies above the one before; the list shows the top layer at the bottom of the list
 
-## Paint layers 2–4
+## Paint layers
 
-- At the start only **layer 2** is active; layers 3 and 4 are **switched off**. The switch **Layers 3 + 4** next to the title of the Layers panel (or **Layer → Use layers 3 + 4**) turns them on and off. While they are on, every layer can be shown or hidden on its own.
-- **Click a layer** (or press ` + "`2`" + `, ` + "`3`" + `, ` + "`4`" + `) to paint on it; ` + "`3`" + ` and ` + "`4`" + ` switch layers 3 + 4 on. The active layer is highlighted and shown in the status bar. All tools paint into the active layer; the selection, Auto dither, the Dither brush, Smear and Gradient fill work on it too.
+- At the start only **layer 2** is active; the upper layers are **switched off**. The switch next to the title of the Layers panel (or **Layer → Use layers 3 + 4**) turns them on and off. While they are on, every layer can be shown or hidden on its own.
+- **Click a layer** (or press ` + "`2`" + `, ` + "`3`" + `, ` + "`4`" + ` for the first three) to paint on it. The active layer is highlighted and shown in the status bar. All tools paint into the active layer; the selection, Auto dither, the Dither brush, Smear and Gradient fill work on it too.
+- **+ New** adds an empty layer above the active one (up to 15 paint layers, 16 with the template). **Delete**, **Duplicate**, **↑ Up** / **↓ Down** (change the order), **Merge ↓** (into the layer below) and **Rename …** work on the active layer. The same commands are in the **Layer** menu.
 - Pixels you have not painted on a layer are **transparent**: the layers behind show through. Where no layer has a pixel, you see the background color.
 - The **Eraser** (` + "`W`" + `) makes pixels of the active layer transparent again. **Clear layer** empties the whole active layer.
-- The **eye icon** shows or hides a layer. Switched-off layers 3 and 4 are hidden, but their colors still count for the cell rules.
+- The **eye icon** shows or hides a layer. Switched-off layers are hidden, but their colors still count for the cell rules.
 - **Protect other layers on clashes** (in the Layers panel or the **Layer** menu): when a cell is full, only colors that are used by the **active** layer alone may be replaced. The other layers stay exactly as they are; if every color of the cell belongs to another layer, the pixel is blocked. This is useful with the conflict mode "Replace rarest color" while you edit one layer.
 
-> **The multicolor rules apply to layers 2–4 together.** In every 4 × 8 cell, all three layers together may use the background color plus at most three colors – **also when a layer is hidden**. So every combination of visible layers is always a valid C64 picture. The cell info marks colors that only come from hidden layers.
+> **The multicolor rules apply to all normal layers together.** In every 4 × 8 cell, all layers together may use the background color plus at most three colors – **also when a layer is hidden**. So every combination of visible layers is always a valid C64 picture. The cell info marks colors that only come from hidden layers.
 
-What you see (the visible layers) is what you save as KLA, PNG or PRG. To keep the layers, save as a **project (.c64dp)**.
+## Free layers
+
+The **F** button of a layer (or **Layer → Free layer**) makes it a **free layer**: on this layer you can paint **every color everywhere**, the multicolor or hires rules do not apply. The other layers keep their rules, and a free layer **never changes the layers below it** – its colors do not count for their cells. Great for sketching, for details you want to place first, or for effects that are reduced later.
+
+A picture with free layers is not a valid C64 picture yet. When you save it as KLA, Art Studio, Doodle or PRG, a window warns and shows a **preview**: all layers are merged and every cell gets its **most frequent colors**. Switch between **Converted**, **Picture** and **Split**, then **Save converted**. Your layers stay as they are. PNG and the project file keep everything as you see it.
+
+What you see (the visible layers) is what you save as KLA, PNG or PRG. To keep the layers (with names, order and free flags), save as a **project (.c64dp)**.
 
 Pixels painted in the background color follow the background: when you change $D021, they change too (like %00 pixels on a real C64).
 
@@ -981,6 +1018,18 @@ Tip: in the multicolor editor, **View → Sprite grid (24×21)** shows a grid of
 - **New …**: the C64 font (upper or lower case) or an empty set.
 - **Import …** reads characters from the **multicolor picture**, an **image of 320 × 200 pixels**, or the **C64 font** (upper or lower case). The picture is cut into 8 × 8 cells, read row by row: choose the **first cell** (or click it), the **number** and the **first character** to fill. Hires: every pixel that is not the background color becomes a set pixel (multicolor pixels count as two). **Multicolor**: every pixel pair gets the nearest of the four colors; **Find colors** takes the most frequent colors of the cells (the character color from 0–7), **Keep colors** uses the colors of the set.
 
+## Picture → characters
+
+**Picture → chars …** turns a whole **320 × 200 picture** into a character set plus a **40 × 25 screen map** and the cell colors – the way C64 games and demos show big pictures with characters.
+
+- **Load image …** (PNG, BMP, JPG, GIF, scaled to 320 × 200) or **Current picture**.
+- **Hires** or **Multicolor**. **Background**, **$D022** and **$D023** are found automatically (**Auto**) or chosen by you; every cell gets its best character color.
+- Equal characters are stored **only once**. When the picture needs more than **Max chars** (at most 256), the most similar characters are merged – a warning tells you how many were needed. **Similar** also merges characters that differ in only a few pixels. A lower limit leaves room for text characters.
+- **Adjust the image**: automatic contrast, brightness, contrast, saturation, hue and gamma. Calmer pictures need fewer characters. There is no dithering – it would only create more characters.
+- **Result / Original / Split** compare the result with the picture.
+- **Use as character set** puts the characters into the editor; **Export picture …** in the toolbar saves the map later.
+- **Export ASM + PRG …** writes three files: ` + "`name.asm`" + ` (a small viewer program for ACME), ` + "`name_data.asm`" + ` (the colors, the map, the color RAM and the character set as ` + "`!byte`" + ` lines) and ` + "`name.prg`" + ` (ready to run on the C64 or in VICE). ` + "`acme --cpu 6510 name.asm`" + ` builds the same program.
+
 ## Files and export
 
 - **Save / Open**: font project (` + "`.c64font`" + `). **Open** also reads raw character sets (` + "`.bin`" + `, ` + "`.64c`" + `, 2048 or 4096 bytes, with or without load address).
@@ -1036,7 +1085,7 @@ As in Deluxe Paint, letter keys work directly, without Ctrl.
 
 ## Layers
 
-= 2 / 3 / 4 | paint on layer 2 / 3 / 4 (3 and 4 switch layers 3 + 4 on)
+= 2 / 3 / 4 | paint on layer 2 / 3 / 4
 = T | template (layer 1) on/off
 
 ## Brush, colors, patterns
@@ -1142,7 +1191,7 @@ When sprites are combined with the picture, bit pairs ` + "`%00`" + ` and ` + "`
 	{id: "about", title: "About C64 DPainter", body: `
 # About C64 DPainter
 
-**Version 1.0** – a paint program for C64 bitmap pictures (multicolor and hires).
+**Version 1.1** – a paint program for C64 bitmap pictures (multicolor and hires).
 
 Runs on **Windows 11** (Windows 10 may crash), **macOS** (Apple silicon and Intel) and **Linux**.
 

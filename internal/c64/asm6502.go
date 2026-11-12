@@ -109,6 +109,15 @@ func Assemble(src string) ([]byte, error) {
 				}
 				return v, nil
 			}
+			// symbol = value
+			if f := strings.SplitN(line, "=", 2); len(f) == 2 && line[0] != ' ' && line[0] != '\t' && line[0] != '*' && !strings.ContainsAny(strings.TrimSpace(f[0]), " \t") {
+				v, err := eval(f[1])
+				if err != nil {
+					return nil, err
+				}
+				labels[strings.TrimSpace(f[0])] = v
+				continue
+			}
 			// label at the start of the line
 			if line[0] != ' ' && line[0] != '\t' && line[0] != '*' && line[0] != '!' {
 				f := strings.Fields(line)

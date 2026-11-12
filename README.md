@@ -4,7 +4,7 @@
 
 A paint program for Windows, macOS (Apple silicon and Intel) and Linux for pictures in the **bitmap modes of the Commodore 64**: multicolor, hires and "hires free". Its look and controls follow Deluxe Paint and PyDPainter.
 
-Version 1.0 · Created by IT-Dummköpfen · Free for private use.
+Version 1.1 · Created by IT-Dummköpfen · Free for private use.
 
 ## Download
 
@@ -39,22 +39,22 @@ The program is not signed with a paid developer certificate, so Windows and macO
 - **Text tool**: C64 wide, tall and narrow fonts in multicolor pixels, with shadow or outline, as brush.
 - **PETSCII editor** (Tools menu): convert pictures to PETSCII, edit them and export PRG, ACME assembler source, PNG or Petmate files.
 - **Sprite editor** (Tools menu): 64 hires or multicolor sprites, overlay, animation preview, import from the picture or a 320×200 image (single or as a raster), project files, ACME assembler export with all colors and settings. A sprite grid (24×21) in the View menu helps to draw sprites in the multicolor editor.
-- **Font editor** (Tools menu): hires or multicolor C64 character sets with 1×1 to 2×2 tiles, compare with the ROM, test text, import from the picture, a 320×200 image or the C64 font, project files, raw .bin/.64c and ACME assembler export.
+- **Font editor** (Tools menu): hires or multicolor C64 character sets with 1×1 to 2×2 tiles, compare with the ROM, test text, import from the picture, a 320×200 image or the C64 font, project files, raw .bin/.64c and ACME assembler export, and **Picture → chars**: a 320×200 picture becomes a character set plus a 40×25 map (duplicates stored once, similar characters merged to fit 256 or less), exported as ACME program, data and PRG.
 - **Crash recovery**: changed pictures are saved quietly every minute and offered again after a crash. **Auto backup** (Options menu, off at start) into the working folder and a list of **recent files**. Window position and size and the import settings are kept for the next start.
 - **Brushes** menu: load and save brushes as PNG with a transparent background.
 - Round, square or diamond brushes from 1 to 16 pixels, plus custom brushes made from a selection.
-- 42 patterns (density steps, dots, lines, diagonals, grids and textures).
+- 84 patterns: 42 small ones (density steps, dots, lines, diagonals, grids and textures) and 42 large square ones (16×16 to 64×64 screen pixels), plus your own from the **pattern editor** or a selection, saved in a pattern folder.
 - **Auto dither** (Edit menu) and a **Dither brush**, both experimental: blend the borders between flat color areas in clean steps (two colors per transition, 25 %/50 % bands, outlines and silhouettes stay sharp) in the styles Artist, Scanlines, Checker and Stripes, reconstructed from hand-pixelled C64 pictures – or shade with **Color**, which darkens with the colors of the cell.
-- **Gradient fill**: 27 three-color, 14 four-color and 13 five-color C64 ramps plus your own custom ramps, plus five-band versions (dark → light → dark, light → dark → light), linear, circle or diamond, single click or drag for direction and width, optional dithered transitions.
+- **Gradient fill**: 27 three-color, 14 four-color and 13 five-color C64 ramps plus your own custom ramps, plus five-band versions (dark → light → dark, light → dark → light), linear, circle or diamond, single click or drag for direction and width, 17 transition methods (ordered, artist styles, Floyd-Steinberg, Stucki, Sierra, Atkinson, Jarvis) and an adjustable mix width.
 - **Smear** brush: drags colors along the stroke like a smudge tool.
 - Swap colors in the whole picture or with a cell brush (a color can become the background color, the background itself is never swapped away).
-- Selections can be copied (default) or moved (Shift), flipped, rotated by 90° or freely, scaled, sheared in both directions and **distorted in perspective** (corners opposite or free, top/bottom or left/right).
+- Selections can be copied (default) or moved (Shift), flipped, rotated by 90° or freely, scaled, sheared in both directions and **distorted in perspective** (corners opposite or free, top/bottom or left/right) and **bent** horizontally or vertically (also brushes). Selections can snap to the cell grid and be **copied into the other page** with a transparent background.
 - Zoom from 1× to 32×, configurable grid (8×8 by default), pixel grid and C64 border.
 - Only the 16 C64 colors, with 116 palette variants from c64gfx.com.
-- Layers: three paint layers (layer 2 at the bottom, 4 on top; layers 3 + 4 have an on/off switch; show/hide, eraser) on which the multicolor rules apply together – every combination of visible layers is a valid C64 picture – plus a template layer (PNG/BMP/JPG/GIF, above or below the picture, with opacity) and a spare page.
+- Layers: up to 15 paint layers (new, delete, duplicate, reorder, merge, rename, show/hide, eraser) on which the multicolor rules apply together – every combination of visible layers is a valid C64 picture – plus a template layer (PNG/BMP/JPG/GIF, above or below the picture, with opacity) and a spare page. **Free layers** ignore the color rules; C64 export then merges and converts them with a preview.
 - **Import & convert** for 320×200 images, with presets shown as small previews (Recommended, Retropixels look, Smooth, Sharp) and automatic contrast: live preview (multicolor / original / split view), brightness, contrast, saturation, hue and gamma, 16 dithering methods (ordered patterns as in Retropixels, blue noise, cell pattern, Yliluoma and error diffusion) with adjustable strength, pixel-pair modes and background color choice, color matching in RGB, YUV, XYZ, Lab, OkLab or by brightness, and cell colors by best fit, most frequent or the same in all cells.
 - **Side border sprites** (multicolor, experimental): paint left and right of the picture into the opened side border – 10 multicolor sprites per side, exported as a cycle-exact C64 program (.prg) and ACME source (PAL only).
-- Project files (.c64dp) keep all layers and the template.
+- Project files (.c64dp) keep all layers (with names and free flags) and the template.
 - Loading: C64 DPainter projects, KLA/KOA, Advanced Art Studio (.ocp), Amica Paint (.ami), Art Studio hires (.art), Doodle (.dd), PNG, BMP.
 - Saving: KLA (multicolor), Art Studio hires and Doodle (hires), PNG (320×200, 160×200, 384×272 with border, 640×400 and 1280×800) and PRG (a runnable C64 program with a viewer for multicolor or hires; with the side border open also a PRG and ACME source that show the border sprites).
 - Foldable side panel sections, detailed built-in help (F1), light and dark theme, interface size 100/200/300 %, movable dialog windows.
@@ -94,7 +94,7 @@ macOS (app for Apple silicon or Intel, can be built on any OS):
 
 ```
 CGO_ENABLED=0 GOOS=darwin GOARCH=arm64 go build -trimpath -ldflags "-s -w" -o build/C64DPainter_arm64 ./cmd/c64dpainter
-python3 tools/macbundle.py build/C64DPainter_arm64 res/c64dpainter.png build 1.0
+python3 tools/macbundle.py build/C64DPainter_arm64 res/c64dpainter.png build 1.1
 # Intel: GOARCH=amd64
 ```
 

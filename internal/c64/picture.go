@@ -30,9 +30,11 @@ type Picture struct {
 	// Paint layers of the editor (see layers.go). Bits, Screen and ColorRAM
 	// then hold the composite of the visible layers.
 	Layered bool
-	L       [LayerCount][HW * H]uint8 // 0 = transparent, 1..16 = color+1, 17 = background
-	Hide    [LayerCount]bool
-	Active  int // layer that tools paint into
+	L       [][HW * H]uint8 // 0 = transparent, 1..16 = color+1, 17 = background
+	Hide    []bool
+	Free    []bool   // free layers ignore the color rules (see layers.go)
+	Names   []string // "" = default name
+	Active  int      // layer that tools paint into
 
 	// Graphics mode (see hires.go). Hires pictures keep the color of every
 	// pixel in HP (320 × 200); Bits, Screen and ColorRAM are not used.
@@ -72,9 +74,27 @@ func NewPicture(bg, border uint8) *Picture {
 	return p
 }
 
+// Clone returns a deep copy (the layers are copied too).
 func (p *Picture) Clone() *Picture {
 	q := *p
+	q.L = append([][HW * H]uint8(nil), p.L...)
+	q.Hide = append([]bool(nil), p.Hide...)
+	q.Free = append([]bool(nil), p.Free...)
+	q.Names = append([]string(nil), p.Names...)
 	return &q
+}
+
+// CopyFrom makes p a deep copy of s (p keeps its own layer memory).
+func (p *Picture) CopyFrom(s *Picture) {
+	if p == s {
+		return
+	}
+	L, hide, free, names := p.L, p.Hide, p.Free, p.Names
+	*p = *s
+	p.L = append(L[:0], s.L...)
+	p.Hide = append(hide[:0], s.Hide...)
+	p.Free = append(free[:0], s.Free...)
+	p.Names = append(names[:0], s.Names...)
 }
 
 // CellOf liefert den Zellindex eines Bildpunkts.
@@ -120,6 +140,21 @@ func (p *Picture) ColorAt(x, y int) uint8 {
 			return p.SideColorAt(side, sx, y)
 		}
 		return p.BG
+	}
+	if p.Layered && len(p.Free) > 0 {
+		// a free layer pixel on top shows its own color
+		i := y*W + x
+		for l := len(p.L) - 1; l >= 0; l-- {
+			if p.Hide[l] {
+				continue
+			}
+			if c, ok := p.layerColor(p.L[l][i]); ok {
+				if p.Free[l] {
+					return c
+				}
+				break
+			}
+		}
 	}
 	return p.SlotColor(CellOf(x, y), int(p.Bits[y*W+x]))
 }
@@ -407,4 +442,19 @@ func (p *Picture) ReplaceColor(from, to uint8, both bool) (pixels, cells int) {
 		}
 	}
 	return
+}
+
+// Equal reports whether two pictures are the same (layers included).
+func (p *Picture) Equal(q *Picture) bool {
+	if p.Bits != q.Bits || p.Screen != q.Screen || p.ColorRAM != q.ColorRAM || p.BG != q.BG ||
+		p.Border != q.Border || p.Layered != q.Layered || p.Active != q.Active || p.Mode != q.Mode ||
+		p.HP != q.HP || p.SideOn != q.SideOn || p.Side != q.Side || len(p.L) != len(q.L) {
+		return false
+	}
+	for l := range p.L {
+		if p.L[l] != q.L[l] || p.Hide[l] != q.Hide[l] || p.Free[l] != q.Free[l] || p.Names[l] != q.Names[l] {
+			return false
+		}
+	}
+	return true
 }

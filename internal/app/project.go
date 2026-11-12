@@ -20,7 +20,21 @@ const projectFormat = "C64 DPainter project"
 
 // Version 3: layer 4 (index 2) is on top, as in version 1. In version 2
 // layer 2 (index 0) was on top.
-const projectVersion = 3
+const projectVersion = 4
+
+// projectVersionFor writes version 3 (readable by C64 DPainter 1.0) unless the
+// picture uses the layer features of 1.1 (more layers, free layers, names).
+func projectVersionFor(p *c64.Picture) int {
+	if p.LayerCount() != c64.DefaultLayers {
+		return projectVersion
+	}
+	for l := 0; l < p.LayerCount(); l++ {
+		if p.Free[l] || p.Names[l] != "" {
+			return projectVersion
+		}
+	}
+	return 3
+}
 
 type projectFile struct {
 	Format     string           `json:"format"`
@@ -51,6 +65,8 @@ type projectSide struct {
 type projectLayer struct {
 	Name    string `json:"name"`
 	Visible bool   `json:"visible"`
+	Free    bool   `json:"free,omitempty"` // ignores the color rules (version 4)
+	Custom  bool   `json:"customName,omitempty"`
 	Pixels  []byte `json:"pixels"`
 }
 
@@ -69,16 +85,16 @@ func (a *App) encodeProject() ([]byte, error) { return a.encodeProjectOf(a.pic) 
 // encodeProjectOf writes a page (with the template) as a project file.
 func (a *App) encodeProjectOf(p *c64.Picture) ([]byte, error) {
 	f := projectFile{
-		Format: projectFormat, Version: projectVersion, App: AppName + " " + AppVersion,
+		Format: projectFormat, Version: projectVersionFor(p), App: AppName + " " + AppVersion,
 		Background: p.BG, Border: p.Border, Active: p.Active, Palette: a.pal.Name,
 	}
 	if p.Hires() {
 		f.Mode = c64.ModeNames[p.Mode]
 	}
-	for l := 0; l < c64.LayerCount; l++ {
+	for l := 0; l < p.LayerCount(); l++ {
 		px := make([]byte, p.Width()*c64.H)
 		copy(px, p.L[l][:])
-		f.Layers = append(f.Layers, projectLayer{Name: layerName(l), Visible: !p.Hide[l], Pixels: px})
+		f.Layers = append(f.Layers, projectLayer{Name: layerNameOf(p, l), Visible: !p.Hide[l], Free: p.Free[l], Custom: p.Names[l] != "", Pixels: px})
 	}
 	if !p.Hires() && (p.SideOn || p.SidePixels() > 0) {
 		sd := &projectSide{On: p.SideOn, MC1: p.Side.MC1, MC2: p.Side.MC2}
@@ -141,7 +157,11 @@ func decodeProject(data []byte) (*c64.Picture, *projectTemplate, image.Image, er
 		}
 	}
 	p.ToLayers()
-	for l := 0; l < c64.LayerCount && l < len(f.Layers); l++ {
+	n := min(max(len(f.Layers), c64.DefaultLayers), c64.MaxLayers)
+	for p.LayerCount() < n {
+		p.InsertLayer(p.LayerCount())
+	}
+	for l := 0; l < n && l < len(f.Layers); l++ {
 		px := f.Layers[l].Pixels
 		if len(px) != p.Width()*c64.H {
 			return nil, nil, nil, fmt.Errorf("damaged project file (layer %d)", l+2)
@@ -153,15 +173,19 @@ func decodeProject(data []byte) (*c64.Picture, *projectTemplate, image.Image, er
 			p.L[l][i] = v
 		}
 		p.Hide[l] = !f.Layers[l].Visible
+		p.Free[l] = f.Layers[l].Free && p.Mode != c64.ModeFree
+		if f.Layers[l].Custom {
+			p.Names[l] = f.Layers[l].Name
+		}
 	}
-	if f.Active >= 0 && f.Active < c64.LayerCount {
+	if f.Active >= 0 && f.Active < p.LayerCount() {
 		p.Active = f.Active
 	}
 	if f.Version == 2 {
 		// version 2 stacked the layers the other way round: keep the look
 		p.L[0], p.L[2] = p.L[2], p.L[0]
 		p.Hide[0], p.Hide[2] = p.Hide[2], p.Hide[0]
-		p.Active = c64.LayerCount - 1 - p.Active
+		p.Active = 2 - p.Active
 	}
 	p.Recomposite()
 	if sd := f.Side; sd != nil && !p.Hires() {
@@ -203,10 +227,10 @@ func (a *App) loadProject(data []byte, path string) bool {
 		return false
 	}
 	a.pushUndo(a.pic.Clone())
-	*a.pic = *p
+	a.pic.CopyFrom(p)
 	a.ditherRes = nil
 	// layers 3 + 4 are switched on when the project uses them
-	a.extraLayers = (p.LayerPixels(1) > 0 && !p.Hide[1]) || (p.LayerPixels(2) > 0 && !p.Hide[2]) || p.Active > 0
+	a.extraLayers = usesExtraLayers(p)
 	a.syncExtraLayers()
 	if img != nil {
 		a.tpl.src = img

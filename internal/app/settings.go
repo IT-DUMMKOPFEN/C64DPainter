@@ -43,6 +43,8 @@ type Settings struct {
 	Text          TextSettings          `json:"text"`
 	Petscii       c64.PetsciiOptions    `json:"petscii"`
 	Import        *c64.ConvertOptions   `json:"import,omitempty"`
+	PatternDir    string                `json:"patternDir,omitempty"`
+	SelSnap       bool                  `json:"selectionSnap,omitempty"`
 	Window        WindowState           `json:"window"`
 }
 
